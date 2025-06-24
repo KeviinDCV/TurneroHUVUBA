@@ -102,4 +102,28 @@ class Servicio extends Model
     {
         return $this->nivel === 'subservicio';
     }
+
+    /**
+     * Relación uno a muchos con turnos
+     */
+    public function turnos()
+    {
+        return $this->hasMany(Turno::class);
+    }
+
+    /**
+     * Obtener turnos pendientes del servicio
+     */
+    public function turnosPendientes()
+    {
+        return $this->turnos()->where('estado', 'pendiente');
+    }
+
+    /**
+     * Obtener turnos aplazados del servicio
+     */
+    public function turnosAplazados()
+    {
+        return $this->turnos()->where('estado', 'aplazado');
+    }
 }

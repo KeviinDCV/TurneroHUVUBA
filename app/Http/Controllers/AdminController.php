@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Models\Caja;
 
 class AdminController extends Controller
 {
@@ -200,5 +202,87 @@ class AdminController extends Controller
 
         return redirect()->route('admin.users')
             ->with('success', 'Usuario eliminado correctamente');
+    }
+
+    /**
+     * Limpiar sesiones expiradas manualmente
+     */
+    public function cleanExpiredSessions(Request $request)
+    {
+        // Verificar que el usuario sea administrador
+        if (!Auth::user()->esAdministrador()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para realizar esta acción'
+            ], 403);
+        }
+
+        try {
+            // Obtener todos los usuarios con session_id
+            $usersWithSessions = User::whereNotNull('session_id')->get();
+            $cleanedUsers = 0;
+            $cleanedBoxes = 0;
+
+            foreach ($usersWithSessions as $user) {
+                $shouldClean = false;
+                $reason = '';
+
+                // Verificar si la sesión ha expirado por tiempo (más de 30 minutos)
+                if ($user->last_activity && $user->last_activity->diffInMinutes(now()) >= 30) {
+                    $shouldClean = true;
+                    $reason = 'sesión expirada por tiempo';
+                }
+                // Verificar si la sesión no existe en la tabla sessions
+                elseif (!DB::table('sessions')->where('id', $user->session_id)->exists()) {
+                    $shouldClean = true;
+                    $reason = 'sesión no existe en base de datos';
+                }
+
+                if ($shouldClean) {
+                    // Limpiar sesión del usuario
+                    $user->limpiarSession();
+                    $cleanedUsers++;
+
+                    // Liberar cualquier caja que el usuario tenga asignada
+                    $cajasLiberadas = Caja::where('asesor_activo_id', $user->id)->count();
+                    if ($cajasLiberadas > 0) {
+                        Caja::where('asesor_activo_id', $user->id)->update([
+                            'asesor_activo_id' => null,
+                            'session_id' => null,
+                            'fecha_asignacion' => null,
+                            'ip_asesor' => null
+                        ]);
+                        $cleanedBoxes += $cajasLiberadas;
+                    }
+                }
+            }
+
+            // Limpiar sesiones huérfanas en la tabla sessions (sin usuario asociado o expiradas)
+            $expiredSessionsCount = DB::table('sessions')
+                ->where('last_activity', '<', now()->subMinutes(30)->timestamp)
+                ->count();
+
+            if ($expiredSessionsCount > 0) {
+                DB::table('sessions')
+                    ->where('last_activity', '<', now()->subMinutes(30)->timestamp)
+                    ->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Limpieza de sesiones completada exitosamente',
+                'data' => [
+                    'usuarios_limpiados' => $cleanedUsers,
+                    'cajas_liberadas' => $cleanedBoxes,
+                    'sesiones_expiradas_eliminadas' => $expiredSessionsCount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al limpiar sesiones: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

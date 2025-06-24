@@ -22,8 +22,11 @@ Route::post('/admin', [AuthController::class, 'login'])->name('admin.login.post'
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// API para verificar estado de autenticación
+Route::get('/api/auth-check', [AuthController::class, 'checkAuth'])->name('api.auth-check');
+
 // Rutas protegidas del dashboard
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'update.user.activity', 'clean.expired.boxes'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     
     // Rutas de gestión de usuarios
@@ -61,11 +64,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/tv-config/multimedia/{id}/toggle', [TvConfigController::class, 'toggleMultimedia'])->name('admin.tv-config.multimedia.toggle');
     Route::delete('/tv-config/multimedia/{id}', [TvConfigController::class, 'destroyMultimedia'])->name('admin.tv-config.multimedia.destroy');
 
+    // Ruta para limpiar sesiones expiradas manualmente
+    Route::post('/admin/clean-sessions', [AdminController::class, 'cleanExpiredSessions'])->name('admin.clean-sessions');
+
     // Rutas para asesores
     Route::get('/asesor/seleccionar-caja', [AsesorController::class, 'seleccionarCaja'])->name('asesor.seleccionar-caja');
     Route::post('/asesor/seleccionar-caja', [AsesorController::class, 'procesarSeleccionCaja'])->name('asesor.procesar-seleccion-caja');
     Route::get('/asesor/dashboard', [AsesorController::class, 'dashboard'])->name('asesor.dashboard');
     Route::get('/asesor/cambiar-caja', [AsesorController::class, 'cambiarCaja'])->name('asesor.cambiar-caja');
+
+    // Rutas para gestión de turnos por asesores
+    Route::post('/asesor/llamar-siguiente-turno', [AsesorController::class, 'llamarSiguienteTurno'])->name('asesor.llamar-siguiente-turno');
+    Route::post('/asesor/llamar-turno-especifico', [AsesorController::class, 'llamarTurnoEspecifico'])->name('asesor.llamar-turno-especifico');
+    Route::post('/asesor/marcar-atendido', [AsesorController::class, 'marcarAtendido'])->name('asesor.marcar-atendido');
+    Route::post('/asesor/aplazar-turno', [AsesorController::class, 'aplazarTurno'])->name('asesor.aplazar-turno');
 });
 
 // Ruta de prueba para verificar autenticación
@@ -84,6 +96,7 @@ Route::get('/test-auth', function () {
 Route::get('/turnos', [TurnoController::class, 'inicio'])->name('turnos.inicio');
 Route::get('/turnos/menu', [TurnoController::class, 'menu'])->name('turnos.menu');
 Route::post('/turnos/seleccionar', [TurnoController::class, 'seleccionarServicio'])->name('turnos.seleccionar');
+Route::get('/turnos/ticket/{turno}', [TurnoController::class, 'mostrarTicket'])->name('turnos.ticket');
 
 // Ruta para el televisor - visualizador de turnos
 Route::get('/tv', [TvConfigController::class, 'show'])->name('tv.display');

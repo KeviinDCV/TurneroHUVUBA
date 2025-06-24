@@ -24,6 +24,9 @@ class User extends Authenticatable
         'cedula',
         'nombre_usuario',
         'password',
+        'session_id',
+        'last_activity',
+        'last_ip',
     ];
 
     /**
@@ -46,6 +49,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_activity' => 'datetime',
         ];
     }
 
@@ -119,5 +123,92 @@ class User extends Authenticatable
     public function serviciosActivos()
     {
         return $this->servicios()->where('estado', 'activo');
+    }
+
+    /**
+     * Relación uno a muchos con turnos (como asesor)
+     */
+    public function turnos()
+    {
+        return $this->hasMany(Turno::class, 'asesor_id');
+    }
+
+    /**
+     * Obtener turnos atendidos por el asesor
+     */
+    public function turnosAtendidos()
+    {
+        return $this->turnos()->where('estado', 'atendido');
+    }
+
+    /**
+     * Obtener turnos llamados por el asesor
+     */
+    public function turnosLlamados()
+    {
+        return $this->turnos()->where('estado', 'llamado');
+    }
+
+    /**
+     * Verificar si el usuario tiene una sesión activa
+     */
+    public function tieneSessionActiva()
+    {
+        // Si no hay session_id o last_activity, no hay sesión activa
+        if (empty($this->session_id) || !$this->last_activity) {
+            return false;
+        }
+
+        // Verificar si la sesión ha expirado (más de 30 minutos)
+        if ($this->last_activity->diffInMinutes(now()) >= 30) {
+            // Limpiar la sesión expirada automáticamente
+            $this->limpiarSession();
+            return false;
+        }
+
+        // Verificar si la sesión realmente existe en la tabla sessions de Laravel
+        $sessionExists = \DB::table('sessions')
+            ->where('id', $this->session_id)
+            ->exists();
+
+        // Si la sesión no existe en la tabla sessions, limpiar los datos
+        if (!$sessionExists) {
+            $this->limpiarSession();
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Actualizar información de sesión
+     */
+    public function actualizarSession($sessionId, $ip = null)
+    {
+        $this->update([
+            'session_id' => $sessionId,
+            'last_activity' => now(),
+            'last_ip' => $ip ?: request()->ip()
+        ]);
+    }
+
+    /**
+     * Limpiar información de sesión
+     */
+    public function limpiarSession()
+    {
+        $this->update([
+            'session_id' => null,
+            'last_activity' => null,
+            'last_ip' => null
+        ]);
+    }
+
+    /**
+     * Verificar si la sesión actual es diferente a la almacenada
+     */
+    public function esDiferenteSession($sessionId)
+    {
+        return $this->session_id && $this->session_id !== $sessionId;
     }
 }

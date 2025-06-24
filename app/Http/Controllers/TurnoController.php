@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Servicio;
+use App\Models\Turno;
 use Illuminate\Http\Request;
 
 class TurnoController extends Controller
@@ -64,21 +65,63 @@ class TurnoController extends Controller
     {
         $servicioId = $request->get('servicio_id');
         $subservicioId = $request->get('subservicio_id');
-        
-        // Aquí se implementará la lógica para generar el turno
-        // Por ahora, solo mostrar un mensaje
-        
-        if ($subservicioId) {
-            $subservicio = Servicio::find($subservicioId);
-            $mensaje = "Turno solicitado para: " . $subservicio->nombre_completo;
-        } else {
-            $servicio = Servicio::find($servicioId);
-            $mensaje = "Turno solicitado para: " . $servicio->nombre;
+
+        try {
+            // Determinar qué servicio usar para generar el turno
+            $servicioParaTurno = $subservicioId ? $subservicioId : $servicioId;
+
+            // Crear el turno
+            $turno = Turno::crear($servicioParaTurno);
+
+            // Obtener información del servicio para el mensaje
+            if ($subservicioId) {
+                $subservicio = Servicio::find($subservicioId);
+                $nombreServicio = $subservicio->nombre_completo;
+            } else {
+                $servicio = Servicio::find($servicioId);
+                $nombreServicio = $servicio->nombre;
+            }
+
+            $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio}";
+
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'turno' => [
+                    'id' => $turno->id,
+                    'codigo_completo' => $turno->codigo_completo,
+                    'servicio' => $nombreServicio,
+                    'numero' => $turno->numero
+                ],
+                'redirect_url' => route('turnos.ticket', $turno->id)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar el turno: ' . $e->getMessage()
+            ]);
         }
-        
-        return response()->json([
-            'success' => true,
-            'message' => $mensaje
-        ]);
+    }
+
+    /**
+     * Mostrar el ticket del turno generado
+     */
+    public function mostrarTicket($turnoId)
+    {
+        $turno = Turno::with('servicio')->find($turnoId);
+
+        if (!$turno) {
+            return redirect()->route('turnos.menu')->with('error', 'Turno no encontrado');
+        }
+
+        // Verificar que el turno sea del día actual
+        if (!$turno->fecha_creacion->isToday()) {
+            return redirect()->route('turnos.menu')->with('error', 'Turno no válido');
+        }
+
+        $servicio = $turno->servicio;
+
+        return view('turnos.ticket', compact('turno', 'servicio'));
     }
 }

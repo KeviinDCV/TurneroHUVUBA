@@ -103,9 +103,27 @@
                         <form method="POST" action="{{ route('admin.login.post') }}" class="space-y-4">
                             @csrf
 
-                            @if ($errors->any())
+                            @if ($errors->has('session_active'))
+                                <div class="border border-orange-400 text-orange-700 px-4 py-3 rounded-full text-sm mb-4" style="background-color: #fff3e0;">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <div>
+                                            <div class="font-medium">Sesión Activa Detectada</div>
+                                            <div class="text-sm">{{ $errors->first('session_active') }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @elseif ($errors->any())
                                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-full text-sm">
                                     {{ $errors->first() }}
+                                </div>
+                            @endif
+
+                            @if (session('info'))
+                                <div class="border border-blue-400 text-blue-700 px-4 py-3 rounded-full text-sm" style="background-color: #e3f2fd;">
+                                    {{ session('info') }}
                                 </div>
                             @endif
 
@@ -164,5 +182,61 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Verificar estado de autenticación cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hacer una petición AJAX para verificar si el usuario está autenticado
+            fetch('/api/auth-check', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.authenticated) {
+                    // Si está autenticado, redirigir inmediatamente
+                    window.location.href = data.redirect_url;
+                }
+            })
+            .catch(error => {
+                // Si hay error, no hacer nada (mostrar login normal)
+                console.log('Auth check failed, showing login form');
+            });
+        });
+
+        // Prevenir cache del navegador
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                // La página fue cargada desde cache, recargar
+                window.location.reload();
+            }
+        });
+
+        // Verificar autenticación cuando la página se vuelve visible
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                // Verificar autenticación cuando la página se vuelve visible
+                fetch('/api/auth-check', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        window.location.href = data.redirect_url;
+                    }
+                })
+                .catch(error => {
+                    // Ignorar errores
+                });
+            }
+        });
+    </script>
 </body>
 </html>

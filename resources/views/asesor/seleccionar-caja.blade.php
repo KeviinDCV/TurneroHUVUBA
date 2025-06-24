@@ -115,7 +115,19 @@
                         <form method="POST" action="{{ route('asesor.procesar-seleccion-caja') }}" class="space-y-4">
                             @csrf
 
-                            @if ($errors->any())
+                            @if ($errors->has('caja_ocupada'))
+                                <div class="border border-orange-400 text-orange-700 px-4 py-3 rounded-full text-sm mb-4" style="background-color: #fff3e0;">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <div>
+                                            <div class="font-medium">Caja No Disponible</div>
+                                            <div class="text-sm">{{ $errors->first('caja_ocupada') }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @elseif ($errors->any())
                                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-full text-sm">
                                     {{ $errors->first() }}
                                 </div>
@@ -126,24 +138,44 @@
                                 <div class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 custom-scrollbar">
                                     <div class="space-y-1">
                                     @forelse($cajas as $caja)
-                                        <label class="flex items-center p-2 border border-gray-200 bg-white rounded-md cursor-pointer transition-all duration-300 hover:border-blue-300 hover:bg-blue-50">
-                                            <input type="radio" name="caja_id" value="{{ $caja->id }}" class="sr-only peer" required>
-                                            <div class="flex items-center justify-between w-full">
+                                        <label class="flex items-center p-2 border border-gray-200 rounded-md cursor-pointer transition-all duration-300
+                                            {{ $caja->disponible ? 'bg-white hover:border-blue-300 hover:bg-blue-50' : 'bg-gray-100 cursor-not-allowed opacity-60' }}
+                                            {{ $caja->ocupada_por_mi ? 'border-blue-500 bg-blue-50' : '' }}">
+                                            <input type="radio" name="caja_id" value="{{ $caja->id }}"
+                                                class="w-3 h-3 text-blue-600 border-gray-300 focus:ring-0 focus:outline-none"
+                                                {{ $caja->disponible ? '' : 'disabled' }}
+                                                {{ $caja->ocupada_por_mi ? 'checked' : '' }}
+                                                required>
+                                            <div class="flex items-center justify-between w-full ml-2">
                                                 <div class="flex items-center space-x-2">
-                                                    <div class="w-3 h-3 border-2 border-gray-300 rounded-full peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all duration-200 relative">
-                                                        <div class="absolute inset-0 rounded-full bg-white scale-0 peer-checked:scale-50 transition-transform duration-200"></div>
-                                                    </div>
                                                     <div>
                                                         <p class="font-medium text-gray-900 text-xs">{{ $caja->nombre }}</p>
                                                         @if($caja->ubicacion)
                                                             <p class="text-xs text-gray-500">{{ $caja->ubicacion }}</p>
                                                         @endif
+                                                        @if(!$caja->disponible && $caja->nombre_asesor)
+                                                            <p class="text-xs text-orange-600 font-medium">Ocupada por: {{ $caja->nombre_asesor }}</p>
+                                                        @elseif($caja->ocupada_por_mi)
+                                                            <p class="text-xs text-blue-600 font-medium">Tu caja actual</p>
+                                                        @endif
                                                     </div>
                                                 </div>
                                                 <div class="text-right">
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                                        {{ $caja->numero_caja }}
-                                                    </span>
+                                                    @if($caja->disponible)
+                                                        @if($caja->ocupada_por_mi)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                                {{ $caja->numero_caja }}
+                                                            </span>
+                                                        @else
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                                {{ $caja->numero_caja }}
+                                                            </span>
+                                                        @endif
+                                                    @else
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                            {{ $caja->numero_caja }}
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </label>

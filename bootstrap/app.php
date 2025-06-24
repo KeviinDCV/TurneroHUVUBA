@@ -12,6 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin');
+
+        // Registrar middleware personalizado
+        $middleware->alias([
+            'redirect.authenticated' => \App\Http\Middleware\ForceLogoutOnLogin::class,
+            'update.user.activity' => \App\Http\Middleware\UpdateUserActivity::class,
+            'clean.expired.boxes' => \App\Http\Middleware\CleanExpiredBoxes::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
