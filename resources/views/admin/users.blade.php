@@ -735,21 +735,40 @@
                 
                 deleteUser() {
                     const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    
+
+                    // Verificar que tenemos el userId
+                    if (!this.userId) {
+                        console.error('Error: userId is null or undefined');
+                        return;
+                    }
+
+                    console.log('Deleting user with ID:', this.userId);
+
                     fetch(`/users/${this.userId}`, {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': token,
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
                         }
                     })
                     .then(response => {
-                        if (response.ok) {
-                            window.location.reload();
-                        }
+                        console.log('Response status:', response.status);
+                        return response.json().then(data => {
+                            if (response.ok) {
+                                // Cerrar el modal
+                                this.isOpen = false;
+                                // Recargar la página para mostrar los cambios
+                                window.location.reload();
+                            } else {
+                                console.error('Error response:', response.status, data.message);
+                                alert('Error: ' + (data.message || 'No se pudo eliminar el usuario'));
+                            }
+                        });
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Fetch error:', error);
+                        alert('Error de conexión. Inténtalo de nuevo.');
                     });
                 }
             }));

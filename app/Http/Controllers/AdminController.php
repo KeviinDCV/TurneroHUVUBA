@@ -171,18 +171,33 @@ class AdminController extends Controller
     /**
      * Eliminar un usuario
      */
-    public function deleteUser($id)
+    public function deleteUser(Request $request, $id)
     {
         $userToDelete = User::findOrFail($id);
-        
+
         // Evitar que se elimine a sí mismo
         if (Auth::id() == $id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No puedes eliminar tu propio usuario'
+                ], 400);
+            }
+
             return redirect()->route('admin.users')
                 ->with('error', 'No puedes eliminar tu propio usuario');
         }
-        
+
         $userToDelete->delete();
-        
+
+        // Si es una petición AJAX, devolver JSON
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario eliminado correctamente'
+            ]);
+        }
+
         return redirect()->route('admin.users')
             ->with('success', 'Usuario eliminado correctamente');
     }

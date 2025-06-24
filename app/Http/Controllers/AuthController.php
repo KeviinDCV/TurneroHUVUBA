@@ -39,7 +39,8 @@ class AuthController extends Controller
                 if ($user->esAdministrador()) {
                     return redirect()->route('admin.dashboard');
                 } else {
-                    return redirect()->route('asesor.dashboard');
+                    // Para asesores, redirigir a la selección de caja
+                    return redirect()->route('asesor.seleccionar-caja');
                 }
             } else {
                 return back()->withErrors([

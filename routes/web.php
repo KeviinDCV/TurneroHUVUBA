@@ -9,6 +9,7 @@ use App\Http\Controllers\ServicioController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\TvConfigController;
 use App\Http\Controllers\MultimediaController;
+use App\Http\Controllers\AsesorController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -60,9 +61,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/tv-config/multimedia/{id}/toggle', [TvConfigController::class, 'toggleMultimedia'])->name('admin.tv-config.multimedia.toggle');
     Route::delete('/tv-config/multimedia/{id}', [TvConfigController::class, 'destroyMultimedia'])->name('admin.tv-config.multimedia.destroy');
 
-    Route::get('/asesor/dashboard', function () {
-        return view('asesor.dashboard');
-    })->name('asesor.dashboard');
+    // Rutas para asesores
+    Route::get('/asesor/seleccionar-caja', [AsesorController::class, 'seleccionarCaja'])->name('asesor.seleccionar-caja');
+    Route::post('/asesor/seleccionar-caja', [AsesorController::class, 'procesarSeleccionCaja'])->name('asesor.procesar-seleccion-caja');
+    Route::get('/asesor/dashboard', [AsesorController::class, 'dashboard'])->name('asesor.dashboard');
+    Route::get('/asesor/cambiar-caja', [AsesorController::class, 'cambiarCaja'])->name('asesor.cambiar-caja');
 });
 
 // Ruta de prueba para verificar autenticación
