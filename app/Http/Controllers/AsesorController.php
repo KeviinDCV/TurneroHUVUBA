@@ -123,26 +123,102 @@ class AsesorController extends Controller
         }
 
         // Obtener servicios asignados al asesor con estadísticas de turnos
-        $serviciosAsignados = $user->serviciosActivos()->with(['turnos' => function($query) {
-            $query->delDia()->whereIn('estado', ['pendiente', 'aplazado']);
-        }])->get();
+        $serviciosAsignados = $user->serviciosActivos()
+            ->with(['turnos' => function($query) {
+                $query->delDia()->whereIn('estado', ['pendiente', 'aplazado']);
+            }])
+            ->with(['subservicios.turnos' => function($query) {
+                $query->delDia()->whereIn('estado', ['pendiente', 'aplazado']);
+            }])
+            ->get();
 
-        // Calcular estadísticas por servicio
-        $estadisticasServicios = $serviciosAsignados->map(function($servicio) {
-            $turnosPendientes = $servicio->turnos->where('estado', 'pendiente')->count();
-            $turnosAplazados = $servicio->turnos->where('estado', 'aplazado')->count();
-
-            return [
-                'id' => $servicio->id,
-                'nombre' => $servicio->nombre,
-                'codigo' => $servicio->codigo,
-                'pendientes' => $turnosPendientes,
-                'aplazados' => $turnosAplazados,
-                'total' => $turnosPendientes + $turnosAplazados
-            ];
+        // Organizar servicios jerárquicamente
+        $serviciosPadre = $serviciosAsignados->filter(function($servicio) {
+            return $servicio->esServicioPrincipal();
         });
 
-        return view('asesor.llamar-turnos', compact('user', 'caja', 'estadisticasServicios'));
+        // Estructurar servicios con estadísticas
+        $serviciosEstructurados = [];
+        
+        foreach ($serviciosPadre as $servicioPadre) {
+            // Obtener los turnos pendientes y aplazados del servicio padre
+            $turnosPendientesPadre = $servicioPadre->turnos->where('estado', 'pendiente')->count();
+            $turnosAplazadosPadre = $servicioPadre->turnos->where('estado', 'aplazado')->count();
+            
+            // Preparar arrays para subservicios
+            $subserviciosDatos = [];
+            
+            // Variables para sumar turnos de los hijos
+            $totalPendientesHijos = 0;
+            $totalAplazadosHijos = 0;
+            
+            // Añadir subservicios si existen
+            foreach ($servicioPadre->subservicios as $subservicio) {
+                // Si el subservicio está asignado al asesor
+                if ($subservicio->estaAsignadoA($user->id)) {
+                    $turnosPendientesHijo = $subservicio->turnos->where('estado', 'pendiente')->count();
+                    $turnosAplazadosHijo = $subservicio->turnos->where('estado', 'aplazado')->count();
+                    
+                    // Sumar a los totales
+                    $totalPendientesHijos += $turnosPendientesHijo;
+                    $totalAplazadosHijos += $turnosAplazadosHijo;
+                    
+                    $subserviciosDatos[] = [
+                        'id' => $subservicio->id,
+                        'nombre' => $subservicio->nombre,
+                        'codigo' => $subservicio->codigo,
+                        'pendientes' => $turnosPendientesHijo,
+                        'aplazados' => $turnosAplazadosHijo,
+                        'total' => $turnosPendientesHijo + $turnosAplazadosHijo
+                    ];
+                }
+            }
+            
+            // Sumar los turnos del padre y los hijos
+            $totalPendientes = $turnosPendientesPadre + $totalPendientesHijos;
+            $totalAplazados = $turnosAplazadosPadre + $totalAplazadosHijos;
+            
+            // Datos del servicio padre (incluye suma de todos los hijos)
+            $servicioDatos = [
+                'id' => $servicioPadre->id,
+                'nombre' => $servicioPadre->nombre,
+                'codigo' => $servicioPadre->codigo,
+                'pendientes' => $totalPendientes,
+                'aplazados' => $totalAplazados,
+                'total' => $totalPendientes + $totalAplazados,
+                'tiene_hijos' => $servicioPadre->subservicios->isNotEmpty(),
+                'pendientes_propios' => $turnosPendientesPadre, // Solo los turnos del padre
+                'aplazados_propios' => $turnosAplazadosPadre,   // Solo los turnos del padre
+                'subservicios' => $subserviciosDatos
+            ];
+            
+            $serviciosEstructurados[] = $servicioDatos;
+        }
+        
+        // Añadir subservicios que son huérfanos (asignados al usuario pero sin padre o con padre no asignado)
+        $subserviciosHuerfanos = $serviciosAsignados->filter(function($servicio) {
+            return $servicio->esSubservicio() && (!$servicio->servicioPadre || !$servicio->servicioPadre->estaAsignadoA(Auth::id()));
+        });
+        
+        foreach ($subserviciosHuerfanos as $subservicio) {
+            $turnosPendientes = $subservicio->turnos->where('estado', 'pendiente')->count();
+            $turnosAplazados = $subservicio->turnos->where('estado', 'aplazado')->count();
+            
+            $serviciosEstructurados[] = [
+                'id' => $subservicio->id,
+                'nombre' => $subservicio->nombre,
+                'codigo' => $subservicio->codigo,
+                'pendientes' => $turnosPendientes,
+                'aplazados' => $turnosAplazados,
+                'total' => $turnosPendientes + $turnosAplazados,
+                'tiene_hijos' => false,
+                'pendientes_propios' => $turnosPendientes, // Mismo valor que pendientes
+                'aplazados_propios' => $turnosAplazados,   // Mismo valor que aplazados
+                'subservicios' => []
+            ];
+        }
+
+        return view('asesor.llamar-turnos', compact('user', 'caja', 'serviciosEstructurados'));
     }
 
     /**
@@ -188,19 +264,74 @@ class AsesorController extends Controller
         ]);
 
         $servicioId = $request->servicio_id;
+        $servicio = Servicio::find($servicioId);
 
         // Verificar que el servicio esté asignado al asesor
         if (!$user->servicios()->where('servicios.id', $servicioId)->exists()) {
             return response()->json(['success' => false, 'message' => 'Servicio no asignado'], 403);
         }
 
-        // Buscar el siguiente turno pendiente o aplazado
-        $turno = Turno::where('servicio_id', $servicioId)
-            ->whereIn('estado', ['pendiente', 'aplazado'])
-            ->delDia()
-            ->orderBy('prioridad', 'desc') // Prioritarios primero
-            ->orderBy('numero', 'asc')
-            ->first();
+        // Determinar si es un servicio padre con subservicios
+        $esServicioPadre = $servicio->subservicios->isNotEmpty();
+        
+        if ($esServicioPadre) {
+            // Si es servicio padre, obtener todos los IDs de servicios hijos asignados al asesor
+            $serviciosHijosIds = $servicio->subservicios()
+                ->whereHas('usuarios', function($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->pluck('id')
+                ->toArray();
+                
+            // Añadir el ID del servicio padre a la lista
+            $serviciosIds = array_merge([$servicioId], $serviciosHijosIds);
+            
+            // Obtener todos los servicios que se van a consultar para priorizar por nombre
+            $todosLosServicios = Servicio::whereIn('id', $serviciosIds)->get();
+            
+            // 1. Primero intentar obtener turnos de "Citas Funcionarios"
+            $funcionariosIds = $todosLosServicios->filter(function($s) {
+                return stripos($s->nombre, 'funcionario') !== false;
+            })->pluck('id')->toArray();
+            
+            if (!empty($funcionariosIds)) {
+                $turno = $this->buscarTurnoEnServicios($funcionariosIds);
+                if ($turno) {
+                    return $this->responderConTurno($turno, $cajaId, $user->id);
+                }
+            }
+            
+            // 2. Luego intentar obtener turnos de "Citas prioritarias"
+            $prioritariasIds = $todosLosServicios->filter(function($s) {
+                return stripos($s->nombre, 'prioritaria') !== false;
+            })->pluck('id')->toArray();
+            
+            if (!empty($prioritariasIds)) {
+                $turno = $this->buscarTurnoEnServicios($prioritariasIds);
+                if ($turno) {
+                    return $this->responderConTurno($turno, $cajaId, $user->id);
+                }
+            }
+            
+            // 3. Finalmente intentar con el resto de servicios
+            $otrosIds = $todosLosServicios->filter(function($s) {
+                return stripos($s->nombre, 'funcionario') === false && 
+                       stripos($s->nombre, 'prioritaria') === false;
+            })->pluck('id')->toArray();
+            
+            if (!empty($otrosIds)) {
+                $turno = $this->buscarTurnoEnServicios($otrosIds);
+                if ($turno) {
+                    return $this->responderConTurno($turno, $cajaId, $user->id);
+                }
+            }
+            
+            // Si hemos llegado aquí, buscar en cualquier servicio (incluso en los que no coinciden con los filtros)
+            $turno = $this->buscarTurnoEnServicios($serviciosIds);
+        } else {
+            // Si es un servicio regular, buscar turnos en ese servicio
+            $turno = $this->buscarTurnoEnServicios([$servicioId]);
+        }
 
         if (!$turno) {
             return response()->json([
@@ -209,8 +340,52 @@ class AsesorController extends Controller
             ]);
         }
 
+        return $this->responderConTurno($turno, $cajaId, $user->id);
+    }
+
+    /**
+     * Método auxiliar para buscar un turno en servicios específicos
+     * con priorización (primero prioritaria, luego normal)
+     * 
+     * @param array $serviciosIds IDs de servicios donde buscar
+     * @return Turno|null El turno encontrado o null
+     */
+    private function buscarTurnoEnServicios($serviciosIds)
+    {
+        if (empty($serviciosIds)) {
+            return null;
+        }
+        
+        // Primero intentar encontrar turnos prioritarios
+        $turno = Turno::whereIn('servicio_id', $serviciosIds)
+            ->whereIn('estado', ['pendiente', 'aplazado'])
+            ->where('prioridad', 'prioritaria')
+            ->delDia()
+            ->orderBy('estado', 'asc') // Pendientes primero (orden alfabético: aplazado < pendiente)
+            ->orderBy('numero', 'asc')
+            ->first();
+            
+        // Si no hay prioritarios, buscar normales
+        if (!$turno) {
+            $turno = Turno::whereIn('servicio_id', $serviciosIds)
+                ->whereIn('estado', ['pendiente', 'aplazado'])
+                ->where('prioridad', 'normal')
+                ->delDia()
+                ->orderBy('estado', 'asc')
+                ->orderBy('numero', 'asc')
+                ->first();
+        }
+        
+        return $turno;
+    }
+
+    /**
+     * Método auxiliar para responder con los datos del turno
+     */
+    private function responderConTurno($turno, $cajaId, $userId)
+    {
         // Marcar el turno como llamado
-        $turno->marcarComoLlamado($cajaId, $user->id);
+        $turno->marcarComoLlamado($cajaId, $userId);
 
         return response()->json([
             'success' => true,
@@ -304,7 +479,8 @@ class AsesorController extends Controller
         }
 
         $request->validate([
-            'turno_id' => 'required|exists:turnos,id'
+            'turno_id' => 'required|exists:turnos,id',
+            'duracion' => 'nullable|integer'
         ]);
 
         $turno = Turno::find($request->turno_id);
@@ -324,11 +500,13 @@ class AsesorController extends Controller
             ]);
         }
 
-        $turno->marcarComoAtendido();
+        // Marcar como atendido y obtener la duración calculada
+        $duracion = $turno->marcarComoAtendido();
 
         return response()->json([
             'success' => true,
-            'message' => 'Turno marcado como atendido'
+            'message' => 'Turno marcado como atendido',
+            'duracion' => $duracion
         ]);
     }
 
@@ -371,5 +549,116 @@ class AsesorController extends Controller
             'success' => true,
             'message' => 'Turno aplazado correctamente'
         ]);
+    }
+
+    /**
+     * Obtener estadísticas actualizadas de servicios (para actualización en tiempo real)
+     */
+    public function getServiciosEstadisticas()
+    {
+        $user = Auth::user();
+
+        // Verificar que el usuario sea asesor
+        if (!$user->esAsesor()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        // Obtener servicios asignados al asesor con estadísticas de turnos
+        $serviciosAsignados = $user->serviciosActivos()
+            ->with(['turnos' => function($query) {
+                $query->delDia()->whereIn('estado', ['pendiente', 'aplazado']);
+            }])
+            ->with(['subservicios.turnos' => function($query) {
+                $query->delDia()->whereIn('estado', ['pendiente', 'aplazado']);
+            }])
+            ->get();
+
+        // Organizar servicios jerárquicamente
+        $serviciosPadre = $serviciosAsignados->filter(function($servicio) {
+            return $servicio->esServicioPrincipal();
+        });
+
+        // Estructurar servicios con estadísticas
+        $serviciosEstructurados = [];
+        
+        foreach ($serviciosPadre as $servicioPadre) {
+            // Obtener los turnos pendientes y aplazados del servicio padre
+            $turnosPendientesPadre = $servicioPadre->turnos->where('estado', 'pendiente')->count();
+            $turnosAplazadosPadre = $servicioPadre->turnos->where('estado', 'aplazado')->count();
+            
+            // Preparar arrays para subservicios
+            $subserviciosDatos = [];
+            
+            // Variables para sumar turnos de los hijos
+            $totalPendientesHijos = 0;
+            $totalAplazadosHijos = 0;
+            
+            // Añadir subservicios si existen
+            foreach ($servicioPadre->subservicios as $subservicio) {
+                // Si el subservicio está asignado al asesor
+                if ($subservicio->estaAsignadoA($user->id)) {
+                    $turnosPendientesHijo = $subservicio->turnos->where('estado', 'pendiente')->count();
+                    $turnosAplazadosHijo = $subservicio->turnos->where('estado', 'aplazado')->count();
+                    
+                    // Sumar a los totales
+                    $totalPendientesHijos += $turnosPendientesHijo;
+                    $totalAplazadosHijos += $turnosAplazadosHijo;
+                    
+                    $subserviciosDatos[] = [
+                        'id' => $subservicio->id,
+                        'nombre' => $subservicio->nombre,
+                        'codigo' => $subservicio->codigo,
+                        'pendientes' => $turnosPendientesHijo,
+                        'aplazados' => $turnosAplazadosHijo,
+                        'total' => $turnosPendientesHijo + $turnosAplazadosHijo
+                    ];
+                }
+            }
+            
+            // Sumar los turnos del padre y los hijos
+            $totalPendientes = $turnosPendientesPadre + $totalPendientesHijos;
+            $totalAplazados = $turnosAplazadosPadre + $totalAplazadosHijos;
+            
+            // Datos del servicio padre (incluye suma de todos los hijos)
+            $servicioDatos = [
+                'id' => $servicioPadre->id,
+                'nombre' => $servicioPadre->nombre,
+                'codigo' => $servicioPadre->codigo,
+                'pendientes' => $totalPendientes,
+                'aplazados' => $totalAplazados,
+                'total' => $totalPendientes + $totalAplazados,
+                'tiene_hijos' => $servicioPadre->subservicios->isNotEmpty(),
+                'pendientes_propios' => $turnosPendientesPadre, // Solo los turnos del padre
+                'aplazados_propios' => $turnosAplazadosPadre,   // Solo los turnos del padre
+                'subservicios' => $subserviciosDatos
+            ];
+            
+            $serviciosEstructurados[] = $servicioDatos;
+        }
+        
+        // Añadir subservicios que son huérfanos (asignados al usuario pero sin padre o con padre no asignado)
+        $subserviciosHuerfanos = $serviciosAsignados->filter(function($servicio) {
+            return $servicio->esSubservicio() && (!$servicio->servicioPadre || !$servicio->servicioPadre->estaAsignadoA(Auth::id()));
+        });
+        
+        foreach ($subserviciosHuerfanos as $subservicio) {
+            $turnosPendientes = $subservicio->turnos->where('estado', 'pendiente')->count();
+            $turnosAplazados = $subservicio->turnos->where('estado', 'aplazado')->count();
+            
+            $serviciosEstructurados[] = [
+                'id' => $subservicio->id,
+                'nombre' => $subservicio->nombre,
+                'codigo' => $subservicio->codigo,
+                'pendientes' => $turnosPendientes,
+                'aplazados' => $turnosAplazados,
+                'total' => $turnosPendientes + $turnosAplazados,
+                'tiene_hijos' => false,
+                'pendientes_propios' => $turnosPendientes, // Mismo valor que pendientes
+                'aplazados_propios' => $turnosAplazados,   // Mismo valor que aplazados
+                'subservicios' => []
+            ];
+        }
+
+        return response()->json($serviciosEstructurados);
     }
 }

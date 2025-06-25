@@ -14,6 +14,27 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        
+        /* Estilos mínimos para la funcionalidad desplegable */
+        .servicio-principal {
+            cursor: pointer;
+        }
+        
+        .subservicio-row {
+            display: none;
+        }
+        
+        .subservicio-row .servicio-nombre {
+            padding-left: 25px;
+        }
+        
+        .chevron-icon {
+            transition: transform 0.3s;
+        }
+        
+        .rotate-chevron {
+            transform: rotate(90deg);
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -123,27 +144,62 @@
                             <div class="p-3 text-center">OPCIÓN</div>
                         </div>
 
-                        @forelse($estadisticasServicios as $servicio)
-                        <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }}">
-                            <div class="p-3 border-r border-gray-200 font-medium">{{ $servicio['nombre'] }}</div>
-                            <div class="p-3 border-r border-gray-200 text-center">{{ $servicio['pendientes'] }}</div>
-                            <div class="p-3 border-r border-gray-200 text-center">{{ $servicio['aplazados'] }}</div>
-                            <div class="p-3 text-center">
-                                <button
-                                    class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
-                                    data-servicio-id="{{ $servicio['id'] }}"
-                                    style="background-color: #064b9e;"
-                                    {{ $servicio['total'] == 0 ? 'disabled' : '' }}
-                                >
-                                    {{ $servicio['total'] > 0 ? 'DISPONIBLE' : 'SIN TURNOS' }}
-                                </button>
-                            </div>
+                        <div class="servicios-container">
+                            @forelse($serviciosEstructurados as $servicio)
+                                <!-- Fila del servicio principal -->
+                                <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal" 
+                                     data-servicio-id="{{ $servicio['id'] }}" 
+                                     data-tiene-hijos="{{ $servicio['tiene_hijos'] ? 'true' : 'false' }}">
+                                    <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
+                                        @if($servicio['tiene_hijos'])
+                                            <svg class="w-4 h-4 mr-1 chevron-icon text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                                            </svg>
+                                        @endif
+                                        {{ $servicio['nombre'] }}
+                                    </div>
+                                    <div class="p-3 border-r border-gray-200 text-center">{{ $servicio['pendientes'] }}</div>
+                                    <div class="p-3 border-r border-gray-200 text-center">{{ $servicio['aplazados'] }}</div>
+                                    <div class="p-3 text-center">
+                                        <button
+                                            class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
+                                            data-servicio-id="{{ $servicio['id'] }}"
+                                            style="background-color: #064b9e;"
+                                            {{ $servicio['total'] == 0 ? 'disabled' : '' }}
+                                        >
+                                            {{ $servicio['total'] > 0 ? 'DISPONIBLE' : 'SIN TURNOS' }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Subservicios desplegables -->
+                                @if($servicio['tiene_hijos'] && count($servicio['subservicios']) > 0)
+                                    @foreach($servicio['subservicios'] as $subservicio)
+                                        <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} subservicio-row" data-parent-id="{{ $servicio['id'] }}">
+                                            <div class="p-3 border-r border-gray-200 font-medium servicio-nombre">
+                                                {{ $subservicio['nombre'] }}
+                                            </div>
+                                            <div class="p-3 border-r border-gray-200 text-center">{{ $subservicio['pendientes'] }}</div>
+                                            <div class="p-3 border-r border-gray-200 text-center">{{ $subservicio['aplazados'] }}</div>
+                                            <div class="p-3 text-center">
+                                                <button
+                                                    class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
+                                                    data-servicio-id="{{ $subservicio['id'] }}"
+                                                    style="background-color: #064b9e;"
+                                                    {{ $subservicio['total'] == 0 ? 'disabled' : '' }}
+                                                >
+                                                    {{ $subservicio['total'] > 0 ? 'DISPONIBLE' : 'SIN TURNOS' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endif
+                            @empty
+                                <div class="p-6 text-center text-gray-500">
+                                    No tienes servicios asignados
+                                </div>
+                            @endforelse
                         </div>
-                        @empty
-                        <div class="p-6 text-center text-gray-500">
-                            No tienes servicios asignados
-                        </div>
-                        @endforelse
                     </div>
                 </div>
 
@@ -249,6 +305,34 @@
         const servicioActualElement = document.getElementById('servicio-actual');
         const tiempoAtencionElement = document.getElementById('tiempo-atencion');
         const botonesLlamarSiguiente = document.querySelectorAll('.btn-llamar-siguiente');
+        const serviciosPrincipales = document.querySelectorAll('.servicio-principal');
+
+        // Funciones para servicios desplegables
+        serviciosPrincipales.forEach(servicioPrincipal => {
+            if (servicioPrincipal.dataset.tieneHijos === 'true') {
+                servicioPrincipal.addEventListener('click', function(e) {
+                    // Evitar que se ejecute el evento si se hace clic en el botón
+                    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                        return;
+                    }
+                    
+                    const servicioId = this.dataset.servicioId;
+                    const subservicios = document.querySelectorAll(`.subservicio-row[data-parent-id="${servicioId}"]`);
+                    const chevron = this.querySelector('.chevron-icon');
+                    
+                    // Alternar visibilidad
+                    subservicios.forEach(subservicio => {
+                        if (subservicio.style.display === 'none' || subservicio.style.display === '') {
+                            subservicio.style.display = 'grid';
+                            chevron.classList.add('rotate-chevron');
+                        } else {
+                            subservicio.style.display = 'none';
+                            chevron.classList.remove('rotate-chevron');
+                        }
+                    });
+                });
+            }
+        });
 
         // Modal
         const modal = document.getElementById('notification-modal');

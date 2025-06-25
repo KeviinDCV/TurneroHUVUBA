@@ -19,6 +19,29 @@
             height: 100%;
             overflow: hidden;
         }
+        /* Estilos para servicios desplegables */
+        .servicio-principal {
+            cursor: pointer;
+        }
+        .subservicio-row {
+            display: none;
+        }
+        .subservicio-row .servicio-nombre {
+            padding-left: 25px;
+        }
+        .chevron-icon {
+            transition: transform 0.3s;
+        }
+        .rotate-chevron {
+            transform: rotate(90deg);
+        }
+        /* Transición suave para actualización de datos */
+        .transition-count {
+            transition: background-color 0.5s ease;
+        }
+        .highlight-update {
+            background-color: rgba(59, 130, 246, 0.2); /* Blue highlight */
+        }
     </style>
 </head>
 <body class="bg-gray-100 h-screen">
@@ -74,27 +97,66 @@
                     <div class="p-3 text-center">OPCIÓN</div>
                 </div>
 
-                @forelse($estadisticasServicios as $servicio)
-                <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }}">
-                    <div class="p-3 border-r border-gray-200 font-medium">{{ $servicio['nombre'] }}</div>
-                    <div class="p-3 border-r border-gray-200 text-center">{{ $servicio['pendientes'] }}</div>
-                    <div class="p-3 border-r border-gray-200 text-center">{{ $servicio['aplazados'] }}</div>
-                    <div class="p-3 text-center">
-                        <button 
-                            class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
-                            data-servicio-id="{{ $servicio['id'] }}"
-                            style="background-color: #064b9e;"
-                            {{ $servicio['total'] == 0 ? 'disabled' : '' }}
-                        >
-                            {{ $servicio['total'] > 0 ? 'DISPONIBLE' : 'SIN TURNOS' }}
-                        </button>
+                <div id="servicios-container">
+                    @forelse($serviciosEstructurados as $servicio)
+                    <!-- Fila del servicio principal -->
+                    <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal" 
+                         data-servicio-id="{{ $servicio['id'] }}" 
+                         data-tiene-hijos="{{ $servicio['tiene_hijos'] ? 'true' : 'false' }}">
+                        <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
+                            @if($servicio['tiene_hijos'])
+                                <svg class="w-4 h-4 mr-1 chevron-icon text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            @endif
+                            {{ $servicio['nombre'] }}
+                        </div>
+                        <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $servicio['pendientes'] }}">
+                            {{ $servicio['pendientes'] }}
+                        </div>
+                        <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $servicio['aplazados'] }}">
+                            {{ $servicio['aplazados'] }}
+                        </div>
+                        <div class="p-3 text-center">
+                            <button 
+                                class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
+                                data-servicio-id="{{ $servicio['id'] }}"
+                                style="background-color: #064b9e;"
+                                {{ $servicio['total'] == 0 ? 'disabled' : '' }}
+                            >
+                                {{ $servicio['total'] > 0 ? 'DISPONIBLE' : 'SIN TURNOS' }}
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Subservicios desplegables -->
+                    @if($servicio['tiene_hijos'] && count($servicio['subservicios']) > 0)
+                        @foreach($servicio['subservicios'] as $subservicio)
+                            <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} subservicio-row" data-parent-id="{{ $servicio['id'] }}">
+                                <div class="p-3 border-r border-gray-200 font-medium servicio-nombre">
+                                    {{ $subservicio['nombre'] }}
+                                </div>
+                                <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $subservicio['pendientes'] }}">{{ $subservicio['pendientes'] }}</div>
+                                <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $subservicio['aplazados'] }}">{{ $subservicio['aplazados'] }}</div>
+                                <div class="p-3 text-center">
+                                    <button 
+                                        class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
+                                        data-servicio-id="{{ $subservicio['id'] }}"
+                                        style="background-color: #064b9e;"
+                                        {{ $subservicio['total'] == 0 ? 'disabled' : '' }}
+                                    >
+                                        {{ $subservicio['total'] > 0 ? 'DISPONIBLE' : 'SIN TURNOS' }}
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    @endif
+                    @empty
+                    <div class="p-6 text-center text-gray-500">
+                        No tienes servicios asignados
+                    </div>
+                    @endforelse
                 </div>
-                @empty
-                <div class="p-6 text-center text-gray-500">
-                    No tienes servicios asignados
-                </div>
-                @endforelse
             </div>
         </div>
 
@@ -112,7 +174,7 @@
                         <option value="ocupado">Ocupado</option>
                         <option value="descanso">En Descanso</option>
                     </select>
-                    <div class="text-sm" id="tiempo-atencion">00:00 de 00:00 min</div>
+                    <div class="text-sm" id="tiempo-atencion">00:00 min</div>
                 </div>
 
                 <!-- Centro -->
@@ -128,7 +190,7 @@
                         class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
                         style="display: none;"
                     >
-                        ATENDER
+                        ATENDIDO
                     </button>
                     <button 
                         id="btn-aplazar"
@@ -163,8 +225,8 @@
     </div>
 
     <!-- Modal para notificaciones -->
-    <div id="notification-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+    <div id="notification-modal" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl animate-fade-in">
             <div class="text-center">
                 <div id="modal-icon" class="mx-auto mb-4 w-12 h-12 rounded-full flex items-center justify-center">
                     <svg id="success-icon" class="w-6 h-6 text-green-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,6 +248,10 @@
     <script>
         let turnoActual = null;
         let tiempoInicio = null;
+        let intervalActualizacion = null;
+        let intervalTiempo = null;
+        let tiempoTranscurrido = 0;
+        let serviciosExpanded = {}; // Almacena el estado de expansión de cada servicio
 
         // Elementos del DOM
         const codigoInput = document.getElementById('codigo-turno');
@@ -197,7 +263,177 @@
         const turnoActualElement = document.getElementById('turno-actual');
         const servicioActualElement = document.getElementById('servicio-actual');
         const tiempoAtencionElement = document.getElementById('tiempo-atencion');
-        const botonesLlamarSiguiente = document.querySelectorAll('.btn-llamar-siguiente');
+        const serviciosContainer = document.getElementById('servicios-container');
+        
+        // Inicializar estado de expansión de servicios
+        document.querySelectorAll('.servicio-principal').forEach(servicio => {
+            serviciosExpanded[servicio.dataset.servicioId] = false;
+        });
+
+        // Funciones para servicios desplegables
+        function configurarEventosServiciosDesplegables() {
+            document.querySelectorAll('.servicio-principal').forEach(servicioPrincipal => {
+                if (servicioPrincipal.dataset.tieneHijos === 'true') {
+                    servicioPrincipal.addEventListener('click', function(e) {
+                        // Evitar que se ejecute el evento si se hace clic en el botón
+                        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                            return;
+                        }
+                        
+                        const servicioId = this.dataset.servicioId;
+                        const subservicios = document.querySelectorAll(`.subservicio-row[data-parent-id="${servicioId}"]`);
+                        const chevron = this.querySelector('.chevron-icon');
+                        
+                        // Actualizar el estado de expansión
+                        serviciosExpanded[servicioId] = !serviciosExpanded[servicioId];
+                        
+                        // Alternar visibilidad
+                        subservicios.forEach(subservicio => {
+                            if (!serviciosExpanded[servicioId]) {
+                                subservicio.style.display = 'none';
+                                chevron.classList.remove('rotate-chevron');
+                            } else {
+                                subservicio.style.display = 'grid';
+                                chevron.classList.add('rotate-chevron');
+                            }
+                        });
+                    });
+                }
+            });
+
+            // Re-asignar eventos a los botones de llamar
+            document.querySelectorAll('.btn-llamar-siguiente').forEach(button => {
+                button.addEventListener('click', handleLlamarSiguiente);
+            });
+        }
+
+        // Función para manejar el evento de llamar siguiente turno
+        function handleLlamarSiguiente() {
+            const servicioId = this.dataset.servicioId;
+
+            fetch('{{ route("asesor.llamar-siguiente-turno") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    servicio_id: parseInt(servicioId)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    actualizarInterfazTurno(data.turno);
+                    mostrarModal('Turno Llamado', data.message);
+                    // Forzar actualización inmediata
+                    actualizarEstadisticasServicios();
+                } else {
+                    mostrarModal('Error', data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarModal('Error', 'Error de conexión', 'error');
+            });
+        }
+
+        // Función para actualizar las estadísticas de servicios
+        function actualizarEstadisticasServicios() {
+            fetch('{{ route("api.asesor.servicios-estadisticas") }}')
+                .then(response => response.json())
+                .then(servicios => {
+                    actualizarTablaServicios(servicios);
+                })
+                .catch(error => {
+                    console.error('Error al actualizar estadísticas:', error);
+                });
+        }
+
+        // Función para actualizar la tabla de servicios con los nuevos datos
+        function actualizarTablaServicios(servicios) {
+            let contenidoHTML = '';
+
+            if (servicios.length === 0) {
+                contenidoHTML = '<div class="p-6 text-center text-gray-500">No tienes servicios asignados</div>';
+            } else {
+                servicios.forEach((servicio, index) => {
+                    // Determinar si este servicio estaba expandido
+                    const estaExpandido = serviciosExpanded[servicio.id] || false;
+                    
+                    // Clase para alternar colores
+                    const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                    
+                    // Fila del servicio principal
+                    contenidoHTML += `
+                        <div class="grid grid-cols-4 text-sm ${bgClass} servicio-principal" 
+                             data-servicio-id="${servicio.id}" 
+                             data-tiene-hijos="${servicio.tiene_hijos ? 'true' : 'false'}">
+                            <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
+                                ${servicio.tiene_hijos ? `
+                                    <svg class="w-4 h-4 mr-1 chevron-icon text-blue-700 ${estaExpandido ? 'rotate-chevron' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                ` : ''}
+                                ${servicio.nombre}
+                            </div>
+                            <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${servicio.pendientes}">
+                                ${servicio.pendientes}
+                            </div>
+                            <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${servicio.aplazados}">
+                                ${servicio.aplazados}
+                            </div>
+                            <div class="p-3 text-center">
+                                <button 
+                                    class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
+                                    data-servicio-id="${servicio.id}"
+                                    style="background-color: #064b9e;"
+                                    ${servicio.total == 0 ? 'disabled' : ''}
+                                >
+                                    ${servicio.total > 0 ? 'DISPONIBLE' : 'SIN TURNOS'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Subservicios desplegables
+                    if (servicio.tiene_hijos && servicio.subservicios.length > 0) {
+                        servicio.subservicios.forEach((subservicio, subindex) => {
+                            const displayStyle = estaExpandido ? 'grid' : 'none';
+                            const subBgClass = subindex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                            
+                            contenidoHTML += `
+                                <div class="grid grid-cols-4 text-sm ${subBgClass} subservicio-row" 
+                                     data-parent-id="${servicio.id}" 
+                                     style="display: ${displayStyle}">
+                                    <div class="p-3 border-r border-gray-200 font-medium servicio-nombre">
+                                        ${subservicio.nombre}
+                                    </div>
+                                    <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${subservicio.pendientes}">${subservicio.pendientes}</div>
+                                    <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${subservicio.aplazados}">${subservicio.aplazados}</div>
+                                    <div class="p-3 text-center">
+                                        <button 
+                                            class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
+                                            data-servicio-id="${subservicio.id}"
+                                            style="background-color: #064b9e;"
+                                            ${subservicio.total == 0 ? 'disabled' : ''}
+                                        >
+                                            ${subservicio.total > 0 ? 'DISPONIBLE' : 'SIN TURNOS'}
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            }
+            
+            // Actualizar el contenido
+            serviciosContainer.innerHTML = contenidoHTML;
+            
+            // Volver a configurar los eventos desplegables
+            configurarEventosServiciosDesplegables();
+        }
 
         // Modal
         const modal = document.getElementById('notification-modal');
@@ -243,6 +479,7 @@
         function actualizarInterfazTurno(turno) {
             turnoActual = turno;
             tiempoInicio = new Date();
+            tiempoTranscurrido = 0;
 
             turnoActualElement.textContent = turno.codigo_completo;
             servicioActualElement.textContent = turno.servicio;
@@ -250,30 +487,40 @@
             btnAtender.style.display = 'block';
             btnAplazar.style.display = 'block';
 
+            // Detener contador anterior si existe
+            if (intervalTiempo) {
+                clearInterval(intervalTiempo);
+            }
+
             // Iniciar contador de tiempo
             actualizarTiempo();
-            setInterval(actualizarTiempo, 1000);
+            intervalTiempo = setInterval(actualizarTiempo, 1000);
         }
 
         function actualizarTiempo() {
             if (tiempoInicio) {
                 const ahora = new Date();
-                const diferencia = Math.floor((ahora - tiempoInicio) / 1000);
-                const minutos = Math.floor(diferencia / 60);
-                const segundos = diferencia % 60;
+                tiempoTranscurrido = Math.floor((ahora - tiempoInicio) / 1000);
+                const minutos = Math.floor(tiempoTranscurrido / 60);
+                const segundos = tiempoTranscurrido % 60;
 
                 tiempoAtencionElement.textContent =
-                    `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')} de 00:00 min`;
+                    `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')} min`;
             }
         }
 
         function limpiarInterfazTurno() {
             turnoActual = null;
             tiempoInicio = null;
+            
+            if (intervalTiempo) {
+                clearInterval(intervalTiempo);
+                intervalTiempo = null;
+            }
 
             turnoActualElement.textContent = 'TURNO';
             servicioActualElement.textContent = 'SERVICIO';
-            tiempoAtencionElement.textContent = '00:00 de 00:00 min';
+            tiempoAtencionElement.textContent = '00:00 min';
 
             btnAtender.style.display = 'none';
             btnAplazar.style.display = 'none';
@@ -317,42 +564,16 @@
             });
         });
 
-        botonesLlamarSiguiente.forEach(button => {
-            button.addEventListener('click', function() {
-                const servicioId = this.dataset.servicioId;
-
-                fetch('{{ route("asesor.llamar-siguiente-turno") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        servicio_id: parseInt(servicioId)
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        actualizarInterfazTurno(data.turno);
-                        mostrarModal('Turno Llamado', data.message);
-                        // Recargar la página para actualizar las estadísticas
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        mostrarModal('Error', data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    mostrarModal('Error', 'Error de conexión', 'error');
-                });
-            });
-        });
+        // Configurar eventos iniciales
+        configurarEventosServiciosDesplegables();
 
         btnAtender.addEventListener('click', function() {
             if (!turnoActual) return;
+            
+            // Detener el contador
+            if (intervalTiempo) {
+                clearInterval(intervalTiempo);
+            }
 
             fetch('{{ route("asesor.marcar-atendido") }}', {
                 method: 'POST',
@@ -361,14 +582,17 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
-                    turno_id: turnoActual.id
+                    turno_id: turnoActual.id,
+                    duracion: tiempoTranscurrido
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    const duracionFormateada = data.duracion ? formatearTiempo(data.duracion) : '00:00';
                     limpiarInterfazTurno();
-                    mostrarModal('Turno Atendido', data.message);
+                    mostrarModal('Turno Atendido', `Turno atendido correctamente. Tiempo de atención: ${duracionFormateada} min`);
+                    actualizarEstadisticasServicios(); // Actualizar datos
                 } else {
                     mostrarModal('Error', data.message, 'error');
                 }
@@ -397,10 +621,7 @@
                 if (data.success) {
                     limpiarInterfazTurno();
                     mostrarModal('Turno Aplazado', data.message);
-                    // Recargar la página para actualizar las estadísticas
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
+                    actualizarEstadisticasServicios(); // Actualizar datos
                 } else {
                     mostrarModal('Error', data.message, 'error');
                 }
@@ -415,6 +636,22 @@
         codigoInput.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
         });
+
+        // Iniciar actualización periódica
+        document.addEventListener('DOMContentLoaded', function() {
+            // Iniciar la actualización cada 5 segundos
+            intervalActualizacion = setInterval(actualizarEstadisticasServicios, 5000);
+            
+            // Configurar eventos iniciales
+            configurarEventosServiciosDesplegables();
+        });
+
+        // Función para formatear tiempo en segundos a formato MM:SS
+        function formatearTiempo(segundos) {
+            const minutos = Math.floor(segundos / 60);
+            const segs = segundos % 60;
+            return `${minutos.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
+        }
     </script>
 </body>
 </html>

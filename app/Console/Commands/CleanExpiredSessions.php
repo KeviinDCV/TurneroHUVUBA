@@ -21,7 +21,7 @@ class CleanExpiredSessions extends Command
      *
      * @var string
      */
-    protected $description = 'Limpia sesiones expiradas y libera recursos asociados';
+    protected $description = 'Limpia sesiones expiradas (más de 15 minutos) y libera recursos asociados';
 
     /**
      * Execute the console command.
@@ -39,8 +39,8 @@ class CleanExpiredSessions extends Command
             $shouldClean = false;
             $reason = '';
 
-            // Verificar si la sesión ha expirado por tiempo (más de 30 minutos)
-            if ($user->last_activity && $user->last_activity->diffInMinutes(now()) >= 30) {
+            // Verificar si la sesión ha expirado por tiempo (más de 15 minutos)
+            if ($user->last_activity && $user->last_activity->diffInMinutes(now()) >= 15) {
                 $shouldClean = true;
                 $reason = 'sesión expirada por tiempo';
             }
@@ -73,12 +73,12 @@ class CleanExpiredSessions extends Command
 
         // Limpiar sesiones huérfanas en la tabla sessions (sin usuario asociado o expiradas)
         $expiredSessionsCount = DB::table('sessions')
-            ->where('last_activity', '<', now()->subMinutes(30)->timestamp)
+            ->where('last_activity', '<', now()->subMinutes(15)->timestamp)
             ->count();
 
         if ($expiredSessionsCount > 0) {
             DB::table('sessions')
-                ->where('last_activity', '<', now()->subMinutes(30)->timestamp)
+                ->where('last_activity', '<', now()->subMinutes(15)->timestamp)
                 ->delete();
             $this->line("Eliminadas {$expiredSessionsCount} sesiones expiradas de la tabla sessions");
         }

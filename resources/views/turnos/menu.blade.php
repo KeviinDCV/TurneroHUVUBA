@@ -51,14 +51,14 @@
         }
         
         .btn-volver {
-            background-color: #16a34a;
-            border: 2px solid #15803d;
+            background-color: #064b9e;
+            border: 2px solid #053a7a;
         }
         
         .btn-volver:hover {
-            background-color: #15803d;
+            background-color: #053a7a;
             transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(22, 163, 74, 0.3);
+            box-shadow: 0 5px 15px rgba(6, 75, 158, 0.3);
         }
     </style>
 </head>

@@ -30,10 +30,10 @@ class CleanExpiredBoxes
             $user->limpiarSession();
         }
 
-        // Limpiar cajas con sesiones expiradas (más de 30 minutos de inactividad)
+        // Limpiar cajas con sesiones expiradas (más de 15 minutos de inactividad)
         Caja::whereNotNull('asesor_activo_id')
             ->whereNotNull('session_id')
-            ->where('fecha_asignacion', '<', now()->subMinutes(30))
+            ->where('fecha_asignacion', '<', now()->subMinutes(15))
             ->update([
                 'asesor_activo_id' => null,
                 'session_id' => null,

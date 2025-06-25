@@ -18,6 +18,7 @@ class Turno extends Model
         'fecha_creacion',
         'fecha_llamado',
         'fecha_atencion',
+        'duracion_atencion',
         'observaciones'
     ];
 
@@ -135,10 +136,19 @@ class Turno extends Model
 
     public function marcarComoAtendido()
     {
+        // Calcular la duración en segundos si existe fecha de llamado
+        $duracion = null;
+        if ($this->fecha_llamado) {
+            $duracion = now()->diffInSeconds($this->fecha_llamado);
+        }
+        
         $this->update([
             'estado' => 'atendido',
-            'fecha_atencion' => now()
+            'fecha_atencion' => now(),
+            'duracion_atencion' => $duracion
         ]);
+        
+        return $duracion;
     }
 
     public function marcarComoAplazado()

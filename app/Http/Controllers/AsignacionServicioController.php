@@ -100,12 +100,36 @@ class AsignacionServicioController extends Controller
             ], 400);
         }
 
-        // Asignar el servicio
-        $usuario->servicios()->attach($request->servicio_id);
+        // Recopilar servicios a asignar
+        $serviciosAAsignar = [$request->servicio_id];
+        $serviciosAsignados = 1;
+
+        // Si es un servicio padre, también asignar todos sus subservicios activos
+        if ($servicio->esServicioPrincipal()) {
+            $subservicios = $servicio->subservicios()->where('estado', 'activo')->get();
+
+            foreach ($subservicios as $subservicio) {
+                if (!$usuario->tieneServicio($subservicio->id)) {
+                    $serviciosAAsignar[] = $subservicio->id;
+                    $serviciosAsignados++;
+                }
+            }
+        }
+
+        // Asignar todos los servicios
+        $usuario->servicios()->attach($serviciosAAsignar);
+
+        // Mensaje personalizado según la cantidad de servicios asignados
+        if ($serviciosAsignados === 1) {
+            $message = 'Servicio asignado correctamente';
+        } else {
+            $message = "Servicio padre y {$serviciosAsignados} servicios asignados correctamente";
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Servicio asignado correctamente'
+            'message' => $message,
+            'servicios_asignados' => $serviciosAsignados
         ]);
     }
 
@@ -120,6 +144,7 @@ class AsignacionServicioController extends Controller
         ]);
 
         $usuario = User::findOrFail($request->user_id);
+        $servicio = Servicio::findOrFail($request->servicio_id);
 
         // Verificar si el servicio está asignado
         if (!$usuario->tieneServicio($request->servicio_id)) {
@@ -129,12 +154,36 @@ class AsignacionServicioController extends Controller
             ], 400);
         }
 
-        // Desasignar el servicio
-        $usuario->servicios()->detach($request->servicio_id);
+        // Recopilar servicios a desasignar
+        $serviciosADesasignar = [$request->servicio_id];
+        $serviciosDesasignados = 1;
+
+        // Si es un servicio padre, también desasignar todos sus subservicios
+        if ($servicio->esServicioPrincipal()) {
+            $subservicios = $servicio->subservicios()->get();
+
+            foreach ($subservicios as $subservicio) {
+                if ($usuario->tieneServicio($subservicio->id)) {
+                    $serviciosADesasignar[] = $subservicio->id;
+                    $serviciosDesasignados++;
+                }
+            }
+        }
+
+        // Desasignar todos los servicios
+        $usuario->servicios()->detach($serviciosADesasignar);
+
+        // Mensaje personalizado según la cantidad de servicios desasignados
+        if ($serviciosDesasignados === 1) {
+            $message = 'Servicio desasignado correctamente';
+        } else {
+            $message = "Servicio padre y {$serviciosDesasignados} servicios desasignados correctamente";
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Servicio desasignado correctamente'
+            'message' => $message,
+            'servicios_desasignados' => $serviciosDesasignados
         ]);
     }
 

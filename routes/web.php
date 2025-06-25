@@ -78,6 +78,9 @@ Route::middleware(['auth', 'update.user.activity', 'clean.expired.boxes'])->grou
     Route::post('/asesor/llamar-turno-especifico', [AsesorController::class, 'llamarTurnoEspecifico'])->name('asesor.llamar-turno-especifico');
     Route::post('/asesor/marcar-atendido', [AsesorController::class, 'marcarAtendido'])->name('asesor.marcar-atendido');
     Route::post('/asesor/aplazar-turno', [AsesorController::class, 'aplazarTurno'])->name('asesor.aplazar-turno');
+
+    // API para obtener estadísticas de servicios para el asesor (actualización en tiempo real)
+    Route::get('/api/asesor/servicios-estadisticas', [AsesorController::class, 'getServiciosEstadisticas'])->name('api.asesor.servicios-estadisticas');
 });
 
 // Ruta de prueba para verificar autenticación

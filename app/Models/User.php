@@ -159,20 +159,28 @@ class User extends Authenticatable
             return false;
         }
 
-        // Verificar si la sesión ha expirado (más de 30 minutos)
-        if ($this->last_activity->diffInMinutes(now()) >= 30) {
+        // Verificar si la sesión realmente existe en la tabla sessions de Laravel
+        $sessionData = \DB::table('sessions')
+            ->where('id', $this->session_id)
+            ->first();
+
+        // Si la sesión no existe en la tabla sessions, limpiar los datos
+        if (!$sessionData) {
+            $this->limpiarSession();
+            return false;
+        }
+
+        // Verificar si la sesión ha expirado basándose en la tabla sessions (más de 15 minutos)
+        $sessionLastActivity = \Carbon\Carbon::createFromTimestamp($sessionData->last_activity);
+        if ($sessionLastActivity->diffInMinutes(now()) >= 15) {
             // Limpiar la sesión expirada automáticamente
             $this->limpiarSession();
             return false;
         }
 
-        // Verificar si la sesión realmente existe en la tabla sessions de Laravel
-        $sessionExists = \DB::table('sessions')
-            ->where('id', $this->session_id)
-            ->exists();
-
-        // Si la sesión no existe en la tabla sessions, limpiar los datos
-        if (!$sessionExists) {
+        // También verificar la actividad del usuario (por si acaso)
+        if ($this->last_activity->diffInMinutes(now()) >= 15) {
+            // Limpiar la sesión expirada automáticamente
             $this->limpiarSession();
             return false;
         }
@@ -202,6 +210,9 @@ class User extends Authenticatable
             'last_activity' => null,
             'last_ip' => null
         ]);
+
+        // Refrescar el modelo para asegurar que los cambios se reflejen en memoria
+        $this->refresh();
     }
 
     /**
