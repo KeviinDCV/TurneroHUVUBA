@@ -387,15 +387,24 @@ class AsesorController extends Controller
         // Marcar el turno como llamado
         $turno->marcarComoLlamado($cajaId, $userId);
 
+        // Preparar datos del turno para la respuesta
+        $turnoData = [
+            'id' => $turno->id,
+            'codigo_completo' => $turno->codigo_completo,
+            'servicio' => $turno->servicio->nombre,
+            'prioridad' => $turno->prioridad
+        ];
+
+        // Cargar la relación caja para tener acceso a sus datos
+        $turno->load('caja');
+
+        // Notificar usando el broadcaster personalizado
+        \App\Broadcasting\TurneroBroadcaster::notificarTurnoLlamado($turno);
+
         return response()->json([
             'success' => true,
             'message' => 'Turno llamado correctamente',
-            'turno' => [
-                'id' => $turno->id,
-                'codigo_completo' => $turno->codigo_completo,
-                'servicio' => $turno->servicio->nombre,
-                'prioridad' => $turno->prioridad
-            ]
+            'turno' => $turnoData
         ]);
     }
 

@@ -19,6 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Inicializar el broadcaster personalizado
+        \App\Broadcasting\TurneroBroadcaster::init();
+        
+        // Otras configuraciones...
     }
 }

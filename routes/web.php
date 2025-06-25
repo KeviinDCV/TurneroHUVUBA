@@ -113,6 +113,9 @@ Route::get('/api/tv-config', [TvConfigController::class, 'getConfig'])->name('ap
 // API para obtener multimedia activa
 Route::get('/api/multimedia', [TvConfigController::class, 'getActiveMultimedia'])->name('api.multimedia');
 
+// API para obtener turnos llamados (para TV)
+Route::get('/api/turnos-llamados', [TvConfigController::class, 'getTurnosLlamados'])->name('api.turnos-llamados');
+
 // Ruta para el visualizador del atril
 Route::get('/atril', function () {
     return view('atril.index');

@@ -304,4 +304,29 @@ class TvConfigController extends Controller
             })
         ]);
     }
+
+    /**
+     * Obtener los últimos turnos llamados para mostrar en el TV
+     */
+    public function getTurnosLlamados()
+    {
+        $turnos = \App\Models\Turno::where('estado', 'llamado')
+            ->with(['servicio', 'caja'])
+            ->orderBy('fecha_llamado', 'desc')
+            ->take(5)
+            ->get();
+
+        return response()->json([
+            'turnos' => $turnos->map(function ($turno) {
+                return [
+                    'id' => $turno->id,
+                    'codigo_completo' => $turno->codigo_completo,
+                    'caja' => $turno->caja ? $turno->caja->nombre : null,
+                    'numero_caja' => $turno->caja ? $turno->caja->numero_caja : null,
+                    'servicio' => $turno->servicio ? $turno->servicio->nombre : null,
+                    'fecha_llamado' => $turno->fecha_llamado->format('Y-m-d H:i:s')
+                ];
+            })
+        ]);
+    }
 }
