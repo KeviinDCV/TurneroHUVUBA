@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'redirect.authenticated' => \App\Http\Middleware\ForceLogoutOnLogin::class,
             'update.user.activity' => \App\Http\Middleware\UpdateUserActivity::class,
             'clean.expired.boxes' => \App\Http\Middleware\CleanExpiredBoxes::class,
+            'admin.role' => \App\Http\Middleware\CheckAdminRole::class,
+            'asesor.role' => \App\Http\Middleware\CheckAsesorRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

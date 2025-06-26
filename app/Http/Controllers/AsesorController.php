@@ -23,7 +23,7 @@ class AsesorController extends Controller
     public function seleccionarCaja()
     {
         $user = Auth::user();
-        
+
         // Verificar que el usuario sea asesor
         if (!$user->esAsesor()) {
             return redirect()->route('admin.dashboard');
@@ -49,7 +49,7 @@ class AsesorController extends Controller
     public function procesarSeleccionCaja(Request $request)
     {
         $user = Auth::user();
-        
+
         // Verificar que el usuario sea asesor
         if (!$user->esAsesor()) {
             return redirect()->route('admin.dashboard');
@@ -139,30 +139,30 @@ class AsesorController extends Controller
 
         // Estructurar servicios con estadísticas
         $serviciosEstructurados = [];
-        
+
         foreach ($serviciosPadre as $servicioPadre) {
             // Obtener los turnos pendientes y aplazados del servicio padre
             $turnosPendientesPadre = $servicioPadre->turnos->where('estado', 'pendiente')->count();
             $turnosAplazadosPadre = $servicioPadre->turnos->where('estado', 'aplazado')->count();
-            
+
             // Preparar arrays para subservicios
             $subserviciosDatos = [];
-            
+
             // Variables para sumar turnos de los hijos
             $totalPendientesHijos = 0;
             $totalAplazadosHijos = 0;
-            
+
             // Añadir subservicios si existen
             foreach ($servicioPadre->subservicios as $subservicio) {
                 // Si el subservicio está asignado al asesor
                 if ($subservicio->estaAsignadoA($user->id)) {
                     $turnosPendientesHijo = $subservicio->turnos->where('estado', 'pendiente')->count();
                     $turnosAplazadosHijo = $subservicio->turnos->where('estado', 'aplazado')->count();
-                    
+
                     // Sumar a los totales
                     $totalPendientesHijos += $turnosPendientesHijo;
                     $totalAplazadosHijos += $turnosAplazadosHijo;
-                    
+
                     $subserviciosDatos[] = [
                         'id' => $subservicio->id,
                         'nombre' => $subservicio->nombre,
@@ -173,11 +173,11 @@ class AsesorController extends Controller
                     ];
                 }
             }
-            
+
             // Sumar los turnos del padre y los hijos
             $totalPendientes = $turnosPendientesPadre + $totalPendientesHijos;
             $totalAplazados = $turnosAplazadosPadre + $totalAplazadosHijos;
-            
+
             // Datos del servicio padre (incluye suma de todos los hijos)
             $servicioDatos = [
                 'id' => $servicioPadre->id,
@@ -191,19 +191,19 @@ class AsesorController extends Controller
                 'aplazados_propios' => $turnosAplazadosPadre,   // Solo los turnos del padre
                 'subservicios' => $subserviciosDatos
             ];
-            
+
             $serviciosEstructurados[] = $servicioDatos;
         }
-        
+
         // Añadir subservicios que son huérfanos (asignados al usuario pero sin padre o con padre no asignado)
         $subserviciosHuerfanos = $serviciosAsignados->filter(function($servicio) {
             return $servicio->esSubservicio() && (!$servicio->servicioPadre || !$servicio->servicioPadre->estaAsignadoA(Auth::id()));
         });
-        
+
         foreach ($subserviciosHuerfanos as $subservicio) {
             $turnosPendientes = $subservicio->turnos->where('estado', 'pendiente')->count();
             $turnosAplazados = $subservicio->turnos->where('estado', 'aplazado')->count();
-            
+
             $serviciosEstructurados[] = [
                 'id' => $subservicio->id,
                 'nombre' => $subservicio->nombre,
@@ -227,7 +227,7 @@ class AsesorController extends Controller
     public function cambiarCaja()
     {
         $user = Auth::user();
-        
+
         // Verificar que el usuario sea asesor
         if (!$user->esAsesor()) {
             return redirect()->route('admin.dashboard');
@@ -273,7 +273,7 @@ class AsesorController extends Controller
 
         // Determinar si es un servicio padre con subservicios
         $esServicioPadre = $servicio->subservicios->isNotEmpty();
-        
+
         if ($esServicioPadre) {
             // Si es servicio padre, obtener todos los IDs de servicios hijos asignados al asesor
             $serviciosHijosIds = $servicio->subservicios()
@@ -282,50 +282,50 @@ class AsesorController extends Controller
                 })
                 ->pluck('id')
                 ->toArray();
-                
+
             // Añadir el ID del servicio padre a la lista
             $serviciosIds = array_merge([$servicioId], $serviciosHijosIds);
-            
+
             // Obtener todos los servicios que se van a consultar para priorizar por nombre
             $todosLosServicios = Servicio::whereIn('id', $serviciosIds)->get();
-            
+
             // 1. Primero intentar obtener turnos de "Citas Funcionarios"
             $funcionariosIds = $todosLosServicios->filter(function($s) {
                 return stripos($s->nombre, 'funcionario') !== false;
             })->pluck('id')->toArray();
-            
+
             if (!empty($funcionariosIds)) {
                 $turno = $this->buscarTurnoEnServicios($funcionariosIds);
                 if ($turno) {
                     return $this->responderConTurno($turno, $cajaId, $user->id);
                 }
             }
-            
+
             // 2. Luego intentar obtener turnos de "Citas prioritarias"
             $prioritariasIds = $todosLosServicios->filter(function($s) {
                 return stripos($s->nombre, 'prioritaria') !== false;
             })->pluck('id')->toArray();
-            
+
             if (!empty($prioritariasIds)) {
                 $turno = $this->buscarTurnoEnServicios($prioritariasIds);
                 if ($turno) {
                     return $this->responderConTurno($turno, $cajaId, $user->id);
                 }
             }
-            
+
             // 3. Finalmente intentar con el resto de servicios
             $otrosIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'funcionario') === false && 
+                return stripos($s->nombre, 'funcionario') === false &&
                        stripos($s->nombre, 'prioritaria') === false;
             })->pluck('id')->toArray();
-            
+
             if (!empty($otrosIds)) {
                 $turno = $this->buscarTurnoEnServicios($otrosIds);
                 if ($turno) {
                     return $this->responderConTurno($turno, $cajaId, $user->id);
                 }
             }
-            
+
             // Si hemos llegado aquí, buscar en cualquier servicio (incluso en los que no coinciden con los filtros)
             $turno = $this->buscarTurnoEnServicios($serviciosIds);
         } else {
@@ -346,7 +346,7 @@ class AsesorController extends Controller
     /**
      * Método auxiliar para buscar un turno en servicios específicos
      * con priorización (primero prioritaria, luego normal)
-     * 
+     *
      * @param array $serviciosIds IDs de servicios donde buscar
      * @return Turno|null El turno encontrado o null
      */
@@ -355,7 +355,7 @@ class AsesorController extends Controller
         if (empty($serviciosIds)) {
             return null;
         }
-        
+
         // Primero intentar encontrar turnos prioritarios
         $turno = Turno::whereIn('servicio_id', $serviciosIds)
             ->whereIn('estado', ['pendiente', 'aplazado'])
@@ -364,7 +364,7 @@ class AsesorController extends Controller
             ->orderBy('estado', 'asc') // Pendientes primero (orden alfabético: aplazado < pendiente)
             ->orderBy('numero', 'asc')
             ->first();
-            
+
         // Si no hay prioritarios, buscar normales
         if (!$turno) {
             $turno = Turno::whereIn('servicio_id', $serviciosIds)
@@ -375,7 +375,7 @@ class AsesorController extends Controller
                 ->orderBy('numero', 'asc')
                 ->first();
         }
-        
+
         return $turno;
     }
 
@@ -589,30 +589,30 @@ class AsesorController extends Controller
 
         // Estructurar servicios con estadísticas
         $serviciosEstructurados = [];
-        
+
         foreach ($serviciosPadre as $servicioPadre) {
             // Obtener los turnos pendientes y aplazados del servicio padre
             $turnosPendientesPadre = $servicioPadre->turnos->where('estado', 'pendiente')->count();
             $turnosAplazadosPadre = $servicioPadre->turnos->where('estado', 'aplazado')->count();
-            
+
             // Preparar arrays para subservicios
             $subserviciosDatos = [];
-            
+
             // Variables para sumar turnos de los hijos
             $totalPendientesHijos = 0;
             $totalAplazadosHijos = 0;
-            
+
             // Añadir subservicios si existen
             foreach ($servicioPadre->subservicios as $subservicio) {
                 // Si el subservicio está asignado al asesor
                 if ($subservicio->estaAsignadoA($user->id)) {
                     $turnosPendientesHijo = $subservicio->turnos->where('estado', 'pendiente')->count();
                     $turnosAplazadosHijo = $subservicio->turnos->where('estado', 'aplazado')->count();
-                    
+
                     // Sumar a los totales
                     $totalPendientesHijos += $turnosPendientesHijo;
                     $totalAplazadosHijos += $turnosAplazadosHijo;
-                    
+
                     $subserviciosDatos[] = [
                         'id' => $subservicio->id,
                         'nombre' => $subservicio->nombre,
@@ -623,11 +623,11 @@ class AsesorController extends Controller
                     ];
                 }
             }
-            
+
             // Sumar los turnos del padre y los hijos
             $totalPendientes = $turnosPendientesPadre + $totalPendientesHijos;
             $totalAplazados = $turnosAplazadosPadre + $totalAplazadosHijos;
-            
+
             // Datos del servicio padre (incluye suma de todos los hijos)
             $servicioDatos = [
                 'id' => $servicioPadre->id,
@@ -641,19 +641,19 @@ class AsesorController extends Controller
                 'aplazados_propios' => $turnosAplazadosPadre,   // Solo los turnos del padre
                 'subservicios' => $subserviciosDatos
             ];
-            
+
             $serviciosEstructurados[] = $servicioDatos;
         }
-        
+
         // Añadir subservicios que son huérfanos (asignados al usuario pero sin padre o con padre no asignado)
         $subserviciosHuerfanos = $serviciosAsignados->filter(function($servicio) {
             return $servicio->esSubservicio() && (!$servicio->servicioPadre || !$servicio->servicioPadre->estaAsignadoA(Auth::id()));
         });
-        
+
         foreach ($subserviciosHuerfanos as $subservicio) {
             $turnosPendientes = $subservicio->turnos->where('estado', 'pendiente')->count();
             $turnosAplazados = $subservicio->turnos->where('estado', 'aplazado')->count();
-            
+
             $serviciosEstructurados[] = [
                 'id' => $subservicio->id,
                 'nombre' => $subservicio->nombre,
@@ -669,5 +669,30 @@ class AsesorController extends Controller
         }
 
         return response()->json($serviciosEstructurados);
+    }
+
+    /**
+     * Actualizar estado del asesor
+     */
+    public function actualizarEstado(Request $request)
+    {
+        $user = Auth::user();
+
+        // Verificar que el usuario sea asesor
+        if (!$user->esAsesor()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $request->validate([
+            'estado' => 'required|in:disponible,ocupado,descanso'
+        ]);
+
+        $user->actualizarEstado($request->estado);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Estado actualizado correctamente',
+            'estado' => $user->getEstadoFormateado()
+        ]);
     }
 }

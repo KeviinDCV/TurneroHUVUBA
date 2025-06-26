@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Turnero HUV') }} - Panel Administrativo</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -150,12 +150,6 @@
                                     onblur="this.style.borderColor='#d1d5db'; this.style.transform='scale(1)'"
                                     required
                                 />
-                            </div>
-
-                            <div class="text-center">
-                                <a href="#" class="text-sm text-gray-600 hover:text-gray-800 transition-all duration-300 hover:scale-105 inline-block" style="color: #064b9e; opacity: 0.8;">
-                                    Recuperar Contraseña
-                                </a>
                             </div>
 
                             <div class="flex justify-center">

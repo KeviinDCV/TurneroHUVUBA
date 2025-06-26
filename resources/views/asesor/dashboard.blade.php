@@ -14,24 +14,24 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        
+
         /* Estilos mínimos para la funcionalidad desplegable */
         .servicio-principal {
             cursor: pointer;
         }
-        
+
         .subservicio-row {
             display: none;
         }
-        
+
         .subservicio-row .servicio-nombre {
             padding-left: 25px;
         }
-        
+
         .chevron-icon {
             transition: transform 0.3s;
         }
-        
+
         .rotate-chevron {
             transform: rotate(90deg);
         }
@@ -72,13 +72,13 @@
 
                     <!-- Menú de opciones -->
                     <div class="flex items-center space-x-2">
-                        <a href="{{ route('asesor.cambiar-caja') }}" 
+                        <a href="{{ route('asesor.cambiar-caja') }}"
                            class="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors duration-200 text-sm">
                             Cambiar Caja
                         </a>
                         <form action="{{ route('logout') }}" method="POST" class="inline">
                             @csrf
-                            <button type="submit" 
+                            <button type="submit"
                                     class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm">
                                 Cerrar Sesión
                             </button>
@@ -147,8 +147,8 @@
                         <div class="servicios-container">
                             @forelse($serviciosEstructurados as $servicio)
                                 <!-- Fila del servicio principal -->
-                                <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal" 
-                                     data-servicio-id="{{ $servicio['id'] }}" 
+                                <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal"
+                                     data-servicio-id="{{ $servicio['id'] }}"
                                      data-tiene-hijos="{{ $servicio['tiene_hijos'] ? 'true' : 'false' }}">
                                     <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
                                         @if($servicio['tiene_hijos'])
@@ -212,10 +212,10 @@
                     <div class="relative z-10 h-full flex flex-col">
                         <!-- Header -->
                         <div class="flex justify-between items-center p-6">
-                            <select class="bg-white/20 border border-white/30 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
-                                <option value="disponible">Disponible</option>
-                                <option value="ocupado">Ocupado</option>
-                                <option value="descanso">En Descanso</option>
+                            <select id="estado-asesor" class="bg-white/20 border border-white/30 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
+                                <option value="disponible" {{ $user->estado_asesor === 'disponible' ? 'selected' : '' }}>Disponible</option>
+                                <option value="ocupado" {{ $user->estado_asesor === 'ocupado' ? 'selected' : '' }}>Ocupado</option>
+                                <option value="descanso" {{ $user->estado_asesor === 'descanso' ? 'selected' : '' }}>En Descanso</option>
                             </select>
                             <div class="text-sm" id="tiempo-atencion">00:00 de 00:00 min</div>
                         </div>
@@ -315,11 +315,11 @@
                     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
                         return;
                     }
-                    
+
                     const servicioId = this.dataset.servicioId;
                     const subservicios = document.querySelectorAll(`.subservicio-row[data-parent-id="${servicioId}"]`);
                     const chevron = this.querySelector('.chevron-icon');
-                    
+
                     // Alternar visibilidad
                     subservicios.forEach(subservicio => {
                         if (subservicio.style.display === 'none' || subservicio.style.display === '') {
@@ -549,6 +549,39 @@
         // Convertir código a mayúsculas automáticamente
         codigoInput.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
+        });
+
+        // Manejar cambio de estado del asesor
+        const estadoSelect = document.getElementById('estado-asesor');
+        estadoSelect.addEventListener('change', function() {
+            const nuevoEstado = this.value;
+
+            fetch('{{ route('asesor.actualizar-estado') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    estado: nuevoEstado
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Estado actualizado:', data.estado);
+                    // Opcional: mostrar notificación de éxito
+                } else {
+                    console.error('Error al actualizar estado:', data.message);
+                    // Revertir el select al estado anterior si hay error
+                    this.value = '{{ $user->estado_asesor }}';
+                }
+            })
+            .catch(error => {
+                console.error('Error de conexión:', error);
+                // Revertir el select al estado anterior si hay error
+                this.value = '{{ $user->estado_asesor }}';
+            });
         });
     </script>
 </body>

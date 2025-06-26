@@ -4,7 +4,7 @@
 @endphp
 
 <!-- Sidebar -->
-<aside class="w-72 bg-hospital-blue text-white shadow-xl flex flex-col h-screen fixed md:relative inset-y-0 left-0 z-30 transform md:transform-none transition-transform duration-300 ease-in-out"
+<aside class="w-72 bg-hospital-blue text-white shadow-xl flex flex-col sidebar-full-height fixed md:relative inset-y-0 left-0 z-30 transform md:transform-none transition-transform duration-300 ease-in-out"
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
 
     <!-- Header del Sidebar -->
@@ -115,20 +115,26 @@
             </div>
 
             <!-- Gráficos -->
-            <button class="sidebar-item group w-full flex items-center justify-start text-blue-200 hover:text-white hover:bg-white/10 p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
-                <svg class="mr-3 h-5 w-5 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ route('admin.graficos') }}" class="sidebar-item group w-full flex items-center justify-start {{ $currentRoute === 'admin.graficos' ? 'bg-white/20 text-white border-l-4 border-white shadow-md relative' : 'text-blue-200 hover:text-white hover:bg-white/10' }} p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
+                <svg class="mr-3 h-5 w-5 {{ $currentRoute === 'admin.graficos' ? '' : 'group-hover:text-white transition-colors' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                 </svg>
                 <span class="text-sm font-medium">Gráficos</span>
-            </button>
+                @if($currentRoute === 'admin.graficos')
+                    <div class="absolute right-3 w-2 h-2 bg-white rounded-full active-indicator"></div>
+                @endif
+            </a>
 
             <!-- Reportes -->
-            <button class="sidebar-item group w-full flex items-center justify-start text-blue-200 hover:text-white hover:bg-white/10 p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
-                <svg class="mr-3 h-5 w-5 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ route('admin.reportes') }}" class="sidebar-item group w-full flex items-center justify-start {{ $currentRoute === 'admin.reportes' ? 'bg-white/20 text-white border-l-4 border-white shadow-md relative' : 'text-blue-200 hover:text-white hover:bg-white/10' }} p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
+                <svg class="mr-3 h-5 w-5 {{ $currentRoute === 'admin.reportes' ? '' : 'group-hover:text-white transition-colors' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
                 <span class="text-sm font-medium">Reportes</span>
-            </button>
+                @if($currentRoute === 'admin.reportes')
+                    <div class="absolute right-3 w-2 h-2 bg-white rounded-full active-indicator"></div>
+                @endif
+            </a>
 
             <!-- Separador -->
             <div class="py-2">

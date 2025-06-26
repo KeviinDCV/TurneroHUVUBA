@@ -6,7 +6,6 @@
     <title>@yield('title', 'Turnero HUV') - Turnero HUV</title>
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Estilos para el modal -->
@@ -37,7 +36,7 @@
             -webkit-backdrop-filter: blur(2px) !important;
         }
     </style>
-    
+
     <style>
         :root {
             --hospital-blue: #064b9e;
@@ -90,6 +89,27 @@
 
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Fix para sidebar que cubra toda la altura del contenido */
+        .sidebar-full-height {
+            min-height: 100vh;
+            height: auto;
+        }
+
+        /* Asegurar que el contenedor principal tenga la altura correcta */
+        .main-container {
+            min-height: 100vh;
+        }
+
+        /* Para pantallas grandes, la sidebar debe ser sticky */
+        @media (min-width: 768px) {
+            .sidebar-full-height {
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                overflow-y: auto;
+            }
         }
 
         /* Responsive sidebar */
@@ -179,7 +199,7 @@
 <body class="min-h-screen bg-gray-100" x-data="{ sidebarOpen: false }">
     @include('components.admin.header')
 
-    <div class="flex min-h-screen">
+    <div class="flex main-container">
         <!-- Overlay para móviles -->
         <div x-show="sidebarOpen"
              x-transition:enter="transition-opacity ease-linear duration-300"

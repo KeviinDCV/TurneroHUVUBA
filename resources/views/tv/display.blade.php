@@ -4,15 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Turnero HUV') }} - Visualizador TV</title>
-    
+
     <!-- Fonts - Optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <style>
         /* Fuente de respaldo para evitar problemas de carga */
         body {
@@ -25,57 +25,57 @@
             50% { box-shadow: 0 0 0 10px rgba(6, 75, 158, 0); }
             100% { box-shadow: 0 0 0 0 rgba(6, 75, 158, 0); }
         }
-        
+
         @keyframes simple-fade-in {
             0% { opacity: 0.7; transform: translateY(5px); }
             100% { opacity: 1; transform: translateY(0); }
         }
-        
+
         /* Clase para mostrar un nuevo turno */
         .new-turn {
             animation: simple-fade-in 0.5s ease forwards, highlight 1.5s ease 0.5s forwards;
             animation-iteration-count: 1; /* Solo una vez */
         }
-        
+
         /* Eliminar las animaciones anteriores que podrían estar causando problemas */
         .animate-pulse-number, .animate-slide-in {
             animation: none !important;
         }
-        
+
         .hospital-building {
             background-color: #064b9e;
             border-color: #053a7a;
         }
-        
+
         .hospital-building-inner {
             border-color: #053a7a;
         }
-        
+
         .hospital-building-window {
             border-color: #053a7a;
             background-color: rgba(6, 75, 158, 0.1);
         }
-        
+
         .bg-hospital-blue {
             background-color: #064b9e;
         }
-        
+
         .bg-hospital-blue-light {
             background-color: rgba(6, 75, 158, 0.1);
         }
-        
+
         .text-hospital-blue {
             color: #064b9e;
         }
-        
+
         .border-hospital-blue {
             border-color: #064b9e;
         }
-        
+
         .gradient-hospital {
             background: linear-gradient(135deg, #064b9e 0%, #0a5fb4 100%);
         }
-        
+
         .gradient-hospital-light {
             background: linear-gradient(135deg, #0a5fb4 0%, #1e7dd8 100%);
         }
@@ -447,39 +447,39 @@
                 .then(data => {
                     // Verificar si hay turnos nuevos
                     const newTurnos = data.turnos || [];
-                    
+
                     // Verificar si hay nuevos turnos que no hayamos visto antes
                     let hayNuevosTurnos = false;
-                    
+
                     // Si tenemos nuevos turnos del API
                     if (newTurnos.length > 0) {
                         console.log('Turnos recibidos:', newTurnos.length);
-                        
+
                         // Buscar el turno más reciente que no hayamos visto
                         let turnoNuevo = null;
-                        
+
                         for (const turno of newTurnos) {
                             // Verificar si este turno es realmente nuevo
                             if (!turnosVistos.has(turno.id)) {
                                 turnoNuevo = turno;
                                 turnosVistos.add(turno.id); // Marcarlo como visto
                                 hayNuevosTurnos = true;
-                                
+
                                 // Añadirlo al inicio de nuestra lista de turnos
                                 turnos.unshift(turno);
-                                
+
                                 // Conservar solo los últimos 5 para mostrar
                                 if (turnos.length > 5) {
                                     turnos = turnos.slice(0, 5);
                                 }
-                                
+
                                 break; // Solo procesamos el más reciente
                             }
                         }
-                        
+
                         // Actualizar la interfaz con todos los turnos
                         renderTurnos(turnos);
-                        
+
                         // Reproducir sonido solo si hay un turno realmente nuevo
                         if (turnoNuevo) {
                             console.log('Nuevo turno detectado! Reproduciendo sonido...', turnoNuevo.codigo_completo);
@@ -495,16 +495,16 @@
         // Renderizar los turnos en el contenedor
         function renderTurnos(turnosList) {
             const container = document.getElementById('patient-queue');
-            
+
             // Conservar el contenedor pero limpiar su contenido
             container.innerHTML = '';
-            
+
             // No hay turnos, mostramos placeholders
             if (turnosList.length === 0) {
                 for (let i = 0; i < 5; i++) {
                     const placeholderElement = document.createElement('div');
                     placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50';
-                    
+
                     placeholderElement.innerHTML = `
                         <div class="grid grid-cols-2 gap-4 items-center">
                             <div class="text-center">
@@ -515,7 +515,7 @@
                             </div>
                         </div>
                     `;
-                    
+
                     container.appendChild(placeholderElement);
                 }
                 return;
@@ -524,14 +524,14 @@
             // Mostrar turnos existentes
             for (let i = 0; i < turnosList.length; i++) {
                 const turno = turnosList[i];
-                
+
                 // Crear elemento del turno
                 const turnoElement = document.createElement('div');
-                
+
                 // Solo el primer elemento (más reciente) de la primera renderización tendrá una clase especial
                 // Revisamos con un atributo data para saber si este turno específico ya se animó
                 const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
-                
+
                 if (i === 0 && !yaAnimado) {
                     turnoElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg new-turn';
                     // Marcar este turno como ya animado para que no se repita
@@ -539,7 +539,7 @@
                 } else {
                     turnoElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg';
                 }
-                
+
                 turnoElement.innerHTML = `
                     <div class="grid grid-cols-2 gap-4 items-center">
                         <div class="text-center">
@@ -550,15 +550,15 @@
                         </div>
                     </div>
                 `;
-                
+
                 container.appendChild(turnoElement);
             }
-            
+
             // Si hay menos de 5 turnos, rellenar con placeholders
             for (let i = turnosList.length; i < 5; i++) {
                 const placeholderElement = document.createElement('div');
                 placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50';
-                
+
                 placeholderElement.innerHTML = `
                     <div class="grid grid-cols-2 gap-4 items-center">
                         <div class="text-center">
@@ -569,7 +569,7 @@
                         </div>
                     </div>
                 `;
-                
+
                 container.appendChild(placeholderElement);
             }
         }
@@ -581,120 +581,154 @@
             setTimeout(() => {
                 document.getElementById('updateIndicator').style.opacity = '0';
             }, 3000);
-            
+
+            try {
+                // Crear elemento de audio para reproducir el archivo turno.mp3
+                const audio = new Audio('/audio/turnero/turno.mp3');
+                audio.volume = 0.8; // Volumen al 80%
+
+                // Configurar eventos del audio
+                audio.addEventListener('ended', function() {
+                    // Cuando termine el sonido, iniciar la síntesis de voz
+                    playVoiceMessage(turno);
+                });
+
+                audio.addEventListener('error', function(e) {
+                    console.warn('Error al cargar turno.mp3, usando sonido de respaldo:', e);
+                    // Si falla el archivo, usar el tono sintético como respaldo
+                    playFallbackSound(turno);
+                });
+
+                // Reproducir el archivo de audio
+                audio.play().catch(error => {
+                    console.warn('Error al reproducir turno.mp3, usando sonido de respaldo:', error);
+                    // Si falla la reproducción, usar el tono sintético como respaldo
+                    playFallbackSound(turno);
+                });
+
+
+            } catch (error) {
+                console.error('Error al crear elemento de audio:', error);
+                // Plan B: usar el tono sintético
+                playFallbackSound(turno);
+            }
+        }
+
+        // Función para reproducir el mensaje de voz
+        function playVoiceMessage(turno) {
+            // Mensaje para el turno
+            const mensaje = `Turno ${turno.codigo_completo}, por favor diríjase a la caja ${turno.numero_caja}`;
+
+            // Crear instancia de síntesis de voz
+            const synth = window.speechSynthesis;
+
+            // Cancelar cualquier síntesis anterior
+            synth.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(mensaje);
+
+            // Configurar voz femenina en español
+            utterance.lang = 'es-ES';
+            utterance.rate = 0.9; // Velocidad ligeramente más lenta para mayor claridad
+            utterance.pitch = 1.0; // Tono normal
+            utterance.volume = 1.0; // Volumen máximo
+
+            // Seleccionar una voz femenina
+            let voices = synth.getVoices();
+
+            // Función para seleccionar la mejor voz femenina disponible
+            function selectFemaleVoice() {
+                // Obtener voces actualizadas
+                voices = synth.getVoices();
+
+                // Prioridad de voces:
+                // 1. Microsoft Helena - voz femenina española de alta calidad
+                // 2. Google español femenina
+                // 3. Cualquier voz femenina en español
+                // 4. Cualquier voz en español
+
+                // Buscar voces específicas de alta calidad
+                let selectedVoice = voices.find(voice =>
+                    voice.name.includes('Helena') && voice.name.includes('Spanish'));
+
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(voice =>
+                        voice.name.includes('Google') &&
+                        voice.name.toLowerCase().includes('español') &&
+                        voice.name.toLowerCase().includes('female'));
+                }
+
+                if (!selectedVoice) {
+                    // Buscar cualquier voz femenina en español
+                    selectedVoice = voices.find(voice =>
+                        voice.lang.includes('es') &&
+                        (voice.name.toLowerCase().includes('female') ||
+                        voice.name.toLowerCase().includes('mujer') ||
+                        voice.name.toLowerCase().includes('fem')));
+                }
+
+                if (!selectedVoice) {
+                    // Como último recurso, cualquier voz en español
+                    selectedVoice = voices.find(voice => voice.lang.includes('es'));
+                }
+
+                console.log('Voz seleccionada:', selectedVoice ? selectedVoice.name : 'ninguna');
+                return selectedVoice;
+            }
+
+            // Si las voces ya están cargadas
+            if (voices.length > 0) {
+                utterance.voice = selectFemaleVoice();
+                synth.speak(utterance);
+            } else {
+                // Si las voces no están cargadas, esperar el evento voiceschanged
+                speechSynthesis.onvoiceschanged = function() {
+                    utterance.voice = selectFemaleVoice();
+                    synth.speak(utterance);
+                };
+            }
+
+            // Registrar en consola para depuración
+            console.log('Reproduciendo mensaje de voz:', mensaje);
+        }
+
+        // Función de respaldo para generar tono sintético si falla el archivo de audio
+        function playFallbackSound(turno) {
             try {
                 // Crear un contexto de audio para generar el sonido de alerta
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
+
                 // Crear oscilador para generar un tono de alerta suave
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
-                
+
                 // Configurar un tono agradable (LA4 - 440Hz)
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-                
+
                 // Configurar la envolvente del sonido para que sea suave
                 gainNode.gain.setValueAtTime(0, audioContext.currentTime);
                 gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
                 gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.8);
-                
+
                 // Conectar nodos
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
-                
+
                 // Reproducir el tono
                 oscillator.start();
                 oscillator.stop(audioContext.currentTime + 0.8);
-                
+
                 // Cuando termine el sonido, iniciar la síntesis de voz
                 setTimeout(() => {
-                    // Mensaje para el turno
-                    const mensaje = `Turno ${turno.codigo_completo}, por favor diríjase a la caja ${turno.numero_caja}`;
-                    
-                    // Crear instancia de síntesis de voz
-                    const synth = window.speechSynthesis;
-                    
-                    // Cancelar cualquier síntesis anterior
-                    synth.cancel();
-                    
-                    const utterance = new SpeechSynthesisUtterance(mensaje);
-                    
-                    // Configurar voz femenina en español
-                    utterance.lang = 'es-ES';
-                    utterance.rate = 0.9; // Velocidad ligeramente más lenta para mayor claridad
-                    utterance.pitch = 1.0; // Tono normal
-                    utterance.volume = 1.0; // Volumen máximo
-                    
-                    // Seleccionar una voz femenina
-                    let voices = synth.getVoices();
-                    
-                    // Función para seleccionar la mejor voz femenina disponible
-                    function selectFemaleVoice() {
-                        // Obtener voces actualizadas
-                        voices = synth.getVoices();
-                        
-                        // Prioridad de voces:
-                        // 1. Microsoft Helena - voz femenina española de alta calidad
-                        // 2. Google español femenina
-                        // 3. Cualquier voz femenina en español
-                        // 4. Cualquier voz en español
-                        
-                        // Buscar voces específicas de alta calidad
-                        let selectedVoice = voices.find(voice => 
-                            voice.name.includes('Helena') && voice.name.includes('Spanish'));
-                        
-                        if (!selectedVoice) {
-                            selectedVoice = voices.find(voice => 
-                                voice.name.includes('Google') && 
-                                voice.name.toLowerCase().includes('español') && 
-                                voice.name.toLowerCase().includes('female'));
-                        }
-                        
-                        if (!selectedVoice) {
-                            // Buscar cualquier voz femenina en español
-                            selectedVoice = voices.find(voice => 
-                                voice.lang.includes('es') && 
-                                (voice.name.toLowerCase().includes('female') || 
-                                voice.name.toLowerCase().includes('mujer') || 
-                                voice.name.toLowerCase().includes('fem')));
-                        }
-                        
-                        if (!selectedVoice) {
-                            // Como último recurso, cualquier voz en español
-                            selectedVoice = voices.find(voice => voice.lang.includes('es'));
-                        }
-                        
-                        console.log('Voz seleccionada:', selectedVoice ? selectedVoice.name : 'ninguna');
-                        return selectedVoice;
-                    }
-                    
-                    // Si las voces ya están cargadas
-                    if (voices.length > 0) {
-                        utterance.voice = selectFemaleVoice();
-                        synth.speak(utterance);
-                    } else {
-                        // Si las voces no están cargadas, esperar el evento voiceschanged
-                        speechSynthesis.onvoiceschanged = function() {
-                            utterance.voice = selectFemaleVoice();
-                            synth.speak(utterance);
-                        };
-                    }
-                    
-                    // Registrar en consola para depuración
-                    console.log('Reproduciendo mensaje de voz:', mensaje);
+                    playVoiceMessage(turno);
                 }, 900); // Esperar 900ms para que termine el tono antes de iniciar la voz
-                
+
             } catch (error) {
-                console.error('Error al reproducir sonido:', error);
-                
-                // Plan B: intentar reproducción directa de voz sin efectos de sonido
-                const synth = window.speechSynthesis;
-                const mensaje = `Turno ${turno.codigo_completo}, por favor diríjase a la caja ${turno.numero_caja}`;
-                const utterance = new SpeechSynthesisUtterance(mensaje);
-                utterance.lang = 'es-ES';
-                utterance.volume = 1.0;
-                synth.speak(utterance);
+                console.error('Error al reproducir sonido de respaldo:', error);
+
+                // Plan C: reproducir directamente la voz sin sonido
+                playVoiceMessage(turno);
             }
         }
 
@@ -702,7 +736,7 @@
         function setupRealTimeListeners() {
             // En modo polling, no intentamos conectar a WebSockets
             console.log('Modo polling activado para actualizaciones de turnos');
-            
+
             // Aumentamos la frecuencia de polling para compensar la falta de WebSockets
             setInterval(updateQueue, 2000); // Actualizar cada 2 segundos en lugar de 5
         }
@@ -928,7 +962,7 @@
             // Actualizar la hora inmediatamente y cada minuto
             updateTime();
             setInterval(updateTime, 60000);
-            
+
             initializeTicker();
 
             // Inicializar funcionalidad en tiempo real

@@ -25,8 +25,10 @@ class User extends Authenticatable
         'nombre_usuario',
         'password',
         'session_id',
+        'session_start',
         'last_activity',
         'last_ip',
+        'estado_asesor',
     ];
 
     /**
@@ -50,6 +52,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'last_activity' => 'datetime',
+            'session_start' => 'datetime',
         ];
     }
 
@@ -193,11 +196,18 @@ class User extends Authenticatable
      */
     public function actualizarSession($sessionId, $ip = null)
     {
-        $this->update([
+        $updateData = [
             'session_id' => $sessionId,
             'last_activity' => now(),
             'last_ip' => $ip ?: request()->ip()
-        ]);
+        ];
+
+        // Si no tiene session_start o es una nueva sesión, establecer el inicio
+        if (!$this->session_start || $this->session_id !== $sessionId) {
+            $updateData['session_start'] = now();
+        }
+
+        $this->update($updateData);
     }
 
     /**
@@ -207,6 +217,7 @@ class User extends Authenticatable
     {
         $this->update([
             'session_id' => null,
+            'session_start' => null,
             'last_activity' => null,
             'last_ip' => null
         ]);
@@ -221,5 +232,70 @@ class User extends Authenticatable
     public function esDiferenteSession($sessionId)
     {
         return $this->session_id && $this->session_id !== $sessionId;
+    }
+
+    /**
+     * Actualizar estado del asesor
+     */
+    public function actualizarEstado($estado)
+    {
+        if (in_array($estado, ['disponible', 'ocupado', 'descanso'])) {
+            $this->update(['estado_asesor' => $estado]);
+        }
+    }
+
+    /**
+     * Obtener estado del asesor formateado
+     */
+    public function getEstadoFormateado()
+    {
+        $estados = [
+            'disponible' => 'Disponible',
+            'ocupado' => 'Ocupado',
+            'descanso' => 'En Descanso'
+        ];
+
+        return $estados[$this->estado_asesor] ?? 'Disponible';
+    }
+
+    /**
+     * Verificar si el usuario está activo (tiene sesión activa)
+     */
+    public function estaActivo()
+    {
+        return $this->tieneSessionActiva();
+    }
+
+    /**
+     * Scope para obtener usuarios activos (con sesión activa)
+     */
+    public function scopeActivos($query)
+    {
+        return $query->whereNotNull('session_id')
+                    ->whereNotNull('last_activity')
+                    ->where('last_activity', '>=', now()->subMinutes(15));
+    }
+
+    /**
+     * Obtener tiempo de sesión activa
+     */
+    public function getTiempoSesionActiva()
+    {
+        if (!$this->session_start) {
+            return 'Sin sesión';
+        }
+
+        $inicio = $this->session_start;
+        $ahora = now();
+
+        $diferencia = $inicio->diff($ahora);
+
+        if ($diferencia->days > 0) {
+            return $diferencia->days . 'd ' . $diferencia->h . 'h ' . $diferencia->i . 'm';
+        } elseif ($diferencia->h > 0) {
+            return $diferencia->h . 'h ' . $diferencia->i . 'm';
+        } else {
+            return $diferencia->i . 'm';
+        }
     }
 }

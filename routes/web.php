@@ -10,6 +10,8 @@ use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\TvConfigController;
 use App\Http\Controllers\MultimediaController;
 use App\Http\Controllers\AsesorController;
+use App\Http\Controllers\GraficosController;
+use App\Http\Controllers\ReportesController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -25,10 +27,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // API para verificar estado de autenticación
 Route::get('/api/auth-check', [AuthController::class, 'checkAuth'])->name('api.auth-check');
 
-// Rutas protegidas del dashboard
-Route::middleware(['auth', 'update.user.activity', 'clean.expired.boxes'])->group(function () {
+// Rutas protegidas del dashboard administrativo
+Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.boxes'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-    
+
     // Rutas de gestión de usuarios
     Route::get('/users', [AdminController::class, 'users'])->name('admin.users');
     Route::post('/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
@@ -67,6 +69,38 @@ Route::middleware(['auth', 'update.user.activity', 'clean.expired.boxes'])->grou
     // Ruta para limpiar sesiones expiradas manualmente
     Route::post('/admin/clean-sessions', [AdminController::class, 'cleanExpiredSessions'])->name('admin.clean-sessions');
 
+    // API para obtener usuarios activos con sus estados
+    Route::get('/api/admin/usuarios-activos', [AdminController::class, 'getUsuariosActivos'])->name('api.admin.usuarios-activos');
+
+    // API para obtener turnos por servicio
+    Route::get('/api/admin/turnos-por-servicio', [AdminController::class, 'getTurnosPorServicio'])->name('api.admin.turnos-por-servicio');
+
+    // API para obtener turnos por asesor
+    Route::get('/api/admin/turnos-por-asesor', [AdminController::class, 'getTurnosPorAsesor'])->name('api.admin.turnos-por-asesor');
+
+    // API para obtener turnos en cola por servicio
+    Route::get('/api/admin/turnos-en-cola', [AdminController::class, 'getTurnosEnCola'])->name('api.admin.turnos-en-cola');
+
+    // Rutas para gráficos
+    Route::get('/graficos', [GraficosController::class, 'index'])->name('admin.graficos');
+
+    // APIs para gráficos
+    Route::get('/api/graficos/turnos-por-servicio-semana', [GraficosController::class, 'turnosPorServicioSemana'])->name('api.graficos.turnos-por-servicio-semana');
+    Route::get('/api/graficos/turnos-por-estado', [GraficosController::class, 'turnosPorEstado'])->name('api.graficos.turnos-por-estado');
+    Route::get('/api/graficos/turnos-por-hora', [GraficosController::class, 'turnosPorHora'])->name('api.graficos.turnos-por-hora');
+    Route::get('/api/graficos/rendimiento-asesores', [GraficosController::class, 'rendimientoAsesores'])->name('api.graficos.rendimiento-asesores');
+    Route::get('/api/graficos/turnos-por-dia', [GraficosController::class, 'turnosPorDia'])->name('api.graficos.turnos-por-dia');
+    Route::get('/api/graficos/tiempo-atencion-por-servicio', [GraficosController::class, 'tiempoAtencionPorServicio'])->name('api.graficos.tiempo-atencion-por-servicio');
+    Route::get('/api/graficos/distribucion-prioridades', [GraficosController::class, 'distribucionPrioridades'])->name('api.graficos.distribucion-prioridades');
+    Route::get('/api/graficos/estadisticas-generales', [GraficosController::class, 'estadisticasGenerales'])->name('api.graficos.estadisticas-generales');
+
+    // Rutas para reportes
+    Route::get('/reportes', [ReportesController::class, 'index'])->name('admin.reportes');
+    Route::post('/reportes/generar', [ReportesController::class, 'generarReporte'])->name('admin.reportes.generar');
+});
+
+// Rutas protegidas para asesores
+Route::middleware(['auth', 'asesor.role', 'update.user.activity', 'clean.expired.boxes'])->group(function () {
     // Rutas para asesores
     Route::get('/asesor/seleccionar-caja', [AsesorController::class, 'seleccionarCaja'])->name('asesor.seleccionar-caja');
     Route::post('/asesor/seleccionar-caja', [AsesorController::class, 'procesarSeleccionCaja'])->name('asesor.procesar-seleccion-caja');
@@ -81,6 +115,9 @@ Route::middleware(['auth', 'update.user.activity', 'clean.expired.boxes'])->grou
 
     // API para obtener estadísticas de servicios para el asesor (actualización en tiempo real)
     Route::get('/api/asesor/servicios-estadisticas', [AsesorController::class, 'getServiciosEstadisticas'])->name('api.asesor.servicios-estadisticas');
+
+    // Actualizar estado del asesor
+    Route::post('/asesor/actualizar-estado', [AsesorController::class, 'actualizarEstado'])->name('asesor.actualizar-estado');
 });
 
 // Ruta de prueba para verificar autenticación

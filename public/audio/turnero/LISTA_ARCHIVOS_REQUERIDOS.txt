@@ -1,0 +1,196 @@
+LISTA DE ARCHIVOS DE AUDIO REQUERIDOS PARA EL SISTEMA DE TURNOS
+================================================================
+
+ESTRUCTURA DE CARPETAS CREADA:
+public/audio/turnero/
+├── turno.mp3                    # ✅ YA EXISTE - Sonido de alerta (pito)
+└── voice/
+    ├── turno.mp3               # "Turno"
+    ├── dirigirse.mp3           # "por favor diríjase a la caja"
+    ├── numeros/                # Números del 0 al 99
+    └── letras/                 # Letras A-Z
+
+================================================================
+ARCHIVOS BASE REQUERIDOS (en voice/):
+================================================================
+
+1. turno.mp3        → "Turno"
+2. dirigirse.mp3    → "por favor diríjase a la caja"
+
+================================================================
+NÚMEROS REQUERIDOS (en voice/numeros/):
+================================================================
+
+0.mp3  → "cero"
+1.mp3  → "uno"
+2.mp3  → "dos"
+3.mp3  → "tres"
+4.mp3  → "cuatro"
+5.mp3  → "cinco"
+6.mp3  → "seis"
+7.mp3  → "siete"
+8.mp3  → "ocho"
+9.mp3  → "nueve"
+10.mp3 → "diez"
+11.mp3 → "once"
+12.mp3 → "doce"
+13.mp3 → "trece"
+14.mp3 → "catorce"
+15.mp3 → "quince"
+16.mp3 → "dieciséis"
+17.mp3 → "diecisiete"
+18.mp3 → "dieciocho"
+19.mp3 → "diecinueve"
+20.mp3 → "veinte"
+21.mp3 → "veintiuno"
+22.mp3 → "veintidós"
+23.mp3 → "veintitrés"
+24.mp3 → "veinticuatro"
+25.mp3 → "veinticinco"
+26.mp3 → "veintiséis"
+27.mp3 → "veintisiete"
+28.mp3 → "veintiocho"
+29.mp3 → "veintinueve"
+30.mp3 → "treinta"
+31.mp3 → "treinta y uno"
+32.mp3 → "treinta y dos"
+33.mp3 → "treinta y tres"
+34.mp3 → "treinta y cuatro"
+35.mp3 → "treinta y cinco"
+36.mp3 → "treinta y seis"
+37.mp3 → "treinta y siete"
+38.mp3 → "treinta y ocho"
+39.mp3 → "treinta y nueve"
+40.mp3 → "cuarenta"
+41.mp3 → "cuarenta y uno"
+42.mp3 → "cuarenta y dos"
+43.mp3 → "cuarenta y tres"
+44.mp3 → "cuarenta y cuatro"
+45.mp3 → "cuarenta y cinco"
+46.mp3 → "cuarenta y seis"
+47.mp3 → "cuarenta y siete"
+48.mp3 → "cuarenta y ocho"
+49.mp3 → "cuarenta y nueve"
+50.mp3 → "cincuenta"
+51.mp3 → "cincuenta y uno"
+52.mp3 → "cincuenta y dos"
+53.mp3 → "cincuenta y tres"
+54.mp3 → "cincuenta y cuatro"
+55.mp3 → "cincuenta y cinco"
+56.mp3 → "cincuenta y seis"
+57.mp3 → "cincuenta y siete"
+58.mp3 → "cincuenta y ocho"
+59.mp3 → "cincuenta y nueve"
+60.mp3 → "sesenta"
+61.mp3 → "sesenta y uno"
+62.mp3 → "sesenta y dos"
+63.mp3 → "sesenta y tres"
+64.mp3 → "sesenta y cuatro"
+65.mp3 → "sesenta y cinco"
+66.mp3 → "sesenta y seis"
+67.mp3 → "sesenta y siete"
+68.mp3 → "sesenta y ocho"
+69.mp3 → "sesenta y nueve"
+70.mp3 → "setenta"
+71.mp3 → "setenta y uno"
+72.mp3 → "setenta y dos"
+73.mp3 → "setenta y tres"
+74.mp3 → "setenta y cuatro"
+75.mp3 → "setenta y cinco"
+76.mp3 → "setenta y seis"
+77.mp3 → "setenta y siete"
+78.mp3 → "setenta y ocho"
+79.mp3 → "setenta y nueve"
+80.mp3 → "ochenta"
+81.mp3 → "ochenta y uno"
+82.mp3 → "ochenta y dos"
+83.mp3 → "ochenta y tres"
+84.mp3 → "ochenta y cuatro"
+85.mp3 → "ochenta y cinco"
+86.mp3 → "ochenta y seis"
+87.mp3 → "ochenta y siete"
+88.mp3 → "ochenta y ocho"
+89.mp3 → "ochenta y nueve"
+90.mp3 → "noventa"
+91.mp3 → "noventa y uno"
+92.mp3 → "noventa y dos"
+93.mp3 → "noventa y tres"
+94.mp3 → "noventa y cuatro"
+95.mp3 → "noventa y cinco"
+96.mp3 → "noventa y seis"
+97.mp3 → "noventa y siete"
+98.mp3 → "noventa y ocho"
+99.mp3 → "noventa y nueve"
+
+================================================================
+LETRAS REQUERIDAS (en voice/letras/):
+================================================================
+
+A.mp3 → "A"
+B.mp3 → "B"
+C.mp3 → "C"
+D.mp3 → "D"
+E.mp3 → "E"
+F.mp3 → "F"
+G.mp3 → "G"
+H.mp3 → "H"
+I.mp3 → "I"
+J.mp3 → "J"
+K.mp3 → "K"
+L.mp3 → "L"
+M.mp3 → "M"
+N.mp3 → "N"
+O.mp3 → "O"
+P.mp3 → "P"
+Q.mp3 → "Q"
+R.mp3 → "R"
+S.mp3 → "S"
+T.mp3 → "T"
+U.mp3 → "U"
+V.mp3 → "V"
+W.mp3 → "W"
+X.mp3 → "X"
+Y.mp3 → "Y"
+Z.mp3 → "Z"
+
+================================================================
+CONFIGURACIÓN RECOMENDADA PARA HAILOU:
+================================================================
+
+- Voz: Femenina, clara y profesional
+- Velocidad: Normal a ligeramente lenta
+- Tono: Amigable pero profesional
+- Formato: MP3, 44.1kHz, 128kbps mínimo
+- Volumen: Consistente en todos los archivos
+- Pausas: Naturales al final de cada palabra
+
+================================================================
+EJEMPLO DE USO:
+================================================================
+
+Para "Turno CE-3030 Caja 3" se reproducirá:
+1. turno.mp3 (sonido de alerta)
+2. voice/turno.mp3 ("Turno")
+3. voice/letras/C.mp3 ("C")
+4. voice/letras/E.mp3 ("E")
+5. voice/numeros/30.mp3 ("treinta")
+6. voice/numeros/30.mp3 ("treinta")
+7. voice/dirigirse.mp3 ("por favor diríjase a la caja")
+8. voice/numeros/3.mp3 ("tres")
+
+================================================================
+PRIORIDAD DE ARCHIVOS:
+================================================================
+
+ALTA PRIORIDAD (para pruebas iniciales):
+- voice/turno.mp3
+- voice/dirigirse.mp3
+- voice/numeros/1.mp3 a 10.mp3
+- voice/letras/A.mp3, B.mp3, C.mp3, E.mp3
+
+MEDIA PRIORIDAD:
+- voice/numeros/11.mp3 a 50.mp3
+- voice/letras/D.mp3 a Z.mp3
+
+BAJA PRIORIDAD:
+- voice/numeros/51.mp3 a 99.mp3
