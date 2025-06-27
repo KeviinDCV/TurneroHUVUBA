@@ -35,6 +35,25 @@
         .rotate-chevron {
             transform: rotate(90deg);
         }
+
+        /* Estilos para botones deshabilitados */
+        button:disabled {
+            cursor: not-allowed !important;
+            opacity: 0.5 !important;
+            pointer-events: none !important;
+        }
+
+        button:disabled:hover {
+            opacity: 0.5 !important;
+        }
+
+        /* Estilo específico para botones bloqueados por turno en proceso */
+        .btn-bloqueado {
+            background-color: #6b7280 !important;
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
+            pointer-events: none !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -211,12 +230,7 @@
 
                     <div class="relative z-10 h-full flex flex-col">
                         <!-- Header -->
-                        <div class="flex justify-between items-center p-6">
-                            <select id="estado-asesor" class="bg-white/20 border border-white/30 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
-                                <option value="disponible" {{ $user->estado_asesor === 'disponible' ? 'selected' : '' }}>Disponible</option>
-                                <option value="ocupado" {{ $user->estado_asesor === 'ocupado' ? 'selected' : '' }}>Ocupado</option>
-                                <option value="descanso" {{ $user->estado_asesor === 'descanso' ? 'selected' : '' }}>En Descanso</option>
-                            </select>
+                        <div class="flex justify-end items-center p-6">
                             <div class="text-sm" id="tiempo-atencion">00:00 de 00:00 min</div>
                         </div>
 
@@ -293,6 +307,7 @@
     <script>
         let turnoActual = null;
         let tiempoInicio = null;
+        let turnoEnProceso = false; // Estado para controlar si hay un turno en proceso
 
         // Elementos del DOM
         const codigoInput = document.getElementById('codigo-turno');
@@ -374,16 +389,126 @@
             }
         });
 
+        // Funciones para habilitar/deshabilitar botones de llamar turno
+        function deshabilitarBotonesLlamar() {
+            console.log('🔒 Deshabilitando TODOS los botones de llamar turno');
+
+            // Deshabilitar botón de llamar específico
+            if (btnLlamarEspecifico) {
+                btnLlamarEspecifico.disabled = true;
+                btnLlamarEspecifico.classList.add('btn-bloqueado', 'opacity-50', 'cursor-not-allowed');
+                btnLlamarEspecifico.classList.remove('hover:opacity-90');
+                console.log('🔒 Botón llamar específico deshabilitado');
+            }
+
+            // Deshabilitar TODOS los botones de llamar siguiente (incluyendo los de la tabla)
+            const todosLosBotonesLlamar = document.querySelectorAll('.btn-llamar-siguiente');
+            console.log('🔍 Encontrados', todosLosBotonesLlamar.length, 'botones de llamar siguiente');
+
+            todosLosBotonesLlamar.forEach((button, index) => {
+                if (!button.disabled) { // Solo si no estaba ya deshabilitado por falta de turnos
+                    button.disabled = true;
+                    button.classList.add('btn-bloqueado', 'opacity-50', 'cursor-not-allowed');
+                    button.style.pointerEvents = 'none'; // BLOQUEO TOTAL DE EVENTOS
+                    button.setAttribute('data-was-enabled', 'true');
+                    console.log(`🔒 Botón ${index + 1} COMPLETAMENTE deshabilitado:`, button.textContent.trim());
+                } else {
+                    // Incluso si ya estaba deshabilitado, aplicar bloqueo total
+                    button.style.pointerEvents = 'none';
+                    console.log(`⚠️ Botón ${index + 1} ya estaba deshabilitado - aplicando bloqueo total:`, button.textContent.trim());
+                }
+            });
+        }
+
+        function habilitarBotonesLlamar() {
+            console.log('🔓 Habilitando TODOS los botones de llamar turno');
+
+            // Habilitar botón de llamar específico
+            if (btnLlamarEspecifico) {
+                btnLlamarEspecifico.disabled = false;
+                btnLlamarEspecifico.classList.remove('btn-bloqueado', 'opacity-50', 'cursor-not-allowed');
+                btnLlamarEspecifico.classList.add('hover:opacity-90');
+                console.log('🔓 Botón llamar específico habilitado');
+            }
+
+            // Habilitar TODOS los botones de llamar siguiente que estaban habilitados antes
+            const todosLosBotonesLlamar = document.querySelectorAll('.btn-llamar-siguiente');
+            console.log('🔍 Encontrados', todosLosBotonesLlamar.length, 'botones de llamar siguiente para habilitar');
+
+            todosLosBotonesLlamar.forEach((button, index) => {
+                if (button.getAttribute('data-was-enabled') === 'true') {
+                    button.disabled = false;
+                    button.classList.remove('btn-bloqueado', 'opacity-50', 'cursor-not-allowed');
+                    button.style.pointerEvents = 'auto'; // RESTAURAR EVENTOS
+                    button.removeAttribute('data-was-enabled');
+                    console.log(`🔓 Botón ${index + 1} COMPLETAMENTE habilitado:`, button.textContent.trim());
+                } else if (!button.disabled) {
+                    // Si el botón no estaba marcado como deshabilitado por nosotros,
+                    // pero tampoco está deshabilitado, asegurar que esté habilitado
+                    button.classList.remove('btn-bloqueado');
+                    button.style.pointerEvents = 'auto'; // RESTAURAR EVENTOS
+                    console.log(`✅ Botón ${index + 1} ya estaba habilitado - restaurando eventos:`, button.textContent.trim());
+                } else {
+                    console.log(`⚠️ Botón ${index + 1} permanece deshabilitado (sin turnos):`, button.textContent.trim());
+                }
+            });
+        }
+
+        function mostrarModalAdvertencia() {
+            mostrarModal(
+                'Turno en Proceso',
+                'Debe marcar el turno actual como "Atendido" antes de llamar un nuevo turno.',
+                'error'
+            );
+        }
+
+        // Función helper para manejar respuestas de fetch
+        async function handleFetchResponse(response) {
+            const contentType = response.headers.get('content-type');
+
+            // Verificar si la respuesta es JSON
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Respuesta no JSON recibida:', text.substring(0, 200));
+                throw new Error('El servidor devolvió una respuesta inválida. Posible problema de autenticación.');
+            }
+
+            // Para respuestas 400 (Bad Request) que contienen JSON válido,
+            // no lanzar error sino devolver el JSON para manejo específico
+            if (response.status === 400) {
+                return response.json();
+            }
+
+            // Para otros errores HTTP, lanzar error
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return response.json();
+        }
+
         // Función para actualizar la interfaz con el turno actual
         function actualizarInterfazTurno(turno) {
+            console.log('🔄 Actualizando interfaz con turno:', turno.codigo_completo);
+
             turnoActual = turno;
             tiempoInicio = new Date();
+            turnoEnProceso = true; // Marcar que hay un turno en proceso
 
             turnoActualElement.textContent = turno.codigo_completo;
             servicioActualElement.textContent = turno.servicio;
 
             btnAtender.style.display = 'block';
             btnAplazar.style.display = 'block';
+
+            // Deshabilitar botones de llamar turno INMEDIATAMENTE
+            deshabilitarBotonesLlamar();
+
+            console.log('🔒 Turno en proceso - Estado actualizado:', {
+                turnoEnProceso: turnoEnProceso,
+                turnoActual: turnoActual?.codigo_completo,
+                botonesAtenderVisible: btnAtender.style.display === 'block'
+            });
 
             // Iniciar contador de tiempo
             actualizarTiempo();
@@ -405,6 +530,7 @@
         function limpiarInterfazTurno() {
             turnoActual = null;
             tiempoInicio = null;
+            turnoEnProceso = false; // Marcar que no hay turno en proceso
 
             turnoActualElement.textContent = 'TURNO';
             servicioActualElement.textContent = 'SERVICIO';
@@ -412,10 +538,31 @@
 
             btnAtender.style.display = 'none';
             btnAplazar.style.display = 'none';
+
+            // Habilitar botones de llamar turno
+            habilitarBotonesLlamar();
+
+            console.log('🔄 Interfaz limpiada - turnoEnProceso:', turnoEnProceso);
         }
 
         // Event listeners
         btnLlamarEspecifico.addEventListener('click', function() {
+            // Verificar si hay un turno en proceso
+            if (turnoEnProceso) {
+                console.log('❌ Intento de llamar turno específico bloqueado - turno en proceso');
+                mostrarModalAdvertencia();
+                return;
+            }
+
+            // Verificar si el botón está deshabilitado
+            if (this.disabled) {
+                console.log('❌ Intento de llamar turno específico en botón deshabilitado');
+                mostrarModalAdvertencia();
+                return;
+            }
+
+            console.log('✅ Llamando turno específico - no hay turno en proceso');
+
             const codigo = codigoInput.value.trim().toUpperCase();
             const numero = numeroInput.value.trim();
 
@@ -435,7 +582,7 @@
                     numero: parseInt(numero)
                 })
             })
-            .then(response => response.json())
+            .then(handleFetchResponse)
             .then(data => {
                 if (data.success) {
                     actualizarInterfazTurno(data.turno);
@@ -443,48 +590,168 @@
                     codigoInput.value = '';
                     numeroInput.value = '';
                 } else {
-                    mostrarModal('Error', data.message, 'error');
+                    // Si hay un turno en proceso, mostrar modal específico
+                    if (data.turno_en_proceso) {
+                        mostrarModal('Turno en Proceso',
+                            `Ya tiene el turno ${data.turno_en_proceso} en proceso. Debe marcarlo como "Atendido" antes de llamar un nuevo turno.`,
+                            'error');
+                    } else {
+                        mostrarModal('Error', data.message, 'error');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                mostrarModal('Error', 'Error de conexión', 'error');
+                mostrarModal('Error', error.message || 'Error de conexión', 'error');
             });
         });
 
-        botonesLlamarSiguiente.forEach(button => {
-            button.addEventListener('click', function() {
-                const servicioId = this.dataset.servicioId;
+        // Event delegation para interceptar TODOS los clics en botones de llamar
+        function agregarEventListenersBotonesLlamar() {
+            console.log('🔧 Configurando event delegation para botones de llamar');
 
-                fetch('{{ route("asesor.llamar-siguiente-turno") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        servicio_id: parseInt(servicioId)
-                    })
+            // Remover event listener anterior si existe
+            document.removeEventListener('click', interceptarClicksBotonesLlamar, true);
+
+            // Agregar event listener con captura (se ejecuta ANTES que otros)
+            document.addEventListener('click', interceptarClicksBotonesLlamar, true);
+
+            console.log('✅ Event delegation configurado');
+        }
+
+        function interceptarClicksBotonesLlamar(event) {
+            // Verificar si el clic fue en un botón de llamar siguiente
+            if (event.target.classList.contains('btn-llamar-siguiente')) {
+                console.log('🔍 Clic interceptado en botón de llamar siguiente');
+                console.log('📊 Estado actual:', {
+                    turnoEnProceso: turnoEnProceso,
+                    buttonDisabled: event.target.disabled,
+                    buttonText: event.target.textContent.trim()
+                });
+
+                // VERIFICACIÓN CRÍTICA: Si hay turno en proceso, bloquear COMPLETAMENTE
+                if (turnoEnProceso) {
+                    console.log('❌ BLOQUEADO - Hay turno en proceso');
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                    mostrarModalAdvertencia();
+                    return false;
+                }
+
+                // VERIFICACIÓN: Si el botón está deshabilitado
+                if (event.target.disabled) {
+                    console.log('❌ BLOQUEADO - Botón deshabilitado');
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                    mostrarModalAdvertencia();
+                    return false;
+                }
+
+                console.log('✅ PERMITIDO - Ejecutando función de llamar turno');
+
+                // DETENER la propagación para evitar otros listeners
+                event.stopImmediatePropagation();
+                event.preventDefault();
+
+                // Ejecutar nuestra función con validaciones
+                manejarClickLlamarTurno(event);
+
+                return false;
+            }
+        }
+
+        function manejarClickLlamarTurno(event) {
+            console.log('🔍 manejarClickLlamarTurno ejecutado');
+            console.log('📊 Estado actual:', {
+                turnoEnProceso: turnoEnProceso,
+                buttonDisabled: event.target.disabled,
+                buttonText: event.target.textContent.trim(),
+                turnoActual: turnoActual?.codigo_completo || 'ninguno'
+            });
+
+            // Verificar si hay un turno en proceso
+            if (turnoEnProceso) {
+                console.log('❌ Intento de llamar turno bloqueado - turno en proceso');
+                console.log('📊 Estado actual - turnoActual:', turnoActual);
+                console.log('📊 Botón atender visible:', btnAtender.style.display === 'block');
+                mostrarModalAdvertencia();
+                return;
+            }
+
+            // Verificar si el botón está deshabilitado
+            if (event.target.disabled) {
+                console.log('❌ Intento de llamar turno en botón deshabilitado');
+                mostrarModalAdvertencia();
+                return;
+            }
+
+            console.log('✅ Llamando turno - no hay turno en proceso');
+
+            const servicioId = event.target.dataset.servicioId;
+            console.log('🔍 Datos de la petición:', {
+                servicioId: servicioId,
+                servicioIdParsed: parseInt(servicioId),
+                url: '{{ route("asesor.llamar-siguiente-turno") }}'
+            });
+
+            fetch('{{ route("asesor.llamar-siguiente-turno") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    servicio_id: parseInt(servicioId)
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        actualizarInterfazTurno(data.turno);
-                        mostrarModal('Turno Llamado', data.message);
-                        // Recargar la página para actualizar las estadísticas
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
+            })
+            .then(async (response) => {
+                // Manejo especial para evitar que aparezca "400 Bad Request" en consola
+                const contentType = response.headers.get('content-type');
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Respuesta no JSON recibida:', text.substring(0, 200));
+                    throw new Error('El servidor devolvió una respuesta inválida.');
+                }
+
+                // Para 400 y otros códigos, simplemente devolver el JSON sin mostrar error
+                if (response.status === 400 || response.status === 403) {
+                    console.log('🔍 Respuesta del servidor (400/403):', response.status);
+                    return response.json();
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 Respuesta del servidor:', data);
+
+                if (data.success) {
+                    actualizarInterfazTurno(data.turno);
+                    mostrarModal('Turno Llamado', data.message);
+                    // NO recargar la página - mantener el estado de bloqueo
+                    console.log('✅ Turno llamado, botones bloqueados hasta marcar como atendido');
+                } else {
+                    console.log('❌ Error en respuesta del servidor:', data);
+                    // Si hay un turno en proceso, mostrar modal específico
+                    if (data.turno_en_proceso) {
+                        console.log('🚫 Turno en proceso detectado:', data.turno_en_proceso);
+                        mostrarModal('Turno en Proceso',
+                            `Ya tiene el turno ${data.turno_en_proceso} en proceso. Debe marcarlo como "Atendido" antes de llamar un nuevo turno.`,
+                            'error');
                     } else {
                         mostrarModal('Error', data.message, 'error');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    mostrarModal('Error', 'Error de conexión', 'error');
-                });
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error en catch:', error);
+                mostrarModal('Error', error.message || 'Error de conexión', 'error');
             });
-        });
+        }
 
         btnAtender.addEventListener('click', function() {
             if (!turnoActual) return;
@@ -502,6 +769,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    console.log('✅ Turno marcado como atendido - habilitando botones');
                     limpiarInterfazTurno();
                     mostrarModal('Turno Atendido', data.message);
                 } else {
@@ -551,37 +819,76 @@
             this.value = this.value.toUpperCase();
         });
 
-        // Manejar cambio de estado del asesor
-        const estadoSelect = document.getElementById('estado-asesor');
-        estadoSelect.addEventListener('change', function() {
-            const nuevoEstado = this.value;
+        // Esta función se eliminó para evitar duplicación con la inicialización principal
 
-            fetch('{{ route('asesor.actualizar-estado') }}', {
-                method: 'POST',
+
+
+        // Función para verificar el estado del turno en el servidor
+        function verificarEstadoTurnoEnServidor() {
+            fetch('{{ route("asesor.verificar-turno-en-proceso") }}', {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: JSON.stringify({
-                    estado: nuevoEstado
-                })
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    console.log('Estado actualizado:', data.estado);
-                    // Opcional: mostrar notificación de éxito
+                if (data.turno_en_proceso) {
+                    console.log('🔒 Turno en proceso detectado en servidor:', data.turno.codigo_completo);
+                    actualizarInterfazTurno(data.turno);
                 } else {
-                    console.error('Error al actualizar estado:', data.message);
-                    // Revertir el select al estado anterior si hay error
-                    this.value = '{{ $user->estado_asesor }}';
+                    console.log('🔓 No hay turno en proceso en servidor');
+                    limpiarInterfazTurno();
                 }
             })
             .catch(error => {
-                console.error('Error de conexión:', error);
-                // Revertir el select al estado anterior si hay error
-                this.value = '{{ $user->estado_asesor }}';
+                console.error('Error verificando estado del turno:', error);
+                // En caso de error, usar la lógica visual como fallback
+                if (btnAtender.style.display === 'block' || btnAplazar.style.display === 'block') {
+                    turnoEnProceso = true;
+                    deshabilitarBotonesLlamar();
+                } else {
+                    turnoEnProceso = false;
+                    habilitarBotonesLlamar();
+                }
             });
+        }
+
+        // Interceptar peticiones HTTP para bloquear llamadas duplicadas
+        function interceptarPeticionesHTTP() {
+            // Guardar la función fetch original
+            const fetchOriginal = window.fetch;
+
+            // Sobrescribir fetch para interceptar peticiones
+            window.fetch = function(...args) {
+                const url = args[0];
+
+                // Si es una petición para llamar turno y hay un turno en proceso
+                if (typeof url === 'string' && url.includes('llamar-siguiente-turno') && turnoEnProceso) {
+                    console.log('🚫 Petición HTTP bloqueada - turno en proceso');
+
+                    // Retornar una promesa rechazada
+                    return Promise.reject(new Error('Petición bloqueada: hay un turno en proceso'));
+                }
+
+                // Si no hay conflicto, ejecutar fetch normal
+                return fetchOriginal.apply(this, args);
+            };
+        }
+
+        // Inicialización al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Dashboard del asesor cargado');
+
+            // Interceptar peticiones HTTP
+            interceptarPeticionesHTTP();
+
+            // Agregar event listeners a todos los botones de llamar
+            agregarEventListenersBotonesLlamar();
+
+            // Verificar estado del turno en el servidor
+            verificarEstadoTurnoEnServidor();
         });
     </script>
 </body>

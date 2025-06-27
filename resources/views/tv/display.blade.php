@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Turnero HUV') }} - Visualizador TV</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
 
     <!-- Fonts - Optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -311,6 +312,16 @@
             </p>
             <!-- Indicador de actualización (oculto por defecto) -->
             <div id="updateIndicator" class="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full opacity-0 transition-opacity duration-300"></div>
+
+            <!-- Indicador de estado de sincronización -->
+            <div id="syncIndicator" class="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs opacity-75">
+                🔄 Sincronizando...
+            </div>
+
+            <!-- Indicador de estado de audio en segundo plano -->
+            <div id="backgroundAudioIndicator" class="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75" style="display: none;">
+                🔊 Audio activo en segundo plano
+            </div>
         </div>
     </div>
 
@@ -318,6 +329,102 @@
         // Variables globales
         let turnos = []; // Historial de turnos
         let turnosVistos = new Set(); // Conjunto para rastrear turnos ya mostrados
+        let ultimoTurnoId = null; // ID del último turno para detectar nuevos
+        let sincronizacionActiva = true; // Control de sincronización
+
+        // Sistema de cola de audio
+        let colaAudio = []; // Cola de turnos pendientes de reproducir
+        let reproduciendoAudio = false; // Estado de reproducción actual
+        let sessionId = null; // ID único de sesión para evitar duplicados
+
+        // Generar ID único de sesión
+        function generarSessionId() {
+            return 'tv_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Obtener turnos ya reproducidos en esta sesión desde localStorage
+        function getTurnosReproducidos() {
+            try {
+                const stored = localStorage.getItem('turnos_reproducidos_' + sessionId);
+                return stored ? new Set(JSON.parse(stored)) : new Set();
+            } catch (e) {
+                return new Set();
+            }
+        }
+
+        // Guardar turno como reproducido en localStorage
+        function marcarTurnoReproducido(turnoId) {
+            try {
+                const reproducidos = getTurnosReproducidos();
+                reproducidos.add(turnoId);
+                localStorage.setItem('turnos_reproducidos_' + sessionId, JSON.stringify([...reproducidos]));
+            } catch (e) {
+                console.warn('No se pudo guardar en localStorage');
+            }
+        }
+
+        // Limpiar turnos reproducidos antiguos (más de 1 hora)
+        function limpiarTurnosAntiguos() {
+            try {
+                const keys = Object.keys(localStorage);
+                const ahora = Date.now();
+                const unaHora = 60 * 60 * 1000;
+
+                keys.forEach(key => {
+                    if (key.startsWith('turnos_reproducidos_tv_session_')) {
+                        const timestamp = parseInt(key.split('_')[3]);
+                        if (ahora - timestamp > unaHora) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.warn('No se pudo limpiar localStorage');
+            }
+        }
+
+        // Agregar turno a la cola de audio
+        function agregarAColaAudio(turno) {
+            // Verificar si ya está en la cola
+            const yaEnCola = colaAudio.some(t => t.id === turno.id);
+            if (!yaEnCola) {
+                colaAudio.push(turno);
+                console.log('🎵 Turno agregado a cola de audio:', turno.codigo_completo);
+                procesarColaAudio();
+            }
+        }
+
+        // Procesar cola de audio (reproducir siguiente si no está ocupado)
+        function procesarColaAudio() {
+            if (reproduciendoAudio || colaAudio.length === 0) {
+                return;
+            }
+
+            const siguienteTurno = colaAudio.shift();
+            reproduciendoAudio = true;
+
+            console.log('🔊 Reproduciendo audio:', siguienteTurno.codigo_completo);
+
+            // Marcar como reproducido antes de empezar
+            marcarTurnoReproducido(siguienteTurno.id);
+
+            // Reproducir audio con callback al terminar
+            playVoiceMessage(siguienteTurno, () => {
+                reproduciendoAudio = false;
+                console.log('✅ Audio completado:', siguienteTurno.codigo_completo);
+
+                // Procesar siguiente en la cola después de una pausa
+                setTimeout(() => {
+                    procesarColaAudio();
+                }, 1000); // Pausa de 1 segundo entre turnos
+            });
+        }
+
+        // Limpiar cola de audio
+        function limpiarColaAudio() {
+            colaAudio = [];
+            reproduciendoAudio = false;
+        }
         let currentConfig = {
             ticker_message: '{{ addslashes($tvConfig->ticker_message) }}',
             ticker_speed: {{ $tvConfig->ticker_speed }},
@@ -355,7 +462,6 @@
                         data.ticker_speed !== currentConfig.ticker_speed ||
                         data.ticker_enabled !== currentConfig.ticker_enabled) {
 
-                        console.log('Configuración del TV actualizada');
                         currentConfig = data;
                         applyTvConfig(data);
                     }
@@ -440,55 +546,67 @@
                 });
         }
 
-        // Actualizar la cola de turnos desde el servidor
+        // Función para actualizar la cola de turnos con sincronización completa
         function updateQueue() {
+            if (!sincronizacionActiva) return;
+
+            actualizarIndicadorSync('sincronizando');
+
             fetch('/api/turnos-llamados')
                 .then(response => response.json())
                 .then(data => {
-                    // Verificar si hay turnos nuevos
                     const newTurnos = data.turnos || [];
 
-                    // Verificar si hay nuevos turnos que no hayamos visto antes
-                    let hayNuevosTurnos = false;
+                    // SINCRONIZACIÓN COMPLETA: Reemplazar completamente la lista local
+                    const turnosAnteriores = [...turnos];
+                    turnos = [...newTurnos]; // Copiar exactamente lo que viene del servidor
 
-                    // Si tenemos nuevos turnos del API
-                    if (newTurnos.length > 0) {
-                        console.log('Turnos recibidos:', newTurnos.length);
+                    // Obtener turnos ya reproducidos en esta sesión
+                    const turnosReproducidos = getTurnosReproducidos();
 
-                        // Buscar el turno más reciente que no hayamos visto
-                        let turnoNuevo = null;
+                    // Detectar turnos nuevos que no han sido reproducidos
+                    const turnosNuevos = [];
 
-                        for (const turno of newTurnos) {
-                            // Verificar si este turno es realmente nuevo
-                            if (!turnosVistos.has(turno.id)) {
-                                turnoNuevo = turno;
-                                turnosVistos.add(turno.id); // Marcarlo como visto
-                                hayNuevosTurnos = true;
+                    // Separar turnos por estado
+                    const turnosLlamando = newTurnos.filter(t => t.estado === 'llamado');
+                    const turnosAtendidos = newTurnos.filter(t => t.estado === 'atendido');
 
-                                // Añadirlo al inicio de nuestra lista de turnos
-                                turnos.unshift(turno);
-
-                                // Conservar solo los últimos 5 para mostrar
-                                if (turnos.length > 5) {
-                                    turnos = turnos.slice(0, 5);
-                                }
-
-                                break; // Solo procesamos el más reciente
-                            }
+                    // Solo reproducir audio para turnos nuevos en estado "llamado"
+                    turnosLlamando.forEach(turno => {
+                        if (!turnosReproducidos.has(turno.id)) {
+                            turnosNuevos.push(turno);
+                            console.log('🔊 Nuevo turno para reproducir:', turno.codigo_completo);
                         }
+                    });
 
-                        // Actualizar la interfaz con todos los turnos
-                        renderTurnos(turnos);
+                    // SIEMPRE actualizar la interfaz para mantener sincronización
+                    renderTurnos(turnos);
 
-                        // Reproducir sonido solo si hay un turno realmente nuevo
-                        if (turnoNuevo) {
-                            console.log('Nuevo turno detectado! Reproduciendo sonido...', turnoNuevo.codigo_completo);
-                            playTurnoSound(turnoNuevo);
-                        }
+                    // Agregar turnos nuevos a la cola de audio (en orden inverso para mantener cronología)
+                    if (turnosNuevos.length > 0) {
+                        console.log('🔊 Nuevos turnos detectados para audio:', turnosNuevos.length);
+
+                        // Agregar en orden cronológico (más antiguos primero)
+                        turnosNuevos.reverse().forEach(turno => {
+                            agregarAColaAudio(turno);
+                        });
                     }
+
+                    // Log de estado para debugging (solo cuando hay cambios)
+                    const llamandoCount = newTurnos.filter(t => t.estado === 'llamado').length;
+                    const atendidoCount = newTurnos.filter(t => t.estado === 'atendido').length;
+                    const estadisticasActuales = `${llamandoCount}-${atendidoCount}`;
+                    if (window.lastEstadisticas !== estadisticasActuales) {
+                        console.log(`📊 Turnos: ${llamandoCount} llamando, ${atendidoCount} atendidos`);
+                        window.lastEstadisticas = estadisticasActuales;
+                    }
+
+                    // Actualizar indicador de éxito
+                    actualizarIndicadorSync('sincronizado');
                 })
                 .catch(error => {
-                    console.error('Error al actualizar cola de turnos:', error);
+                    console.error('❌ Error de sincronización:', error);
+                    actualizarIndicadorSync('error');
                 });
         }
 
@@ -528,25 +646,36 @@
                 // Crear elemento del turno
                 const turnoElement = document.createElement('div');
 
-                // Solo el primer elemento (más reciente) de la primera renderización tendrá una clase especial
-                // Revisamos con un atributo data para saber si este turno específico ya se animó
+                // Determinar estilo según el estado
+                const esAtendido = turno.estado === 'atendido';
                 const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
 
-                if (i === 0 && !yaAnimado) {
-                    turnoElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg new-turn';
-                    // Marcar este turno como ya animado para que no se repita
+                // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
+                let clases = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg';
+
+                // Animación solo para turnos nuevos llamados
+                if (i === 0 && !yaAnimado && !esAtendido) {
+                    clases += ' new-turn';
                     sessionStorage.setItem('turno_animado_' + turno.id, 'true');
-                } else {
-                    turnoElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg';
                 }
 
+                turnoElement.className = clases;
+
+                // Badge de estado en la esquina superior derecha
+                const estadoBadge = esAtendido ?
+                    '<div class="absolute -top-3 right-2"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
+                    '';
+
                 turnoElement.innerHTML = `
-                    <div class="grid grid-cols-2 gap-4 items-center">
-                        <div class="text-center">
-                            <div class="text-6xl font-bold">${turno.codigo_completo}</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-3xl font-semibold">CAJA ${turno.numero_caja || ''}</div>
+                    <div class="relative">
+                        ${estadoBadge}
+                        <div class="grid grid-cols-2 gap-4 items-center">
+                            <div class="text-center">
+                                <div class="text-6xl font-bold">${turno.codigo_completo}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-semibold">CAJA ${turno.numero_caja || ''}</div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -574,171 +703,106 @@
             }
         }
 
-        // Función para reproducir sonido y sintetizar voz para un turno
-        function playTurnoSound(turno) {
-            // Mostrar indicador visual de nuevo turno (opcional)
-            document.getElementById('updateIndicator').style.opacity = '1';
-            setTimeout(() => {
-                document.getElementById('updateIndicator').style.opacity = '0';
-            }, 3000);
-
-            try {
-                // Crear elemento de audio para reproducir el archivo turno.mp3
-                const audio = new Audio('/audio/turnero/turno.mp3');
-                audio.volume = 0.8; // Volumen al 80%
-
-                // Configurar eventos del audio
-                audio.addEventListener('ended', function() {
-                    // Cuando termine el sonido, iniciar la síntesis de voz
-                    playVoiceMessage(turno);
-                });
-
-                audio.addEventListener('error', function(e) {
-                    console.warn('Error al cargar turno.mp3, usando sonido de respaldo:', e);
-                    // Si falla el archivo, usar el tono sintético como respaldo
-                    playFallbackSound(turno);
-                });
-
-                // Reproducir el archivo de audio
-                audio.play().catch(error => {
-                    console.warn('Error al reproducir turno.mp3, usando sonido de respaldo:', error);
-                    // Si falla la reproducción, usar el tono sintético como respaldo
-                    playFallbackSound(turno);
-                });
 
 
-            } catch (error) {
-                console.error('Error al crear elemento de audio:', error);
-                // Plan B: usar el tono sintético
-                playFallbackSound(turno);
-            }
-        }
+        // Función para reproducir el mensaje de voz usando archivos pre-generados
+        function playVoiceMessage(turno, onComplete = null) {
+            // Extraer letra y número del código completo
+            const codigoCompleto = turno.codigo_completo;
 
-        // Función para reproducir el mensaje de voz
-        function playVoiceMessage(turno) {
-            // Mensaje para el turno
-            const mensaje = `Turno ${turno.codigo_completo}, por favor diríjase a la caja ${turno.numero_caja}`;
+            // Buscar la primera letra
+            const letra = codigoCompleto.charAt(0);
 
-            // Crear instancia de síntesis de voz
-            const synth = window.speechSynthesis;
+            // Extraer solo los números del código (ej: "CFU-001" -> "001")
+            const numeroMatch = codigoCompleto.match(/\d+/);
+            const numero = numeroMatch ? parseInt(numeroMatch[0], 10).toString() : '1';
 
-            // Cancelar cualquier síntesis anterior
-            synth.cancel();
+            const numeroCaja = turno.numero_caja;
 
-            const utterance = new SpeechSynthesisUtterance(mensaje);
+            // Crear secuencia de archivos de audio (agrupada para sonar más natural)
+            const audioSequence = [
+                '/audio/turnero/turno.mp3',                                 // Sonido de alerta/pito para llamar atención
+                '/audio/turnero/voice/frases/turno.mp3',                    // "Turno"
+                `/audio/turnero/voice/letras/${letra}.mp3`,                 // Letra (A, B, C, etc.)
+                `/audio/turnero/voice/numeros/${numero}.mp3`,               // Número (123, etc.)
+                '/audio/turnero/voice/frases/dirigirse-caja-numero.mp3',    // "por favor diríjase a la caja número"
+                `/audio/turnero/voice/numeros/${numeroCaja}.mp3`            // Número de caja
+            ];
 
-            // Configurar voz femenina en español
-            utterance.lang = 'es-ES';
-            utterance.rate = 0.9; // Velocidad ligeramente más lenta para mayor claridad
-            utterance.pitch = 1.0; // Tono normal
-            utterance.volume = 1.0; // Volumen máximo
+            console.log('🔊 Iniciando reproducción de audio para:', codigoCompleto);
 
-            // Seleccionar una voz femenina
-            let voices = synth.getVoices();
+            // Mostrar indicador temporal si la página está oculta
+            const audioIndicator = document.getElementById('backgroundAudioIndicator');
+            if (document.hidden && audioIndicator) {
+                audioIndicator.style.display = 'block';
+                audioIndicator.innerHTML = `🔊 Reproduciendo: ${codigoCompleto}`;
+                audioIndicator.className = 'absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-xs opacity-90';
 
-            // Función para seleccionar la mejor voz femenina disponible
-            function selectFemaleVoice() {
-                // Obtener voces actualizadas
-                voices = synth.getVoices();
-
-                // Prioridad de voces:
-                // 1. Microsoft Helena - voz femenina española de alta calidad
-                // 2. Google español femenina
-                // 3. Cualquier voz femenina en español
-                // 4. Cualquier voz en español
-
-                // Buscar voces específicas de alta calidad
-                let selectedVoice = voices.find(voice =>
-                    voice.name.includes('Helena') && voice.name.includes('Spanish'));
-
-                if (!selectedVoice) {
-                    selectedVoice = voices.find(voice =>
-                        voice.name.includes('Google') &&
-                        voice.name.toLowerCase().includes('español') &&
-                        voice.name.toLowerCase().includes('female'));
-                }
-
-                if (!selectedVoice) {
-                    // Buscar cualquier voz femenina en español
-                    selectedVoice = voices.find(voice =>
-                        voice.lang.includes('es') &&
-                        (voice.name.toLowerCase().includes('female') ||
-                        voice.name.toLowerCase().includes('mujer') ||
-                        voice.name.toLowerCase().includes('fem')));
-                }
-
-                if (!selectedVoice) {
-                    // Como último recurso, cualquier voz en español
-                    selectedVoice = voices.find(voice => voice.lang.includes('es'));
-                }
-
-                console.log('Voz seleccionada:', selectedVoice ? selectedVoice.name : 'ninguna');
-                return selectedVoice;
-            }
-
-            // Si las voces ya están cargadas
-            if (voices.length > 0) {
-                utterance.voice = selectFemaleVoice();
-                synth.speak(utterance);
-            } else {
-                // Si las voces no están cargadas, esperar el evento voiceschanged
-                speechSynthesis.onvoiceschanged = function() {
-                    utterance.voice = selectFemaleVoice();
-                    synth.speak(utterance);
-                };
-            }
-
-            // Registrar en consola para depuración
-            console.log('Reproduciendo mensaje de voz:', mensaje);
-        }
-
-        // Función de respaldo para generar tono sintético si falla el archivo de audio
-        function playFallbackSound(turno) {
-            try {
-                // Crear un contexto de audio para generar el sonido de alerta
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-                // Crear oscilador para generar un tono de alerta suave
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-
-                // Configurar un tono agradable (LA4 - 440Hz)
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-
-                // Configurar la envolvente del sonido para que sea suave
-                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
-                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.8);
-
-                // Conectar nodos
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                // Reproducir el tono
-                oscillator.start();
-                oscillator.stop(audioContext.currentTime + 0.8);
-
-                // Cuando termine el sonido, iniciar la síntesis de voz
+                // Volver al estado normal después de 5 segundos
                 setTimeout(() => {
-                    playVoiceMessage(turno);
-                }, 900); // Esperar 900ms para que termine el tono antes de iniciar la voz
-
-            } catch (error) {
-                console.error('Error al reproducir sonido de respaldo:', error);
-
-                // Plan C: reproducir directamente la voz sin sonido
-                playVoiceMessage(turno);
+                    if (document.hidden && audioIndicator) {
+                        audioIndicator.innerHTML = '🔊 Audio activo en segundo plano';
+                        audioIndicator.className = 'absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75';
+                    }
+                }, 5000);
             }
+
+            // Usar la función mejorada que funciona en segundo plano
+            playAudioSequence(audioSequence, 0, onComplete);
+        }
+
+
+
+
+
+        // Función para actualizar indicador de sincronización
+        function actualizarIndicadorSync(estado) {
+            const indicator = document.getElementById('syncIndicator');
+            if (!indicator) return;
+
+            switch(estado) {
+                case 'sincronizando':
+                    indicator.innerHTML = '🔄 Sincronizando...';
+                    indicator.className = 'absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs opacity-75';
+                    break;
+                case 'sincronizado':
+                    indicator.innerHTML = '✅ Sincronizado';
+                    indicator.className = 'absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75';
+                    break;
+                case 'error':
+                    indicator.innerHTML = '❌ Error';
+                    indicator.className = 'absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs opacity-75';
+                    break;
+            }
+        }
+
+        // Función para sincronización inicial
+        function sincronizacionInicial() {
+            actualizarIndicadorSync('sincronizando');
+
+            // Generar nuevo ID de sesión si no existe
+            if (!sessionId) {
+                sessionId = generarSessionId();
+                limpiarTurnosAntiguos(); // Limpiar datos antiguos
+            }
+
+            // Limpiar estado local
+            turnos = [];
+            turnosVistos.clear();
+            ultimoTurnoId = null;
+            limpiarColaAudio();
+
+            // Hacer primera sincronización
+            updateQueue();
         }
 
         // Escuchar eventos de Pusher para turnos en tiempo real
         function setupRealTimeListeners() {
-            // En modo polling, no intentamos conectar a WebSockets
-            console.log('Modo polling activado para actualizaciones de turnos');
+            // Sincronización inicial
+            sincronizacionInicial();
 
-            // Aumentamos la frecuencia de polling para compensar la falta de WebSockets
-            setInterval(updateQueue, 2000); // Actualizar cada 2 segundos en lugar de 5
+            // Aumentamos la frecuencia de polling para actualizaciones en tiempo real
+            setInterval(updateQueue, 1000); // Actualizar cada 1 segundo para mejor tiempo real
         }
 
         // Función auxiliar para comparar arrays de multimedia
@@ -957,8 +1021,320 @@
             }
         }
 
+        // Detectar cuando la ventana vuelve a estar activa para re-sincronizar
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && sincronizacionActiva) {
+                sincronizacionInicial();
+            }
+        });
+
+        // Detectar cuando la ventana obtiene el foco para re-sincronizar
+        window.addEventListener('focus', function() {
+            if (sincronizacionActiva) {
+                setTimeout(sincronizacionInicial, 500); // Pequeño delay para asegurar conexión
+            }
+        });
+
+        // Variables para mantener la página activa
+        let keepAliveInterval;
+        let audioContext;
+        let wakeLockSentinel = null;
+
+        // Función para mantener la página activa en segundo plano
+        function mantenerPaginaActiva() {
+            // 1. Crear AudioContext para mantener el audio activo
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                // Crear un oscilador silencioso que mantenga el contexto activo
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            } catch (e) {
+                if (!window.audioContextWarningShown) {
+                    console.warn('No se pudo crear AudioContext:', e);
+                    window.audioContextWarningShown = true;
+                }
+            }
+
+            // 2. Usar Page Visibility API para detectar cuando la página se oculta
+            document.addEventListener('visibilitychange', function() {
+                const audioIndicator = document.getElementById('backgroundAudioIndicator');
+
+                if (document.hidden) {
+                    console.log('📱 Página oculta - manteniendo activa para audio');
+                    // Mostrar indicador de que el audio está activo en segundo plano
+                    if (audioIndicator) {
+                        audioIndicator.style.display = 'block';
+                        audioIndicator.innerHTML = '🔊 Audio activo en segundo plano';
+                        audioIndicator.className = 'absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75';
+                    }
+
+                    // Forzar que el audio siga funcionando
+                    if (audioContext && audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+                } else {
+                    console.log('📱 Página visible nuevamente');
+                    // Ocultar indicador cuando la página vuelve a estar visible
+                    if (audioIndicator) {
+                        audioIndicator.style.display = 'none';
+                    }
+                }
+            });
+
+            // 3. Usar Wake Lock API para mantener la pantalla activa (si está disponible)
+            if ('wakeLock' in navigator) {
+                navigator.wakeLock.request('screen').then(function(sentinel) {
+                    wakeLockSentinel = sentinel;
+                    console.log('🔒 Wake Lock activado - pantalla se mantendrá activa');
+                }).catch(function(err) {
+                    console.warn('No se pudo activar Wake Lock:', err);
+                });
+            }
+
+            // 4. Heartbeat para mantener la conexión activa
+            keepAliveInterval = setInterval(function() {
+                // Enviar una pequeña petición para mantener la conexión activa
+                fetch('/api/tv-config', {
+                    method: 'GET',
+                    cache: 'no-cache'
+                }).catch(() => {
+                    // Ignorar errores, es solo para mantener activa la conexión
+                });
+
+                // Asegurar que el AudioContext siga activo
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            }, 30000); // Cada 30 segundos
+        }
+
+        // Función mejorada para reproducir audio que funciona en segundo plano
+        function playAudioSequence(audioFiles, index = 0, onComplete = null) {
+            if (index >= audioFiles.length) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            const audioFile = audioFiles[index];
+            const audio = new Audio(audioFile);
+
+            // Configurar el audio para que funcione en segundo plano
+            audio.preload = 'auto';
+
+            // Determinar el volumen según el tipo de archivo
+            let targetVolume = 1.0;
+            let gainValue = 1.0;
+
+            // El pito inicial mantiene su volumen original
+            if (audioFile.includes('turno.mp3') && !audioFile.includes('voice/')) {
+                targetVolume = 1.0;  // Volumen normal para el pito
+                gainValue = 1.0;
+            } else {
+                // Aumentar volumen para archivos de voz
+                targetVolume = 1.0;  // Volumen máximo del navegador
+                gainValue = 3.0;     // Amplificación adicional con Web Audio API
+            }
+
+            audio.volume = targetVolume;
+
+            // Log para debugging del volumen
+            console.log(`🔊 Reproduciendo: ${audioFile.split('/').pop()} - Volumen: ${targetVolume}, Ganancia: ${gainValue}x`);
+
+            // Usar Web Audio API para amplificar el volumen de los archivos de voz
+            let audioSource = null;
+            let gainNode = null;
+
+            try {
+                if (audioContext && gainValue > 1.0) {
+                    audioSource = audioContext.createMediaElementSource(audio);
+                    gainNode = audioContext.createGain();
+                    gainNode.gain.value = gainValue;
+                    audioSource.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                }
+            } catch (e) {
+                // Si Web Audio API falla, usar volumen estándar
+                console.warn('Web Audio API no disponible para amplificación:', e);
+            }
+
+            // Asegurar que el AudioContext esté activo antes de reproducir
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                    reproducirAudio();
+                });
+            } else {
+                reproducirAudio();
+            }
+
+            function reproducirAudio() {
+                audio.onended = function() {
+                    // Limpiar conexiones de Web Audio API
+                    if (audioSource && gainNode) {
+                        try {
+                            audioSource.disconnect();
+                            gainNode.disconnect();
+                        } catch (e) {
+                            // Ignorar errores de desconexión
+                        }
+                    }
+
+                    // Pequeña pausa entre archivos para que suene más natural
+                    setTimeout(() => {
+                        playAudioSequence(audioFiles, index + 1, onComplete);
+                    }, 200);
+                };
+
+                audio.onerror = function() {
+                    console.error('Error al reproducir audio:', audioFiles[index]);
+                    // Limpiar conexiones en caso de error
+                    if (audioSource && gainNode) {
+                        try {
+                            audioSource.disconnect();
+                            gainNode.disconnect();
+                        } catch (e) {
+                            // Ignorar errores de desconexión
+                        }
+                    }
+
+                    // Continuar con el siguiente archivo aunque haya error
+                    setTimeout(() => {
+                        playAudioSequence(audioFiles, index + 1, onComplete);
+                    }, 200);
+                };
+
+                // Reproducir con manejo de errores
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error('Error al iniciar reproducción:', error);
+                        // Limpiar conexiones en caso de error
+                        if (audioSource && gainNode) {
+                            try {
+                                audioSource.disconnect();
+                                gainNode.disconnect();
+                            } catch (e) {
+                                // Ignorar errores de desconexión
+                            }
+                        }
+
+                        // Intentar continuar con el siguiente archivo
+                        setTimeout(() => {
+                            playAudioSequence(audioFiles, index + 1, onComplete);
+                        }, 200);
+                    });
+                }
+            }
+        }
+
+        // Función para habilitar audio con interacción del usuario
+        function habilitarAudioConInteraccion() {
+            // Crear un overlay invisible que capture el primer clic/toque
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                color: white;
+                font-size: 24px;
+                text-align: center;
+                cursor: pointer;
+            `;
+            overlay.innerHTML = `
+                <div>
+                    <div style="font-size: 48px; margin-bottom: 20px;">🔊</div>
+                    <div>Toque la pantalla para habilitar el audio</div>
+                    <div style="font-size: 16px; margin-top: 10px; opacity: 0.7;">
+                        (Requerido por el navegador para reproducir sonidos)
+                    </div>
+                </div>
+            `;
+
+            // Función para habilitar audio
+            function enableAudio() {
+                try {
+                    // Crear y activar AudioContext
+                    if (!audioContext) {
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+
+                    // Reproducir un sonido silencioso para "despertar" el audio
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    gainNode.gain.value = 0; // Volumen 0 (silencioso)
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.1);
+
+                    // Remover overlay
+                    document.body.removeChild(overlay);
+
+                    console.log('✅ Audio habilitado correctamente');
+                } catch (e) {
+                    console.error('Error al habilitar audio:', e);
+                    // Remover overlay aunque haya error
+                    document.body.removeChild(overlay);
+                }
+            }
+
+            // Agregar event listeners
+            overlay.addEventListener('click', enableAudio);
+            overlay.addEventListener('touchstart', enableAudio);
+
+            // Agregar overlay al DOM
+            document.body.appendChild(overlay);
+
+            // Auto-remover después de 10 segundos si no hay interacción
+            setTimeout(() => {
+                if (document.body.contains(overlay)) {
+                    enableAudio();
+                }
+            }, 10000);
+        }
+
+        // Función para detectar si necesitamos interacción del usuario
+        function verificarNecesidadInteraccion() {
+            // En navegadores modernos, el audio requiere interacción del usuario
+            // Mostrar overlay solo si es necesario
+            try {
+                const testAudio = new Audio();
+                const playPromise = testAudio.play();
+
+                if (playPromise !== undefined) {
+                    playPromise.catch(() => {
+                        // El audio requiere interacción del usuario
+                        habilitarAudioConInteraccion();
+                    });
+                }
+            } catch (e) {
+                // Asumir que necesitamos interacción
+                habilitarAudioConInteraccion();
+            }
+        }
+
         // Inicializar cuando la página carga
         document.addEventListener('DOMContentLoaded', function() {
+            // Verificar si necesitamos interacción del usuario para el audio
+            verificarNecesidadInteraccion();
+
+            // Activar funciones para mantener la página activa
+            mantenerPaginaActiva();
+
             // Actualizar la hora inmediatamente y cada minuto
             updateTime();
             setInterval(updateTime, 60000);
@@ -971,12 +1347,29 @@
             // Cargar datos iniciales inmediatamente
             updateTvConfig();
             loadMultimedia();
-            updateQueue();
 
             // Establecer intervalos para actualizaciones periódicas adicionales
             setInterval(updateTvConfig, 5000);
             setInterval(loadMultimedia, 5000);
             // La actualización de turnos ahora se maneja en setupRealTimeListeners con intervalo más frecuente
+        });
+
+        // Limpiar recursos cuando la página se cierre
+        window.addEventListener('beforeunload', function() {
+            // Limpiar intervalos
+            if (keepAliveInterval) {
+                clearInterval(keepAliveInterval);
+            }
+
+            // Liberar Wake Lock
+            if (wakeLockSentinel) {
+                wakeLockSentinel.release();
+            }
+
+            // Cerrar AudioContext
+            if (audioContext) {
+                audioContext.close();
+            }
         });
 
         // Prevenir interacciones no deseadas en el TV

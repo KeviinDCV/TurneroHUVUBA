@@ -49,10 +49,25 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            'usuario' => 'required|string',
-            'password' => 'required|string',
+        // Log de intento de login para auditoría
+        \Log::info('Intento de login', [
+            'usuario' => $request->usuario,
+            'ip' => $request->ip(),
+            'user_agent' => substr($request->userAgent(), 0, 100)
         ]);
+
+        try {
+            $request->validate([
+                'usuario' => 'required|string',
+                'password' => 'required|string',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Error de validación en login', [
+                'errors' => $e->errors(),
+                'request_data' => $request->except('password')
+            ]);
+            throw $e;
+        }
 
         // Buscar usuario por nombre_usuario
         $user = User::where('nombre_usuario', $request->usuario)->first();
@@ -71,8 +86,11 @@ class AuthController extends Controller
 
             // Verificar que la autenticación funcionó
             if (Auth::check()) {
-                // Actualizar información de sesión
-                $user->actualizarSession($request->session()->getId(), $request->ip());
+                // Laravel puede regenerar la sesión después del login, obtener la nueva sesión ID
+                $sessionId = $request->session()->getId();
+
+                // Actualizar información de sesión con la sesión actual
+                $user->actualizarSession($sessionId, $request->ip());
 
                 // Redirigir según el rol
                 if ($user->esAdministrador()) {

@@ -259,6 +259,30 @@ class AsesorController extends Controller
             return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
         }
 
+        // VALIDACIÓN CRÍTICA: Verificar si el asesor ya tiene un turno en proceso
+        $turnoEnProceso = Turno::where('asesor_id', $user->id)
+            ->where('caja_id', $cajaId)
+            ->where('estado', 'llamado')
+            ->delDia()
+            ->first();
+
+        if ($turnoEnProceso) {
+            // Log para debugging
+            \Log::info('Turno en proceso encontrado', [
+                'user_id' => $user->id,
+                'caja_id' => $cajaId,
+                'turno_id' => $turnoEnProceso->id,
+                'turno_codigo' => $turnoEnProceso->codigo_completo,
+                'estado' => $turnoEnProceso->estado
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe marcar el turno actual como "Atendido" antes de llamar un nuevo turno.',
+                'turno_en_proceso' => $turnoEnProceso->codigo_completo
+            ], 400);
+        }
+
         $request->validate([
             'servicio_id' => 'required|exists:servicios,id'
         ]);
@@ -418,6 +442,21 @@ class AsesorController extends Controller
 
         if (!$user->esAsesor() || !$cajaId) {
             return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+
+        // VALIDACIÓN CRÍTICA: Verificar si el asesor ya tiene un turno en proceso
+        $turnoEnProceso = Turno::where('asesor_id', $user->id)
+            ->where('caja_id', $cajaId)
+            ->where('estado', 'llamado')
+            ->delDia()
+            ->first();
+
+        if ($turnoEnProceso) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe marcar el turno actual como "Atendido" antes de llamar un nuevo turno.',
+                'turno_en_proceso' => $turnoEnProceso->codigo_completo
+            ], 400);
         }
 
         $request->validate([
@@ -672,27 +711,38 @@ class AsesorController extends Controller
     }
 
     /**
-     * Actualizar estado del asesor
+     * Verificar si el asesor tiene un turno en proceso
      */
-    public function actualizarEstado(Request $request)
+    public function verificarTurnoEnProceso()
     {
         $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
 
-        // Verificar que el usuario sea asesor
-        if (!$user->esAsesor()) {
+        if (!$user->esAsesor() || !$cajaId) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
-        $request->validate([
-            'estado' => 'required|in:disponible,ocupado,descanso'
-        ]);
+        $turnoEnProceso = Turno::where('asesor_id', $user->id)
+            ->where('caja_id', $cajaId)
+            ->where('estado', 'llamado')
+            ->delDia()
+            ->with('servicio')
+            ->first();
 
-        $user->actualizarEstado($request->estado);
+        if ($turnoEnProceso) {
+            return response()->json([
+                'turno_en_proceso' => true,
+                'turno' => [
+                    'id' => $turnoEnProceso->id,
+                    'codigo_completo' => $turnoEnProceso->codigo_completo,
+                    'servicio' => $turnoEnProceso->servicio->nombre,
+                    'prioridad' => $turnoEnProceso->prioridad
+                ]
+            ]);
+        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Estado actualizado correctamente',
-            'estado' => $user->getEstadoFormateado()
-        ]);
+        return response()->json(['turno_en_proceso' => false]);
     }
+
+
 }

@@ -100,7 +100,7 @@
                 <!-- Right side - Login Form -->
                 <div class="flex items-center justify-center p-8">
                     <div class="w-full max-w-sm space-y-4 transform transition-all duration-1000 animate-slide-left">
-                        <form method="POST" action="{{ route('admin.login.post') }}" class="space-y-4">
+                        <form method="POST" action="{{ route('admin.login.post') }}" class="space-y-4" id="loginForm">
                             @csrf
 
                             @if ($errors->has('session_active'))
@@ -178,28 +178,15 @@
     </div>
 
     <script>
-        // Verificar estado de autenticación cuando se carga la página
+        // Simplificar el manejo del formulario de login
         document.addEventListener('DOMContentLoaded', function() {
-            // Hacer una petición AJAX para verificar si el usuario está autenticado
-            fetch('/api/auth-check', {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.authenticated) {
-                    // Si está autenticado, redirigir inmediatamente
-                    window.location.href = data.redirect_url;
-                }
-            })
-            .catch(error => {
-                // Si hay error, no hacer nada (mostrar login normal)
-                console.log('Auth check failed, showing login form');
-            });
+            const form = document.getElementById('loginForm');
+
+            // Remover el event listener de AJAX y permitir envío normal del formulario
+            // El formulario se enviará de manera tradicional sin interceptar con JavaScript
         });
+
+        // La verificación de autenticación se maneja en el servidor (AuthController::showLogin)
 
         // Prevenir cache del navegador
         window.addEventListener('pageshow', function(event) {

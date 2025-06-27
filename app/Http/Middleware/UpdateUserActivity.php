@@ -24,6 +24,8 @@ class UpdateUserActivity
             $user = Auth::user();
             $currentSessionId = session()->getId();
 
+
+
             // Verificar si la sesión actual coincide con la almacenada
             if ($user->session_id === $currentSessionId) {
                 // Actualizar solo la actividad, mantener la misma sesión
@@ -32,13 +34,32 @@ class UpdateUserActivity
                     'last_ip' => $request->ip()
                 ]);
             } else {
-                // Si la sesión no coincide, cerrar sesión por seguridad
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+                // Si no hay session_id almacenado, es un login reciente, actualizar la sesión
+                if (empty($user->session_id)) {
+                    $user->actualizarSession($currentSessionId, $request->ip());
+                } else {
+                    // Verificar si la sesión almacenada existe en la tabla sessions
+                    $storedSessionExists = \DB::table('sessions')->where('id', $user->session_id)->exists();
 
-                return redirect()->route('admin.login')
-                    ->with('info', 'Sesión cerrada por seguridad debido a actividad en otro dispositivo.');
+                    if (!$storedSessionExists) {
+                        $user->actualizarSession($currentSessionId, $request->ip());
+                    } else {
+                        // Si la sesión no coincide y hay una sesión almacenada válida, cerrar sesión por seguridad
+                        \Log::warning('Sesión no coincide, cerrando por seguridad', [
+                            'user_id' => $user->id,
+                            'stored_session' => $user->session_id,
+                            'current_session' => $currentSessionId,
+                            'stored_session_exists' => $storedSessionExists
+                        ]);
+
+                        Auth::logout();
+                        $request->session()->invalidate();
+                        $request->session()->regenerateToken();
+
+                        return redirect()->route('admin.login')
+                            ->with('info', 'Sesión cerrada por seguridad debido a actividad en otro dispositivo.');
+                    }
+                }
             }
         }
 

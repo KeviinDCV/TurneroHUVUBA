@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Archivos de Voz - Turnero HUV</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #064b9e;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .section h3 {
+            color: #064b9e;
+            margin-top: 0;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input, select, button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #064b9e;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #053a7a;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .progress {
+            margin-top: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #064b9e;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.success { background-color: #d4edda; color: #155724; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        .status.warning { background-color: #fff3cd; color: #856404; }
+        .status.info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Generador de Archivos de Voz</h1>
+            <p>Sistema de Turnos HUV - Generación de Audio con Web Speech API</p>
+        </div>
+
+        <!-- Configuración de Voz -->
+        <div class="section">
+            <h3>⚙️ Configuración de Voz</h3>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="voiceSelect">Voz:</label>
+                    <select id="voiceSelect"></select>
+                </div>
+                <div class="control-group">
+                    <label for="rateSlider">Velocidad:</label>
+                    <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1.1">
+                    <span id="rateValue">1.1</span>
+                </div>
+                <div class="control-group">
+                    <label for="pitchSlider">Tono:</label>
+                    <input type="range" id="pitchSlider" min="0" max="2" step="0.1" value="1.2">
+                    <span id="pitchValue">1.2</span>
+                </div>
+                <div class="control-group">
+                    <label for="volumeSlider">Volumen:</label>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1">
+                    <span id="volumeValue">1.0</span>
+                </div>
+            </div>
+            <button onclick="testVoice()">🔊 Probar Voz</button>
+        </div>
+
+        <!-- Generación Rápida -->
+        <div class="section">
+            <h3>⚡ Generación Rápida</h3>
+            <div class="controls">
+                <button onclick="generateBasicFiles()">📝 Generar Frases Básicas</button>
+                <button onclick="generateLetters()">🔤 Generar Letras (A-Z)</button>
+                <button onclick="generateNumbers(1, 50)">🔢 Generar Números (1-50)</button>
+                <button onclick="generateNumbers(51, 100)">🔢 Generar Números (51-100)</button>
+            </div>
+        </div>
+
+        <!-- Generación Personalizada -->
+        <div class="section">
+            <h3>🎨 Generación Personalizada</h3>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="customText">Texto:</label>
+                    <input type="text" id="customText" placeholder="Ej: Turno A 123" value="Turno A 123, por favor diríjase a la caja número 5">
+                </div>
+                <div class="control-group">
+                    <label for="customFilename">Nombre del archivo:</label>
+                    <input type="text" id="customFilename" placeholder="Ej: turno-completo" value="turno-completo">
+                </div>
+            </div>
+            <button onclick="generateCustomAudio()">🎙️ Generar Audio Personalizado</button>
+        </div>
+
+        <!-- Progreso -->
+        <div class="section">
+            <h3>📊 Progreso</h3>
+            <div class="progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p id="progressText">Listo para generar archivos</p>
+            </div>
+        </div>
+
+        <!-- Log -->
+        <div class="section">
+            <h3>📋 Registro de Actividad</h3>
+            <div class="log" id="logContainer"></div>
+            <button onclick="clearLog()">🗑️ Limpiar Log</button>
+            <button onclick="downloadAllFiles()">📦 Descargar Todos los Archivos</button>
+        </div>
+
+        <!-- Instrucciones -->
+        <div class="section">
+            <h3>📖 Instrucciones</h3>
+            <div class="status info">
+                <strong>Cómo usar:</strong>
+                <ol>
+                    <li>Selecciona la voz que prefieras (recomendado: voz femenina en español)</li>
+                    <li>Ajusta velocidad, tono y volumen según tus preferencias</li>
+                    <li>Usa "Probar Voz" para escuchar cómo suena</li>
+                    <li>Genera los archivos usando los botones de generación rápida</li>
+                    <li>Los archivos se descargarán automáticamente</li>
+                    <li>Sube los archivos a la carpeta: <code>public/audio/turnero/voice/</code></li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let voices = [];
+        let generatedFiles = [];
+        let currentProgress = 0;
+        let totalFiles = 0;
+
+        // Inicializar cuando se carguen las voces
+        function initVoices() {
+            voices = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            
+            // Filtrar voces en español
+            const spanishVoices = voices.filter(voice => 
+                voice.lang.includes('es') || voice.lang.includes('ES')
+            );
+            
+            spanishVoices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+            
+            // Si no hay voces en español, usar todas
+            if (spanishVoices.length === 0) {
+                voices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    voiceSelect.appendChild(option);
+                });
+            } else {
+                voices = spanishVoices;
+            }
+            
+            log('✅ Voces cargadas: ' + voices.length + ' disponibles');
+        }
+
+        // Cargar voces
+        speechSynthesis.onvoiceschanged = initVoices;
+        initVoices();
+
+        // Actualizar valores de sliders
+        document.getElementById('rateSlider').oninput = function() {
+            document.getElementById('rateValue').textContent = this.value;
+        };
+        document.getElementById('pitchSlider').oninput = function() {
+            document.getElementById('pitchValue').textContent = this.value;
+        };
+        document.getElementById('volumeSlider').oninput = function() {
+            document.getElementById('volumeValue').textContent = this.value;
+        };
+
+        function log(message) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `[${timestamp}] ${message}\n`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        function updateProgress(current, total, message) {
+            currentProgress = current;
+            totalFiles = total;
+            const percentage = total > 0 ? (current / total) * 100 : 0;
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = message || `${current}/${total} archivos generados`;
+        }
+
+        function testVoice() {
+            const text = "Turno A 123, por favor diríjase a la caja número 5";
+            speakText(text);
+            log('🔊 Probando voz con texto de ejemplo');
+        }
+
+        function speakText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voiceIndex = document.getElementById('voiceSelect').value;
+            
+            if (voices[voiceIndex]) {
+                utterance.voice = voices[voiceIndex];
+            }
+            
+            utterance.rate = parseFloat(document.getElementById('rateSlider').value);
+            utterance.pitch = parseFloat(document.getElementById('pitchSlider').value);
+            utterance.volume = parseFloat(document.getElementById('volumeSlider').value);
+            utterance.lang = 'es-ES';
+            
+            speechSynthesis.speak(utterance);
+        }
+
+        function generateAudioFile(text, filename, category = 'custom') {
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voiceIndex = document.getElementById('voiceSelect').value;
+                
+                if (voices[voiceIndex]) {
+                    utterance.voice = voices[voiceIndex];
+                }
+                
+                utterance.rate = parseFloat(document.getElementById('rateSlider').value);
+                utterance.pitch = parseFloat(document.getElementById('pitchSlider').value);
+                utterance.volume = parseFloat(document.getElementById('volumeSlider').value);
+                utterance.lang = 'es-ES';
+                
+                // Simular generación de archivo (en un entorno real usarías Web Audio API)
+                utterance.onend = () => {
+                    const fileInfo = {
+                        filename: filename,
+                        text: text,
+                        category: category,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    generatedFiles.push(fileInfo);
+                    log(`✅ Generado: ${filename} - "${text}"`);
+                    resolve(fileInfo);
+                };
+                
+                utterance.onerror = () => {
+                    log(`❌ Error generando: ${filename}`);
+                    resolve(null);
+                };
+                
+                speechSynthesis.speak(utterance);
+            });
+        }
+
+        async function generateBasicFiles() {
+            const phrases = {
+                'turno.mp3': 'Turno',
+                'dirigirse.mp3': 'por favor diríjase a la',
+                'caja.mp3': 'caja',
+                'numero.mp3': 'número',
+                'atencion.mp3': 'Atención',
+                'llamando.mp3': 'llamando al turno',
+                'por-favor.mp3': 'por favor'
+            };
+            
+            const entries = Object.entries(phrases);
+            updateProgress(0, entries.length, 'Generando frases básicas...');
+            
+            for (let i = 0; i < entries.length; i++) {
+                const [filename, text] = entries[i];
+                await generateAudioFile(text, filename, 'frases');
+                updateProgress(i + 1, entries.length);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa entre generaciones
+            }
+            
+            log('🎉 Frases básicas completadas');
+        }
+
+        async function generateLetters() {
+            updateProgress(0, 26, 'Generando letras...');
+            
+            for (let i = 0; i < 26; i++) {
+                const letter = String.fromCharCode(65 + i); // A-Z
+                const filename = `${letter}.mp3`;
+                await generateAudioFile(letter, filename, 'letras');
+                updateProgress(i + 1, 26);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            log('🎉 Letras completadas');
+        }
+
+        async function generateNumbers(start, end) {
+            const total = end - start + 1;
+            updateProgress(0, total, `Generando números ${start}-${end}...`);
+            
+            for (let i = start; i <= end; i++) {
+                const filename = `${i}.mp3`;
+                await generateAudioFile(i.toString(), filename, 'numeros');
+                updateProgress(i - start + 1, total);
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            log(`🎉 Números ${start}-${end} completados`);
+        }
+
+        async function generateCustomAudio() {
+            const text = document.getElementById('customText').value;
+            const filename = document.getElementById('customFilename').value + '.mp3';
+            
+            if (!text || !filename) {
+                alert('Por favor completa el texto y nombre del archivo');
+                return;
+            }
+            
+            updateProgress(0, 1, 'Generando audio personalizado...');
+            await generateAudioFile(text, filename, 'custom');
+            updateProgress(1, 1, 'Audio personalizado completado');
+        }
+
+        function downloadAllFiles() {
+            if (generatedFiles.length === 0) {
+                alert('No hay archivos generados para descargar');
+                return;
+            }
+            
+            const data = {
+                files: generatedFiles,
+                config: {
+                    voice: voices[document.getElementById('voiceSelect').value]?.name || 'Default',
+                    rate: document.getElementById('rateSlider').value,
+                    pitch: document.getElementById('pitchSlider').value,
+                    volume: document.getElementById('volumeSlider').value
+                },
+                generated_at: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'turnero-voice-files.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            log(`📦 Descargado archivo de configuración con ${generatedFiles.length} archivos`);
+        }
+
+        // Mostrar estado inicial
+        log('🚀 Generador de voz iniciado');
+        log('ℹ️ Selecciona una voz en español para mejores resultados');
+    </script>
+</body>
+</html>

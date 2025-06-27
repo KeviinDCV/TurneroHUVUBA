@@ -5,56 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Turnero HUV') }} - Menú de Servicios</title>
-    
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <style>
         @keyframes slide-in {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-5px); }
         }
-        
+
         .animate-slide-in {
             animation: slide-in 0.6s ease-out;
         }
-        
+
         .animate-float {
             animation: float 3s ease-in-out infinite;
         }
-        
+
         .btn-service {
             background: linear-gradient(135deg, #064b9e 0%, #0a5fb4 100%);
             border: 2px solid #053a7a;
             transition: all 0.3s ease;
         }
-        
+
         .btn-service:hover {
             background: linear-gradient(135deg, #053a7a 0%, #064b9e 100%);
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(6, 75, 158, 0.3);
         }
-        
+
         .btn-service:active {
             transform: translateY(0px);
             box-shadow: 0 5px 15px rgba(6, 75, 158, 0.2);
         }
-        
+
         .btn-volver {
             background-color: #064b9e;
             border: 2px solid #053a7a;
         }
-        
+
         .btn-volver:hover {
             background-color: #053a7a;
             transform: translateY(-1px);

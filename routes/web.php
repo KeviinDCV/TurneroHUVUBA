@@ -12,6 +12,7 @@ use App\Http\Controllers\MultimediaController;
 use App\Http\Controllers\AsesorController;
 use App\Http\Controllers\GraficosController;
 use App\Http\Controllers\ReportesController;
+use App\Http\Controllers\VoiceController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -24,19 +25,40 @@ Route::post('/admin', [AuthController::class, 'login'])->name('admin.login.post'
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// API para verificar estado de autenticación
-Route::get('/api/auth-check', [AuthController::class, 'checkAuth'])->name('api.auth-check');
+// API para verificar estado de autenticación (sin crear sesión automática)
+Route::get('/api/auth-check', [AuthController::class, 'checkAuth'])
+    ->name('api.auth-check')
+    ->middleware(['no.session.api']);
+
+// API para regenerar token CSRF (sin crear sesión automática)
+Route::get('/api/csrf-token', function() {
+    return response()->json(['csrf_token' => csrf_token()]);
+})->name('api.csrf-token')
+    ->middleware(['no.session.api']);
+
+// Rutas que requieren autenticación pero manejan redirección automática
+Route::get('/admin/usuarios', function () {
+    if (!Auth::check()) {
+        return redirect()->route('admin.login')->with('message', 'Debe iniciar sesión para acceder a la gestión de usuarios.');
+    }
+    return app(AdminController::class)->users(request());
+})->name('admin.usuarios.public');
 
 // Rutas protegidas del dashboard administrativo
 Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.boxes'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
     // Rutas de gestión de usuarios
-    Route::get('/users', [AdminController::class, 'users'])->name('admin.users');
-    Route::post('/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
-    Route::get('/users/{id}', [AdminController::class, 'getUser'])->name('admin.users.get');
-    Route::put('/users/{id}', [AdminController::class, 'updateUser'])->name('admin.users.update');
-    Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
+    Route::get('/admin/usuarios', [AdminController::class, 'users'])->name('admin.users');
+    Route::post('/admin/usuarios', [AdminController::class, 'storeUser'])->name('admin.users.store');
+    Route::get('/admin/usuarios/{id}', [AdminController::class, 'getUser'])->name('admin.users.get');
+    Route::put('/admin/usuarios/{id}', [AdminController::class, 'updateUser'])->name('admin.users.update');
+    Route::delete('/admin/usuarios/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
+
+    // Redirecciones para compatibilidad con URLs antiguas
+    Route::get('/users', function () {
+        return redirect()->route('admin.users');
+    });
 
     // Rutas de gestión de cajas
     Route::get('/cajas', [CajaController::class, 'index'])->name('admin.cajas');
@@ -97,6 +119,16 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     // Rutas para reportes
     Route::get('/reportes', [ReportesController::class, 'index'])->name('admin.reportes');
     Route::post('/reportes/generar', [ReportesController::class, 'generarReporte'])->name('admin.reportes.generar');
+
+    // Sistema de Voz
+    Route::prefix('voice')->name('voice.')->group(function () {
+        Route::get('/status', [VoiceController::class, 'getSystemStatus'])->name('status');
+        Route::get('/turn-audio', [VoiceController::class, 'getTurnAudio'])->name('turn-audio');
+        Route::post('/generate-missing', [VoiceController::class, 'generateMissingFiles'])->name('generate-missing');
+        Route::post('/generate-specific', [VoiceController::class, 'generateSpecificAudio'])->name('generate-specific');
+        Route::post('/test-audio', [VoiceController::class, 'testAudio'])->name('test-audio');
+        Route::get('/admin', [VoiceController::class, 'adminPanel'])->name('admin');
+    });
 });
 
 // Rutas protegidas para asesores
@@ -112,12 +144,10 @@ Route::middleware(['auth', 'asesor.role', 'update.user.activity', 'clean.expired
     Route::post('/asesor/llamar-turno-especifico', [AsesorController::class, 'llamarTurnoEspecifico'])->name('asesor.llamar-turno-especifico');
     Route::post('/asesor/marcar-atendido', [AsesorController::class, 'marcarAtendido'])->name('asesor.marcar-atendido');
     Route::post('/asesor/aplazar-turno', [AsesorController::class, 'aplazarTurno'])->name('asesor.aplazar-turno');
+    Route::get('/asesor/verificar-turno-en-proceso', [AsesorController::class, 'verificarTurnoEnProceso'])->name('asesor.verificar-turno-en-proceso');
 
     // API para obtener estadísticas de servicios para el asesor (actualización en tiempo real)
     Route::get('/api/asesor/servicios-estadisticas', [AsesorController::class, 'getServiciosEstadisticas'])->name('api.asesor.servicios-estadisticas');
-
-    // Actualizar estado del asesor
-    Route::post('/asesor/actualizar-estado', [AsesorController::class, 'actualizarEstado'])->name('asesor.actualizar-estado');
 });
 
 // Ruta de prueba para verificar autenticación
@@ -144,14 +174,17 @@ Route::get('/tv', [TvConfigController::class, 'show'])->name('tv.display');
 // Ruta para la visualización móvil
 Route::get('/movil', [TvConfigController::class, 'showMobile'])->name('mobile.display');
 
-// API para obtener configuración del TV
-Route::get('/api/tv-config', [TvConfigController::class, 'getConfig'])->name('api.tv-config');
+// APIs públicas sin creación automática de sesiones
+Route::middleware(['no.session.api'])->group(function () {
+    // API para obtener configuración del TV
+    Route::get('/api/tv-config', [TvConfigController::class, 'getConfig'])->name('api.tv-config');
 
-// API para obtener multimedia activa
-Route::get('/api/multimedia', [TvConfigController::class, 'getActiveMultimedia'])->name('api.multimedia');
+    // API para obtener multimedia activa
+    Route::get('/api/multimedia', [TvConfigController::class, 'getActiveMultimedia'])->name('api.multimedia');
 
-// API para obtener turnos llamados (para TV)
-Route::get('/api/turnos-llamados', [TvConfigController::class, 'getTurnosLlamados'])->name('api.turnos-llamados');
+    // API para obtener turnos llamados (para TV)
+    Route::get('/api/turnos-llamados', [TvConfigController::class, 'getTurnosLlamados'])->name('api.turnos-llamados');
+});
 
 // Ruta para el visualizador del atril
 Route::get('/atril', function () {

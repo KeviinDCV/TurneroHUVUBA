@@ -4,15 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <title>{{ config('app.name', 'Turnero HUV') }} - Vista Móvil</title>
-    
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+
     <!-- Fonts - Optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <style>
         /* Fuente de respaldo para evitar problemas de carga */
         body {
@@ -23,40 +24,40 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
         }
-        
+
         @keyframes slide-in {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         .animate-pulse-number {
             animation: pulse-number 2s ease-in-out infinite;
         }
-        
+
         .animate-slide-in {
             animation: slide-in 0.8s ease-out;
         }
-        
+
         .bg-hospital-blue {
             background-color: #064b9e;
         }
-        
+
         .bg-hospital-blue-light {
             background-color: rgba(6, 75, 158, 0.1);
         }
-        
+
         .text-hospital-blue {
             color: #064b9e;
         }
-        
+
         .border-hospital-blue {
             border-color: #064b9e;
         }
-        
+
         .gradient-hospital {
             background: linear-gradient(135deg, #064b9e 0%, #0a5fb4 100%);
         }
-        
+
         .gradient-hospital-light {
             background: linear-gradient(135deg, #0a5fb4 0%, #1e7dd8 100%);
         }
@@ -179,7 +180,7 @@
                         <h3 class="text-sm font-bold text-hospital-blue leading-tight">DEL VALLE</h3>
                     </div>
                 </div>
-                
+
                 <!-- Hora -->
                 <div class="text-right">
                     <p class="text-lg text-hospital-blue font-semibold" id="current-time">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>

@@ -72,14 +72,14 @@
                 </div>
 
                 <div class="flex gap-3 mb-6">
-                    <button 
+                    <button
                         id="btn-llamar-especifico"
                         class="px-6 py-2 text-white rounded-md transition-colors duration-200 hover:opacity-90"
                         style="background-color: #064b9e;"
                     >
                         Llamar
                     </button>
-                    <button 
+                    <button
                         id="btn-calificar"
                         class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors duration-200"
                     >
@@ -100,8 +100,8 @@
                 <div id="servicios-container">
                     @forelse($serviciosEstructurados as $servicio)
                     <!-- Fila del servicio principal -->
-                    <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal" 
-                         data-servicio-id="{{ $servicio['id'] }}" 
+                    <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal"
+                         data-servicio-id="{{ $servicio['id'] }}"
                          data-tiene-hijos="{{ $servicio['tiene_hijos'] ? 'true' : 'false' }}">
                         <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
                             @if($servicio['tiene_hijos'])
@@ -118,7 +118,7 @@
                             {{ $servicio['aplazados'] }}
                         </div>
                         <div class="p-3 text-center">
-                            <button 
+                            <button
                                 class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                 data-servicio-id="{{ $servicio['id'] }}"
                                 style="background-color: #064b9e;"
@@ -139,7 +139,7 @@
                                 <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $subservicio['pendientes'] }}">{{ $subservicio['pendientes'] }}</div>
                                 <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $subservicio['aplazados'] }}">{{ $subservicio['aplazados'] }}</div>
                                 <div class="p-3 text-center">
-                                    <button 
+                                    <button
                                         class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                         data-servicio-id="{{ $subservicio['id'] }}"
                                         style="background-color: #064b9e;"
@@ -168,12 +168,7 @@
 
             <div class="relative z-10 h-full flex flex-col">
                 <!-- Header -->
-                <div class="flex justify-between items-center p-6">
-                    <select class="bg-white/20 border border-white/30 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
-                        <option value="disponible">Disponible</option>
-                        <option value="ocupado">Ocupado</option>
-                        <option value="descanso">En Descanso</option>
-                    </select>
+                <div class="flex justify-end items-center p-6">
                     <div class="text-sm" id="tiempo-atencion">00:00 min</div>
                 </div>
 
@@ -185,14 +180,14 @@
 
                 <!-- Botones de acción -->
                 <div class="flex justify-center gap-4 mb-8">
-                    <button 
+                    <button
                         id="btn-atender"
                         class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
                         style="display: none;"
                     >
                         ATENDIDO
                     </button>
-                    <button 
+                    <button
                         id="btn-aplazar"
                         class="bg-yellow-600 hover:bg-yellow-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
                         style="display: none;"
@@ -264,7 +259,7 @@
         const servicioActualElement = document.getElementById('servicio-actual');
         const tiempoAtencionElement = document.getElementById('tiempo-atencion');
         const serviciosContainer = document.getElementById('servicios-container');
-        
+
         // Inicializar estado de expansión de servicios
         document.querySelectorAll('.servicio-principal').forEach(servicio => {
             serviciosExpanded[servicio.dataset.servicioId] = false;
@@ -279,14 +274,14 @@
                         if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
                             return;
                         }
-                        
+
                         const servicioId = this.dataset.servicioId;
                         const subservicios = document.querySelectorAll(`.subservicio-row[data-parent-id="${servicioId}"]`);
                         const chevron = this.querySelector('.chevron-icon');
-                        
+
                         // Actualizar el estado de expansión
                         serviciosExpanded[servicioId] = !serviciosExpanded[servicioId];
-                        
+
                         // Alternar visibilidad
                         subservicios.forEach(subservicio => {
                             if (!serviciosExpanded[servicioId]) {
@@ -307,9 +302,35 @@
             });
         }
 
+        // Función helper para manejar respuestas de fetch (igual que en dashboard)
+        async function handleFetchResponse(response) {
+            const contentType = response.headers.get('content-type');
+
+            // Verificar si la respuesta es JSON
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Respuesta no JSON recibida:', text.substring(0, 200));
+                throw new Error('El servidor devolvió una respuesta inválida. Posible problema de autenticación.');
+            }
+
+            // Para respuestas 400 (Bad Request) que contienen JSON válido,
+            // no lanzar error sino devolver el JSON para manejo específico
+            if (response.status === 400) {
+                return response.json();
+            }
+
+            // Para otros errores HTTP, lanzar error
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return response.json();
+        }
+
         // Función para manejar el evento de llamar siguiente turno
         function handleLlamarSiguiente() {
             const servicioId = this.dataset.servicioId;
+            console.log('🔍 handleLlamarSiguiente ejecutado con servicioId:', servicioId);
 
             fetch('{{ route("asesor.llamar-siguiente-turno") }}', {
                 method: 'POST',
@@ -321,20 +342,51 @@
                     servicio_id: parseInt(servicioId)
                 })
             })
-            .then(response => response.json())
+            .then(async (response) => {
+                // Manejo especial para evitar que aparezca "400 Bad Request" en consola
+                const contentType = response.headers.get('content-type');
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Respuesta no JSON recibida:', text.substring(0, 200));
+                    throw new Error('El servidor devolvió una respuesta inválida.');
+                }
+
+                // Para 400 y otros códigos, simplemente devolver el JSON sin mostrar error
+                if (response.status === 400 || response.status === 403) {
+                    return response.json();
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return response.json();
+            })
             .then(data => {
+                console.log('🔍 Respuesta del servidor en llamar-turnos:', data);
+
                 if (data.success) {
                     actualizarInterfazTurno(data.turno);
                     mostrarModal('Turno Llamado', data.message);
                     // Forzar actualización inmediata
                     actualizarEstadisticasServicios();
                 } else {
-                    mostrarModal('Error', data.message, 'error');
+                    console.log('❌ Error en respuesta del servidor:', data);
+                    // Si hay un turno en proceso, mostrar modal específico
+                    if (data.turno_en_proceso) {
+                        console.log('🚫 Turno en proceso detectado:', data.turno_en_proceso);
+                        mostrarModal('Turno en Proceso',
+                            `Ya tiene el turno ${data.turno_en_proceso} en proceso. Debe marcarlo como "Atendido" antes de llamar un nuevo turno.`,
+                            'error');
+                    } else {
+                        mostrarModal('Error', data.message, 'error');
+                    }
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                mostrarModal('Error', 'Error de conexión', 'error');
+                console.error('❌ Error en catch:', error);
+                mostrarModal('Error', error.message || 'Error de conexión', 'error');
             });
         }
 
@@ -360,14 +412,14 @@
                 servicios.forEach((servicio, index) => {
                     // Determinar si este servicio estaba expandido
                     const estaExpandido = serviciosExpanded[servicio.id] || false;
-                    
+
                     // Clase para alternar colores
                     const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                    
+
                     // Fila del servicio principal
                     contenidoHTML += `
-                        <div class="grid grid-cols-4 text-sm ${bgClass} servicio-principal" 
-                             data-servicio-id="${servicio.id}" 
+                        <div class="grid grid-cols-4 text-sm ${bgClass} servicio-principal"
+                             data-servicio-id="${servicio.id}"
                              data-tiene-hijos="${servicio.tiene_hijos ? 'true' : 'false'}">
                             <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
                                 ${servicio.tiene_hijos ? `
@@ -384,7 +436,7 @@
                                 ${servicio.aplazados}
                             </div>
                             <div class="p-3 text-center">
-                                <button 
+                                <button
                                     class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                     data-servicio-id="${servicio.id}"
                                     style="background-color: #064b9e;"
@@ -395,16 +447,16 @@
                             </div>
                         </div>
                     `;
-                    
+
                     // Subservicios desplegables
                     if (servicio.tiene_hijos && servicio.subservicios.length > 0) {
                         servicio.subservicios.forEach((subservicio, subindex) => {
                             const displayStyle = estaExpandido ? 'grid' : 'none';
                             const subBgClass = subindex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                            
+
                             contenidoHTML += `
-                                <div class="grid grid-cols-4 text-sm ${subBgClass} subservicio-row" 
-                                     data-parent-id="${servicio.id}" 
+                                <div class="grid grid-cols-4 text-sm ${subBgClass} subservicio-row"
+                                     data-parent-id="${servicio.id}"
                                      style="display: ${displayStyle}">
                                     <div class="p-3 border-r border-gray-200 font-medium servicio-nombre">
                                         ${subservicio.nombre}
@@ -412,7 +464,7 @@
                                     <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${subservicio.pendientes}">${subservicio.pendientes}</div>
                                     <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${subservicio.aplazados}">${subservicio.aplazados}</div>
                                     <div class="p-3 text-center">
-                                        <button 
+                                        <button
                                             class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                             data-servicio-id="${subservicio.id}"
                                             style="background-color: #064b9e;"
@@ -427,10 +479,10 @@
                     }
                 });
             }
-            
+
             // Actualizar el contenido
             serviciosContainer.innerHTML = contenidoHTML;
-            
+
             // Volver a configurar los eventos desplegables
             configurarEventosServiciosDesplegables();
         }
@@ -512,7 +564,7 @@
         function limpiarInterfazTurno() {
             turnoActual = null;
             tiempoInicio = null;
-            
+
             if (intervalTiempo) {
                 clearInterval(intervalTiempo);
                 intervalTiempo = null;
@@ -569,7 +621,7 @@
 
         btnAtender.addEventListener('click', function() {
             if (!turnoActual) return;
-            
+
             // Detener el contador
             if (intervalTiempo) {
                 clearInterval(intervalTiempo);
@@ -641,7 +693,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Iniciar la actualización cada 5 segundos
             intervalActualizacion = setInterval(actualizarEstadisticasServicios, 5000);
-            
+
             // Configurar eventos iniciales
             configurarEventosServiciosDesplegables();
         });

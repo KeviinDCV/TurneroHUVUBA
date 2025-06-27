@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'clean.expired.boxes' => \App\Http\Middleware\CleanExpiredBoxes::class,
             'admin.role' => \App\Http\Middleware\CheckAdminRole::class,
             'asesor.role' => \App\Http\Middleware\CheckAsesorRole::class,
+            'no.session.api' => \App\Http\Middleware\NoSessionForApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

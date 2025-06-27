@@ -13,7 +13,7 @@ class TvConfigController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth')->except(['show', 'showMobile', 'getConfig', 'getActiveMultimedia']);
+        $this->middleware('auth')->except(['show', 'showMobile', 'getConfig', 'getActiveMultimedia', 'getTurnosLlamados']);
     }
 
     /**
@@ -306,14 +306,16 @@ class TvConfigController extends Controller
     }
 
     /**
-     * Obtener los últimos turnos llamados para mostrar en el TV
+     * Obtener los últimos turnos llamados y atendidos para mostrar en el TV
      */
     public function getTurnosLlamados()
     {
-        $turnos = \App\Models\Turno::where('estado', 'llamado')
+        // Obtener turnos llamados y atendidos recientes (últimas 2 horas)
+        $turnos = \App\Models\Turno::whereIn('estado', ['llamado', 'atendido'])
+            ->where('fecha_llamado', '>=', now()->subHours(2))
             ->with(['servicio', 'caja'])
             ->orderBy('fecha_llamado', 'desc')
-            ->take(5)
+            ->take(10) // Aumentamos a 10 para mostrar más historial
             ->get();
 
         return response()->json([
@@ -324,7 +326,10 @@ class TvConfigController extends Controller
                     'caja' => $turno->caja ? $turno->caja->nombre : null,
                     'numero_caja' => $turno->caja ? $turno->caja->numero_caja : null,
                     'servicio' => $turno->servicio ? $turno->servicio->nombre : null,
-                    'fecha_llamado' => $turno->fecha_llamado->format('Y-m-d H:i:s')
+                    'estado' => $turno->estado,
+                    'fecha_llamado' => $turno->fecha_llamado ? $turno->fecha_llamado->format('Y-m-d H:i:s') : null,
+                    'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('Y-m-d H:i:s') : null,
+                    'duracion_atencion' => $turno->duracion_atencion
                 ];
             })
         ]);
