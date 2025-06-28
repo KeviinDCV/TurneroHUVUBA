@@ -22,23 +22,23 @@ class TurnoController extends Controller
     public function menu(Request $request)
     {
         $servicioId = $request->get('servicio_id');
-        
+
         if ($servicioId) {
             // Mostrar subservicios del servicio seleccionado
             $servicioSeleccionado = Servicio::with('subservicios')
                 ->where('id', $servicioId)
                 ->where('estado', 'activo')
                 ->first();
-                
+
             if (!$servicioSeleccionado) {
                 return redirect()->route('turnos.menu');
             }
-            
+
             $subservicios = $servicioSeleccionado->subservicios()
                 ->where('estado', 'activo')
                 ->orderBy('orden')
                 ->get();
-                
+
             return view('turnos.menu', [
                 'servicioSeleccionado' => $servicioSeleccionado,
                 'subservicios' => $subservicios,
@@ -50,7 +50,7 @@ class TurnoController extends Controller
                 ->where('estado', 'activo')
                 ->orderBy('orden')
                 ->get();
-                
+
             return view('turnos.menu', [
                 'servicios' => $servicios,
                 'mostrandoSubservicios' => false
@@ -123,5 +123,46 @@ class TurnoController extends Controller
         $servicio = $turno->servicio;
 
         return view('turnos.ticket', compact('turno', 'servicio'));
+    }
+
+    /**
+     * Solicitar repetición del audio del último turno en la TV
+     */
+    public function repetirAudioTurno(Request $request)
+    {
+        try {
+            // Verificar que el usuario esté autenticado y sea asesor
+            $user = auth()->user();
+            if (!$user || !$user->esAsesor()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado'
+                ], 403);
+            }
+
+            // Log de la solicitud
+            \Log::info('Solicitud de repetición de audio', [
+                'usuario' => $user->nombre_usuario,
+                'ip' => $request->ip(),
+                'timestamp' => now()
+            ]);
+
+            // Retornar éxito - el JavaScript en la TV manejará la repetición
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud de repetición enviada'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en repetición de audio', [
+                'error' => $e->getMessage(),
+                'usuario' => auth()->user() ? auth()->user()->nombre_usuario : 'No autenticado'
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar solicitud'
+            ], 500);
+        }
     }
 }

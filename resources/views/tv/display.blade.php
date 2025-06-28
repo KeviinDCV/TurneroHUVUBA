@@ -335,6 +335,7 @@
         // Sistema de cola de audio
         let colaAudio = []; // Cola de turnos pendientes de reproducir
         let reproduciendoAudio = false; // Estado de reproducción actual
+        let colaProtegida = false; // Protección contra limpieza de cola durante reproducción
         let sessionId = null; // ID único de sesión para evitar duplicados
 
         // Generar ID único de sesión
@@ -383,48 +384,141 @@
             }
         }
 
-        // Agregar turno a la cola de audio
+        // Agregar turno a la cola de audio (solo para repeticiones manuales)
         function agregarAColaAudio(turno) {
-            // Verificar si ya está en la cola
+            // Verificar si ya está en la cola (permitir repeticiones con ID único)
             const yaEnCola = colaAudio.some(t => t.id === turno.id);
             if (!yaEnCola) {
                 colaAudio.push(turno);
-                console.log('🎵 Turno agregado a cola de audio:', turno.codigo_completo);
-                procesarColaAudio();
+                console.log('🎵 Turno agregado a cola de audio (manual):', turno.codigo_completo, '(Cola actual:', colaAudio.length, 'turnos)');
+
+                // Solo procesar la cola si no hay audio reproduciéndose
+                if (!reproduciendoAudio) {
+                    procesarColaAudio();
+                }
+            } else {
+                console.log('⚠️ Turno ya está en cola de audio:', turno.codigo_completo);
             }
         }
 
         // Procesar cola de audio (reproducir siguiente si no está ocupado)
         function procesarColaAudio() {
-            if (reproduciendoAudio || colaAudio.length === 0) {
+            console.log('🔄 procesarColaAudio() llamado - Estado:', {
+                reproduciendoAudio: reproduciendoAudio,
+                colaLength: colaAudio.length,
+                cola: colaAudio.map(t => t.codigo_completo)
+            });
+
+            // Verificar si ya hay audio reproduciéndose o no hay turnos en cola
+            if (reproduciendoAudio) {
+                console.log('⏸️ Audio ya reproduciéndose, esperando...');
+                return;
+            }
+
+            if (colaAudio.length === 0) {
+                console.log('📭 Cola de audio vacía');
                 return;
             }
 
             const siguienteTurno = colaAudio.shift();
             reproduciendoAudio = true;
+            colaProtegida = true; // Activar protección de cola
+            window.ultimoInicioReproduccion = Date.now(); // Timestamp para verificación de bloqueos
 
-            console.log('🔊 Reproduciendo audio:', siguienteTurno.codigo_completo);
+            console.log('🔊 Iniciando reproducción de audio:', siguienteTurno.codigo_completo, '(Turnos restantes en cola:', colaAudio.length, ') 🛡️ Cola protegida');
 
-            // Marcar como reproducido antes de empezar
-            marcarTurnoReproducido(siguienteTurno.id);
+            // Marcar como reproducido antes de empezar (solo para turnos reales, no repeticiones)
+            if (!siguienteTurno.id.toString().startsWith('repetir_')) {
+                marcarTurnoReproducido(siguienteTurno.id);
+            }
 
             // Reproducir audio con callback al terminar
             playVoiceMessage(siguienteTurno, () => {
                 reproduciendoAudio = false;
-                console.log('✅ Audio completado:', siguienteTurno.codigo_completo);
+                window.ultimoInicioReproduccion = null; // Limpiar timestamp
+
+                // Solo desactivar protección si no hay más turnos en cola
+                if (colaAudio.length === 0) {
+                    colaProtegida = false;
+                    console.log('✅ Audio completado:', siguienteTurno.codigo_completo, '- Cola vacía, protección desactivada');
+                } else {
+                    console.log('✅ Audio completado:', siguienteTurno.codigo_completo, '(Turnos restantes en cola:', colaAudio.length, ') - Manteniendo protección');
+                }
 
                 // Procesar siguiente en la cola después de una pausa
                 setTimeout(() => {
+                    console.log('⏰ Timeout completado, procesando siguiente turno...');
                     procesarColaAudio();
                 }, 1000); // Pausa de 1 segundo entre turnos
             });
         }
 
-        // Limpiar cola de audio
-        function limpiarColaAudio() {
+        // Limpiar cola de audio (con protección)
+        function limpiarColaAudio(forzar = false) {
+            if (colaProtegida && !forzar) {
+                console.log('🛡️ Cola de audio protegida - limpieza bloqueada');
+                return false;
+            }
+
             colaAudio = [];
             reproduciendoAudio = false;
+            colaProtegida = false;
+            console.log('🧹 Cola de audio limpiada' + (forzar ? ' (forzada)' : ''));
+            return true;
         }
+
+        // Función de seguridad para detectar y resolver bloqueos en la cola de audio
+        function verificarEstadoColaAudio() {
+            const ahora = Date.now();
+
+            // Si hay turnos en cola pero no se está reproduciendo nada, intentar procesar
+            if (colaAudio.length > 0 && !reproduciendoAudio) {
+                console.log('🔧 Detectado posible bloqueo en cola de audio, reactivando procesamiento...', {
+                    colaLength: colaAudio.length,
+                    reproduciendoAudio: reproduciendoAudio,
+                    turnos: colaAudio.map(t => t.codigo_completo)
+                });
+                procesarColaAudio();
+            }
+
+            // Verificar si el estado reproduciendoAudio está bloqueado por mucho tiempo
+            if (reproduciendoAudio && window.ultimoInicioReproduccion) {
+                const tiempoTranscurrido = ahora - window.ultimoInicioReproduccion;
+                if (tiempoTranscurrido > 60000) { // 1 minuto máximo
+                    console.warn('⚠️ Estado reproduciendoAudio bloqueado por más de 1 minuto, reseteando...');
+                    reproduciendoAudio = false;
+                    colaProtegida = false; // Desactivar protección en caso de bloqueo
+                    if (colaAudio.length > 0) {
+                        procesarColaAudio();
+                    }
+                }
+            }
+        }
+
+        // Función para mostrar estado actual de la cola (para debugging)
+        function mostrarEstadoCola() {
+            console.log('📊 Estado actual de la cola de audio:', {
+                reproduciendoAudio: reproduciendoAudio,
+                colaProtegida: colaProtegida,
+                colaLength: colaAudio.length,
+                turnos: colaAudio.map(t => t.codigo_completo),
+                ultimoInicioReproduccion: window.ultimoInicioReproduccion ? new Date(window.ultimoInicioReproduccion).toLocaleTimeString() : null
+            });
+        }
+
+        // Función de emergencia para limpiar cola forzadamente
+        function limpiarColaForzado() {
+            const resultado = limpiarColaAudio(true);
+            console.log('🚨 Limpieza forzada de cola:', resultado ? 'exitosa' : 'falló');
+            return resultado;
+        }
+
+        // Hacer las funciones disponibles globalmente para debugging
+        window.mostrarEstadoCola = mostrarEstadoCola;
+        window.limpiarColaForzado = limpiarColaForzado;
+
+        // Ejecutar verificación de estado cada 5 segundos
+        setInterval(verificarEstadoColaAudio, 5000);
         let currentConfig = {
             ticker_message: '{{ addslashes($tvConfig->ticker_message) }}',
             ticker_speed: {{ $tvConfig->ticker_speed }},
@@ -584,12 +678,28 @@
 
                     // Agregar turnos nuevos a la cola de audio (en orden inverso para mantener cronología)
                     if (turnosNuevos.length > 0) {
-                        console.log('🔊 Nuevos turnos detectados para audio:', turnosNuevos.length);
+                        console.log('🔊 Nuevos turnos detectados para audio:', turnosNuevos.length, 'Estado actual cola:', colaAudio.length, 'Reproduciendo:', reproduciendoAudio);
 
                         // Agregar en orden cronológico (más antiguos primero)
-                        turnosNuevos.reverse().forEach(turno => {
-                            agregarAColaAudio(turno);
+                        const turnosOrdenados = turnosNuevos.reverse();
+                        console.log('🔊 Turnos a agregar en orden:', turnosOrdenados.map(t => t.codigo_completo));
+
+                        // Agregar todos los turnos a la cola primero
+                        turnosOrdenados.forEach(turno => {
+                            const yaEnCola = colaAudio.some(t => t.id === turno.id);
+                            if (!yaEnCola) {
+                                colaAudio.push(turno);
+                                console.log('🎵 Turno agregado a cola de audio:', turno.codigo_completo, '(Cola actual:', colaAudio.length, 'turnos)');
+                            } else {
+                                console.log('⚠️ Turno ya está en cola de audio:', turno.codigo_completo);
+                            }
                         });
+
+                        // Procesar la cola solo una vez después de agregar todos los turnos
+                        if (!reproduciendoAudio && colaAudio.length > 0) {
+                            console.log('🔊 Iniciando procesamiento de cola con', colaAudio.length, 'turnos');
+                            procesarColaAudio();
+                        }
                     }
 
                     // Log de estado para debugging (solo cuando hay cambios)
@@ -705,31 +815,40 @@
 
 
 
-        // Función para reproducir el mensaje de voz usando archivos pre-generados
+        // Función para reproducir el mensaje de voz usando archivos pre-generados (DINÁMICO)
         function playVoiceMessage(turno, onComplete = null) {
-            // Extraer letra y número del código completo
             const codigoCompleto = turno.codigo_completo;
-
-            // Buscar la primera letra
-            const letra = codigoCompleto.charAt(0);
-
-            // Extraer solo los números del código (ej: "CFU-001" -> "001")
-            const numeroMatch = codigoCompleto.match(/\d+/);
-            const numero = numeroMatch ? parseInt(numeroMatch[0], 10).toString() : '1';
-
             const numeroCaja = turno.numero_caja;
 
-            // Crear secuencia de archivos de audio (agrupada para sonar más natural)
+            // Almacenar como último turno llamado para repetición manual
+            ultimoTurnoLlamado = turno;
+
+            console.log('🔊 Procesando turno:', turno);
+
+            // Separar el código del servicio y el número del turno
+            const partes = separarCodigoTurno(codigoCompleto);
+
+            // Crear secuencia de archivos de audio dinámicamente
             const audioSequence = [
-                '/audio/turnero/turno.mp3',                                 // Sonido de alerta/pito para llamar atención
-                '/audio/turnero/voice/frases/turno.mp3',                    // "Turno"
-                `/audio/turnero/voice/letras/${letra}.mp3`,                 // Letra (A, B, C, etc.)
-                `/audio/turnero/voice/numeros/${numero}.mp3`,               // Número (123, etc.)
-                '/audio/turnero/voice/frases/dirigirse-caja-numero.mp3',    // "por favor diríjase a la caja número"
-                `/audio/turnero/voice/numeros/${numeroCaja}.mp3`            // Número de caja
+                '/audio/turnero/turno.mp3',                                 // Sonido de alerta/pito
+                '/audio/turnero/voice/frases/turno.mp3'                     // "Turno"
             ];
 
-            console.log('🔊 Iniciando reproducción de audio para:', codigoCompleto);
+            // Agregar todas las letras del código del servicio dinámicamente
+            partes.letrasServicio.forEach(letra => {
+                audioSequence.push(`/audio/turnero/voice/letras/${letra}.mp3`);
+            });
+
+            // Agregar el número del turno si existe
+            if (partes.numeroTurno) {
+                audioSequence.push(`/audio/turnero/voice/numeros/${partes.numeroTurno}.mp3`);
+            }
+
+            // Agregar frase de dirección y número de caja
+            audioSequence.push('/audio/turnero/voice/frases/dirigirse-caja-numero.mp3');
+            audioSequence.push(`/audio/turnero/voice/numeros/${numeroCaja}.mp3`);
+
+            console.log('🔊 Secuencia de audio generada:', audioSequence.map(file => file.split('/').pop()));
 
             // Mostrar indicador temporal si la página está oculta
             const audioIndicator = document.getElementById('backgroundAudioIndicator');
@@ -747,8 +866,55 @@
                 }, 5000);
             }
 
-            // Usar la función mejorada que funciona en segundo plano
-            playAudioSequence(audioSequence, 0, onComplete);
+            // Reproducir la secuencia 2 veces automáticamente
+            console.log('🔊 Iniciando playAudioSequenceWithRepeat para:', codigoCompleto);
+            playAudioSequenceWithRepeat(audioSequence, 2, () => {
+                console.log('🔊 playVoiceMessage completado para:', codigoCompleto);
+                if (onComplete) {
+                    onComplete();
+                }
+            });
+        }
+
+        // Función para separar dinámicamente el código del servicio y número del turno
+        function separarCodigoTurno(codigoCompleto) {
+            // El formato es: CODIGO-NUMERO (ej: "CIT-001", "COPAGOS-123")
+            const partes = codigoCompleto.split('-');
+
+            let codigoServicio = '';
+            let numeroTurno = '';
+
+            if (partes.length >= 2) {
+                // Hay guión, separar código y número
+                codigoServicio = partes[0].trim().toUpperCase();
+                numeroTurno = parseInt(partes[1], 10).toString(); // Eliminar ceros a la izquierda
+            } else {
+                // No hay guión, intentar separar letras y números
+                const match = codigoCompleto.match(/^([A-Za-z]+)(\d+)$/);
+                if (match) {
+                    codigoServicio = match[1].toUpperCase();
+                    numeroTurno = parseInt(match[2], 10).toString();
+                } else {
+                    // Fallback: todo como código de servicio
+                    codigoServicio = codigoCompleto.toUpperCase();
+                }
+            }
+
+            // Convertir el código del servicio en letras individuales
+            const letrasServicio = codigoServicio.split('');
+
+            console.log('📝 Código separado:', {
+                original: codigoCompleto,
+                codigoServicio: codigoServicio,
+                letrasServicio: letrasServicio,
+                numeroTurno: numeroTurno
+            });
+
+            return {
+                codigoServicio: codigoServicio,
+                letrasServicio: letrasServicio,
+                numeroTurno: numeroTurno
+            };
         }
 
 
@@ -790,7 +956,12 @@
             turnos = [];
             turnosVistos.clear();
             ultimoTurnoId = null;
-            limpiarColaAudio();
+
+            // Intentar limpiar cola de audio (respetando protección)
+            const limpiado = limpiarColaAudio();
+            if (!limpiado) {
+                console.log('⚠️ Sincronización inicial - cola protegida, manteniendo estado actual');
+            }
 
             // Hacer primera sincronización
             updateQueue();
@@ -1024,14 +1195,27 @@
         // Detectar cuando la ventana vuelve a estar activa para re-sincronizar
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden && sincronizacionActiva) {
-                sincronizacionInicial();
+                // Solo hacer sincronización suave si no hay audio reproduciéndose
+                if (!reproduciendoAudio) {
+                    console.log('👁️ Página visible - sincronización suave');
+                    updateQueue(); // Solo actualizar datos, no limpiar cola
+                } else {
+                    console.log('👁️ Página visible - audio en curso, omitiendo sincronización');
+                }
+            } else if (document.hidden) {
+                console.log('📱 Página oculta - manteniendo activa para audio');
             }
         });
 
         // Detectar cuando la ventana obtiene el foco para re-sincronizar
         window.addEventListener('focus', function() {
-            if (sincronizacionActiva) {
-                setTimeout(sincronizacionInicial, 500); // Pequeño delay para asegurar conexión
+            if (sincronizacionActiva && !reproduciendoAudio) {
+                console.log('🎯 Página enfocada - sincronización suave');
+                setTimeout(() => {
+                    updateQueue(); // Solo actualizar datos, no limpiar cola
+                }, 500);
+            } else if (reproduciendoAudio) {
+                console.log('🎯 Página enfocada - audio en curso, omitiendo sincronización');
             }
         });
 
@@ -1112,14 +1296,103 @@
             }, 30000); // Cada 30 segundos
         }
 
+        // Función para reproducir secuencia de audio con repeticiones automáticas
+        function playAudioSequenceWithRepeat(audioSequence, repeticiones = 2, onComplete = null) {
+            let repeticionActual = 0;
+            let timeoutId = null;
+            const turnoId = audioSequence.length > 0 ? audioSequence[0].split('/').pop() : 'desconocido';
+
+            console.log(`🔊 Iniciando playAudioSequenceWithRepeat para turno ${turnoId} - ${repeticiones} repeticiones`);
+
+            function reproducirConRepeticion() {
+                repeticionActual++;
+                console.log(`🔊 Reproduciendo secuencia ${turnoId} - Repetición ${repeticionActual} de ${repeticiones}`);
+
+                // Timeout de seguridad para evitar bloqueos
+                timeoutId = setTimeout(() => {
+                    console.warn(`⚠️ Timeout en reproducción de audio ${turnoId}, forzando finalización`);
+                    if (onComplete) {
+                        console.log(`🔊 Ejecutando callback por timeout para ${turnoId}`);
+                        onComplete();
+                    }
+                }, 30000); // 30 segundos máximo por secuencia
+
+                playAudioSequence(audioSequence, 0, function() {
+                    // Limpiar timeout de seguridad
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        timeoutId = null;
+                    }
+
+                    console.log(`✅ Repetición ${repeticionActual} completada para ${turnoId}`);
+
+                    if (repeticionActual < repeticiones) {
+                        // Pausa de 1 segundo entre repeticiones
+                        console.log(`⏰ Pausa de 1 segundo antes de repetición ${repeticionActual + 1} para ${turnoId}`);
+                        setTimeout(() => {
+                            reproducirConRepeticion();
+                        }, 1000);
+                    } else {
+                        // Todas las repeticiones completadas
+                        console.log(`🎉 Todas las repeticiones completadas para ${turnoId}`);
+                        if (onComplete) {
+                            console.log(`🔊 Ejecutando callback final para ${turnoId}`);
+                            onComplete();
+                        }
+                    }
+                });
+            }
+
+            // Iniciar reproducción con manejo de errores
+            try {
+                reproducirConRepeticion();
+            } catch (error) {
+                console.error(`❌ Error en playAudioSequenceWithRepeat para ${turnoId}:`, error);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                if (onComplete) {
+                    console.log(`🔊 Ejecutando callback por error para ${turnoId}`);
+                    onComplete();
+                }
+            }
+        }
+
+        // Variable global para almacenar el último turno llamado (para repetir)
+        let ultimoTurnoLlamado = null;
+
+        // Función para repetir manualmente el último turno llamado
+        function repetirUltimoTurno() {
+            if (ultimoTurnoLlamado) {
+                console.log('🔊 Repitiendo manualmente el turno:', ultimoTurnoLlamado.codigo_completo);
+
+                // Usar el sistema de cola para evitar reproducciones simultáneas
+                // Crear una copia del turno para la repetición
+                const turnoParaRepetir = {
+                    ...ultimoTurnoLlamado,
+                    id: 'repetir_' + ultimoTurnoLlamado.id + '_' + Date.now() // ID único para evitar duplicados
+                };
+
+                agregarAColaAudio(turnoParaRepetir);
+            } else {
+                console.warn('⚠️ No hay turno para repetir');
+            }
+        }
+
+        // Hacer la función disponible globalmente para el dashboard del asesor
+        window.repetirUltimoTurno = repetirUltimoTurno;
+
         // Función mejorada para reproducir audio que funciona en segundo plano
         function playAudioSequence(audioFiles, index = 0, onComplete = null) {
             if (index >= audioFiles.length) {
+                console.log('🎵 Secuencia de audio completada');
                 if (onComplete) onComplete();
                 return;
             }
 
             const audioFile = audioFiles[index];
+            console.log(`🎵 Reproduciendo archivo ${index + 1}/${audioFiles.length}:`, audioFile.split('/').pop());
+
             const audio = new Audio(audioFile);
 
             // Configurar el audio para que funcione en segundo plano
@@ -1171,46 +1444,59 @@
             }
 
             function reproducirAudio() {
-                audio.onended = function() {
-                    // Limpiar conexiones de Web Audio API
-                    if (audioSource && gainNode) {
-                        try {
-                            audioSource.disconnect();
-                            gainNode.disconnect();
-                        } catch (e) {
-                            // Ignorar errores de desconexión
-                        }
-                    }
+                let audioCompleted = false;
 
-                    // Pequeña pausa entre archivos para que suene más natural
-                    setTimeout(() => {
-                        playAudioSequence(audioFiles, index + 1, onComplete);
-                    }, 200);
+                // Timeout de seguridad para archivos individuales (10 segundos máximo)
+                const timeoutId = setTimeout(() => {
+                    if (!audioCompleted) {
+                        console.warn('⚠️ Timeout en archivo de audio:', audioFile.split('/').pop());
+                        audioCompleted = true;
+
+                        // Limpiar conexiones
+                        if (audioSource && gainNode) {
+                            try {
+                                audioSource.disconnect();
+                                gainNode.disconnect();
+                            } catch (e) {
+                                // Ignorar errores de desconexión
+                            }
+                        }
+
+                        // Continuar con el siguiente archivo
+                        setTimeout(() => {
+                            playAudioSequence(audioFiles, index + 1, onComplete);
+                        }, 200);
+                    }
+                }, 10000);
+
+                audio.onended = function() {
+                    if (!audioCompleted) {
+                        audioCompleted = true;
+                        clearTimeout(timeoutId);
+
+                        // Limpiar conexiones de Web Audio API
+                        if (audioSource && gainNode) {
+                            try {
+                                audioSource.disconnect();
+                                gainNode.disconnect();
+                            } catch (e) {
+                                // Ignorar errores de desconexión
+                            }
+                        }
+
+                        // Pequeña pausa entre archivos para que suene más natural
+                        setTimeout(() => {
+                            playAudioSequence(audioFiles, index + 1, onComplete);
+                        }, 200);
+                    }
                 };
 
                 audio.onerror = function() {
-                    console.error('Error al reproducir audio:', audioFiles[index]);
-                    // Limpiar conexiones en caso de error
-                    if (audioSource && gainNode) {
-                        try {
-                            audioSource.disconnect();
-                            gainNode.disconnect();
-                        } catch (e) {
-                            // Ignorar errores de desconexión
-                        }
-                    }
+                    if (!audioCompleted) {
+                        audioCompleted = true;
+                        clearTimeout(timeoutId);
 
-                    // Continuar con el siguiente archivo aunque haya error
-                    setTimeout(() => {
-                        playAudioSequence(audioFiles, index + 1, onComplete);
-                    }, 200);
-                };
-
-                // Reproducir con manejo de errores
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.error('Error al iniciar reproducción:', error);
+                        console.error('❌ Error al reproducir audio:', audioFiles[index]);
                         // Limpiar conexiones en caso de error
                         if (audioSource && gainNode) {
                             try {
@@ -1221,10 +1507,37 @@
                             }
                         }
 
-                        // Intentar continuar con el siguiente archivo
+                        // Continuar con el siguiente archivo aunque haya error
                         setTimeout(() => {
                             playAudioSequence(audioFiles, index + 1, onComplete);
                         }, 200);
+                    }
+                };
+
+                // Reproducir con manejo de errores
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        if (!audioCompleted) {
+                            audioCompleted = true;
+                            clearTimeout(timeoutId);
+
+                            console.error('❌ Error al iniciar reproducción:', error);
+                            // Limpiar conexiones en caso de error
+                            if (audioSource && gainNode) {
+                                try {
+                                    audioSource.disconnect();
+                                    gainNode.disconnect();
+                                } catch (e) {
+                                    // Ignorar errores de desconexión
+                                }
+                            }
+
+                            // Intentar continuar con el siguiente archivo
+                            setTimeout(() => {
+                                playAudioSequence(audioFiles, index + 1, onComplete);
+                            }, 200);
+                        }
                     });
                 }
             }
@@ -1327,6 +1640,22 @@
             }
         }
 
+        // Listener para comunicación entre pestañas (repetir audio)
+        function configurarComunicacionEntrePestanas() {
+            // Escuchar cambios en localStorage para repetir audio
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'repetir-audio-turno' && e.newValue) {
+                    console.log('📨 Solicitud de repetición recibida desde dashboard');
+                    repetirUltimoTurno();
+
+                    // Limpiar el localStorage después de procesar
+                    setTimeout(() => {
+                        localStorage.removeItem('repetir-audio-turno');
+                    }, 1000);
+                }
+            });
+        }
+
         // Inicializar cuando la página carga
         document.addEventListener('DOMContentLoaded', function() {
             // Verificar si necesitamos interacción del usuario para el audio
@@ -1334,6 +1663,9 @@
 
             // Activar funciones para mantener la página activa
             mantenerPaginaActiva();
+
+            // Configurar comunicación entre pestañas
+            configurarComunicacionEntrePestanas();
 
             // Actualizar la hora inmediatamente y cada minuto
             updateTime();

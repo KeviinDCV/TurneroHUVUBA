@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Caja;
 use App\Models\Turno;
@@ -75,29 +76,58 @@ class AdminController extends Controller
      */
     public function storeUser(Request $request)
     {
-        // Validar los datos del formulario
-        $validated = $request->validate([
-            'nombre_completo' => 'required|string|max:255',
-            'cedula' => 'required|string|max:20|unique:users,cedula',
-            'correo_electronico' => 'required|email|max:255|unique:users,correo_electronico',
-            'nombre_usuario' => 'required|string|max:255|unique:users,nombre_usuario',
-            'rol' => 'required|in:Administrador,Asesor',
-            'password' => 'required|string|min:8|confirmed',
+        // Log para debugging
+        \Log::info('Intento de creación de usuario', [
+            'datos_recibidos' => $request->all(),
+            'usuario_actual' => Auth::user()->nombre_usuario ?? 'No autenticado'
         ]);
 
-        // Crear nuevo usuario
-        User::create([
-            'nombre_completo' => $validated['nombre_completo'],
-            'cedula' => $validated['cedula'],
-            'correo_electronico' => $validated['correo_electronico'],
-            'nombre_usuario' => $validated['nombre_usuario'],
-            'rol' => $validated['rol'],
-            'password' => Hash::make($validated['password']),
-        ]);
+        try {
+            // Validar los datos del formulario
+            $validated = $request->validate([
+                'nombre_completo' => 'required|string|max:255',
+                'cedula' => 'required|string|max:20|unique:users,cedula',
+                'correo_electronico' => 'required|email|max:255|unique:users,correo_electronico',
+                'nombre_usuario' => 'required|string|max:255|unique:users,nombre_usuario',
+                'rol' => 'required|in:Administrador,Asesor',
+                'password' => 'required|string|min:8|confirmed',
+            ]);
 
-        // Redireccionar con mensaje de éxito
-        return redirect()->route('admin.users')
-            ->with('success', 'Usuario creado correctamente');
+            \Log::info('Validación exitosa', ['datos_validados' => $validated]);
+
+            // Crear nuevo usuario
+            $nuevoUsuario = User::create([
+                'nombre_completo' => $validated['nombre_completo'],
+                'cedula' => $validated['cedula'],
+                'correo_electronico' => $validated['correo_electronico'],
+                'nombre_usuario' => $validated['nombre_usuario'],
+                'rol' => $validated['rol'],
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            \Log::info('Usuario creado exitosamente', ['usuario_id' => $nuevoUsuario->id]);
+
+            // Redireccionar con mensaje de éxito
+            return redirect()->route('admin.users')
+                ->with('success', 'Usuario creado correctamente');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Error de validación al crear usuario', [
+                'errores' => $e->errors(),
+                'datos' => $request->all()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error inesperado al crear usuario', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'datos' => $request->all()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Ocurrió un error inesperado al crear el usuario. Por favor, inténtalo de nuevo.']);
+        }
     }
 
     /**

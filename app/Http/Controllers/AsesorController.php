@@ -32,11 +32,38 @@ class AsesorController extends Controller
         // Obtener cajas activas con información de ocupación
         $cajas = Caja::activas()->with('asesorActivo')->orderBy('numero_caja')->get();
 
+        // Log para debugging
+        \Log::info('Selección de caja - Usuario: ' . $user->nombre_usuario, [
+            'total_cajas' => $cajas->count(),
+            'cajas_raw' => $cajas->map(function($c) {
+                return [
+                    'id' => $c->id,
+                    'nombre' => $c->nombre,
+                    'asesor_activo_id' => $c->asesor_activo_id,
+                    'session_id' => $c->session_id,
+                    'fecha_asignacion' => $c->fecha_asignacion,
+                    'esta_ocupada' => $c->estaOcupada()
+                ];
+            })
+        ]);
+
         // Marcar cajas como disponibles u ocupadas
         $cajas = $cajas->map(function($caja) use ($user) {
-            $caja->disponible = !$caja->estaOcupada() || $caja->estaOcupadaPor($user->id);
-            $caja->ocupada_por_mi = $caja->estaOcupadaPor($user->id, session()->getId());
+            $estaOcupada = $caja->estaOcupada();
+            $ocupadaPorMi = $caja->estaOcupadaPor($user->id, session()->getId());
+
+            $caja->disponible = !$estaOcupada || $ocupadaPorMi;
+            $caja->ocupada_por_mi = $ocupadaPorMi;
             $caja->nombre_asesor = $caja->asesorActivo ? $caja->asesorActivo->nombre_completo : null;
+
+            // Log detallado por caja
+            \Log::info("Caja {$caja->nombre} - Estado:", [
+                'esta_ocupada' => $estaOcupada,
+                'ocupada_por_mi' => $ocupadaPorMi,
+                'disponible' => $caja->disponible,
+                'asesor_activo' => $caja->nombre_asesor
+            ]);
+
             return $caja;
         });
 

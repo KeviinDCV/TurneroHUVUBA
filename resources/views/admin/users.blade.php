@@ -41,15 +41,55 @@
 
 @section('content')
     <div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
-                <div class="flex justify-between items-center mb-6" x-data="{ openModal: false }">
-                    <h1 class="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
-                    <button @click="openModal = true" class="bg-hospital-blue text-white px-4 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                        Nuevo Usuario
-                    </button>
-                    
-                    <!-- Modal para crear usuario (dentro del contexto del botón) -->
-                    <div 
-                        x-show="openModal" 
+                @if (session('success'))
+                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+                    {{ session('success') }}
+                </div>
+                @endif
+
+                <!-- Aplicación Alpine.js para búsqueda en tiempo real y modal -->
+                <div x-data="{
+                    search: '{{ $search ?? '' }}',
+                    users: {{ json_encode($users->items()) }},
+                    allUsers: {{ json_encode($users->items()) }},
+                    openModal: {{ $errors->any() ? 'true' : 'false' }}, // Mantener modal abierto si hay errores
+
+                    init() {
+                        this.$watch('search', value => {
+                            if (value === '') {
+                                this.users = this.allUsers;
+                                return;
+                            }
+
+                            value = value.toLowerCase();
+                            this.users = this.allUsers.filter(user => {
+                                return user.nombre_completo.toLowerCase().includes(value) ||
+                                       user.cedula.toLowerCase().includes(value) ||
+                                       user.correo_electronico.toLowerCase().includes(value) ||
+                                       user.nombre_usuario.toLowerCase().includes(value) ||
+                                       user.rol.toLowerCase().includes(value);
+                            });
+                        });
+
+                        // Abrir modal automáticamente si hay errores de validación
+                        @if($errors->any())
+                            this.$nextTick(() => {
+                                this.$dispatch('open-modal');
+                            });
+                        @endif
+                    }
+                }">
+                    <!-- Header con título y botón -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
+                        <button @click="openModal = true" class="bg-hospital-blue text-white px-4 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                            Nuevo Usuario
+                        </button>
+                    </div>
+
+                    <!-- Modal para crear usuario -->
+                    <div
+                        x-show="openModal"
                         x-transition:enter="transition ease-out duration-300"
                         x-transition:enter-start="opacity-0"
                         x-transition:enter-end="opacity-100"
@@ -59,8 +99,8 @@
                         class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
                         style="display: none;"
                     >
-                        <div 
-                            @click.away="openModal = false" 
+                        <div
+                            @click.away="openModal = false"
                             class="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 transform scale-95"
@@ -78,7 +118,7 @@
                                         </svg>
                                     </button>
                                 </div>
-                                
+
                                 @if ($errors->any())
                                 <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
                                     <div class="font-bold">Por favor corrige los siguientes errores:</div>
@@ -89,19 +129,19 @@
                                     </ul>
                                 </div>
                                 @endif
-                                
+
                                 <form action="{{ route('admin.users.store') }}" method="POST">
                                     @csrf
-                                    
+
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <!-- Nombre Completo -->
                                         <div>
                                             <label for="nombre_completo" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                                            <input 
-                                                type="text" 
-                                                id="nombre_completo" 
-                                                name="nombre_completo" 
-                                                value="{{ old('nombre_completo') }}" 
+                                            <input
+                                                type="text"
+                                                id="nombre_completo"
+                                                name="nombre_completo"
+                                                value="{{ old('nombre_completo') }}"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
@@ -110,48 +150,48 @@
                                         <!-- Cédula -->
                                         <div>
                                             <label for="cedula" class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
-                                            <input 
-                                                type="text" 
-                                                id="cedula" 
-                                                name="cedula" 
-                                                value="{{ old('cedula') }}" 
+                                            <input
+                                                type="text"
+                                                id="cedula"
+                                                name="cedula"
+                                                value="{{ old('cedula') }}"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                         </div>
-                                        
+
                                         <!-- Correo Electrónico -->
                                         <div>
                                             <label for="correo_electronico" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                                            <input 
-                                                type="email" 
-                                                id="correo_electronico" 
-                                                name="correo_electronico" 
-                                                value="{{ old('correo_electronico') }}" 
+                                            <input
+                                                type="email"
+                                                id="correo_electronico"
+                                                name="correo_electronico"
+                                                value="{{ old('correo_electronico') }}"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                         </div>
-                                        
+
                                         <!-- Nombre de Usuario -->
                                         <div>
                                             <label for="nombre_usuario" class="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario</label>
-                                            <input 
-                                                type="text" 
-                                                id="nombre_usuario" 
-                                                name="nombre_usuario" 
-                                                value="{{ old('nombre_usuario') }}" 
+                                            <input
+                                                type="text"
+                                                id="nombre_usuario"
+                                                name="nombre_usuario"
+                                                value="{{ old('nombre_usuario') }}"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                         </div>
-                                        
+
                                         <!-- Rol -->
                                         <div>
                                             <label for="rol" class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                                            <select 
-                                                id="rol" 
-                                                name="rol" 
+                                            <select
+                                                id="rol"
+                                                name="rol"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
@@ -160,33 +200,33 @@
                                                 <option value="Asesor" {{ old('rol') === 'Asesor' ? 'selected' : '' }}>Asesor</option>
                                             </select>
                                         </div>
-                                        
+
                                         <!-- Contraseña -->
                                         <div>
                                             <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                                            <input 
-                                                type="password" 
-                                                id="password" 
-                                                name="password" 
+                                            <input
+                                                type="password"
+                                                id="password"
+                                                name="password"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                             <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
                                         </div>
-                                        
+
                                         <!-- Confirmar Contraseña -->
                                         <div>
                                             <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmar Contraseña</label>
-                                            <input 
-                                                type="password" 
-                                                id="password_confirmation" 
-                                                name="password_confirmation" 
+                                            <input
+                                                type="password"
+                                                id="password_confirmation"
+                                                name="password_confirmation"
                                                 class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                         </div>
                                     </div>
-                                    
+
                                     <div class="mt-8 flex justify-end space-x-3">
                                         <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
                                             Cancelar
@@ -199,45 +239,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                @if (session('success'))
-                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6">
-                    {{ session('success') }}
-                </div>
-                @endif
-                
-                <!-- Aplicación Alpine.js para búsqueda en tiempo real y modal -->
-                <div x-data="{
-                    search: '{{ $search ?? '' }}',
-                    users: {{ json_encode($users->items()) }},
-                    allUsers: {{ json_encode($users->items()) }},
-                    
-                    init() {
-                        this.$watch('search', value => {
-                            if (value === '') {
-                                this.users = this.allUsers;
-                                return;
-                            }
-                            
-                            value = value.toLowerCase();
-                            this.users = this.allUsers.filter(user => {
-                                return user.nombre_completo.toLowerCase().includes(value) || 
-                                       user.cedula.toLowerCase().includes(value) ||
-                                       user.correo_electronico.toLowerCase().includes(value) ||
-                                       user.nombre_usuario.toLowerCase().includes(value) ||
-                                       user.rol.toLowerCase().includes(value);
-                            });
-                        });
-                        
-                        // Abrir modal automáticamente si hay errores de validación
-                        @if($errors->any())
-                            this.$nextTick(() => {
-                                this.$dispatch('open-modal');
-                            });
-                        @endif
-                    }
-                }">
+
                     <!-- Buscador -->
                     <div class="mb-6">
                         <div class="flex items-center border border-gray-300 rounded-md overflow-hidden shadow-sm search-container">
@@ -246,10 +248,10 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </div>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 x-model="search"
-                                placeholder="Buscar por nombre, cédula, correo, usuario o rol..." 
+                                placeholder="Buscar por nombre, cédula, correo, usuario o rol..."
                                 class="w-full px-4 py-2 focus:outline-none focus:border-hospital-blue"
                             >
                             <template x-if="search">
@@ -261,7 +263,7 @@
                             </template>
                         </div>
                     </div>
-                    
+
                     <!-- Tabla de Usuarios -->
                     <div class="overflow-x-auto flex justify-center">
                         <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
@@ -290,7 +292,7 @@
                                         <td class="py-3 px-4 whitespace-nowrap" x-text="user.correo_electronico"></td>
                                         <td class="py-3 px-4 whitespace-nowrap" x-text="user.nombre_usuario"></td>
                                         <td class="py-3 px-4 whitespace-nowrap">
-                                            <span 
+                                            <span
                                                 class="px-2 py-1 rounded text-sm"
                                                 :class="user.rol === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
                                                 x-text="user.rol">
@@ -298,14 +300,14 @@
                                         </td>
                                         <td class="py-3 px-4 whitespace-nowrap">
                                             <div class="flex justify-center space-x-2">
-                                                <button class="p-1 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer" 
+                                                <button class="p-1 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
                                                         title="Editar"
                                                         @click="$store.modals.editUser.openModal(user.id)">
                                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                                     </svg>
                                                 </button>
-                                                <button class="p-1 text-red-600 hover:text-red-800 transition-colors cursor-pointer" 
+                                                <button class="p-1 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
                                                         title="Eliminar"
                                                         @click="$store.modals.deleteUser.openModal(user.id, user.nombre_completo)">
                                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,7 +321,7 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Para paginación completa, necesitaremos implementar una solución del lado del servidor -->
                     <div class="mt-4">
                         <form id="searchForm" action="{{ route('admin.users') }}" method="GET" class="hidden">
@@ -332,15 +334,15 @@
             </div>
         </main>
     </div>
-    
+
     <!-- Modal para Editar Usuario -->
-    <div 
+    <div
         x-data="editUserModal()"
         x-cloak
         @keydown.escape.window="isOpen = false"
     >
-        <div 
-            x-show="isOpen" 
+        <div
+            x-show="isOpen"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100"
@@ -350,8 +352,8 @@
             class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
             style="display: none;"
         >
-            <div 
-                @click.away="isOpen = false" 
+            <div
+                @click.away="isOpen = false"
                 class="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
@@ -369,7 +371,7 @@
                             </svg>
                         </button>
                     </div>
-                    
+
                     <!-- Indicador de Carga -->
                     <div x-show="loading" class="flex justify-center items-center py-4">
                         <svg class="animate-spin h-8 w-8 text-hospital-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -377,7 +379,7 @@
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                     </div>
-                    
+
                     <!-- Errores de Validación -->
                     <div x-show="Object.keys(errors).length > 0" class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
                         <div class="font-bold">Por favor corrige los siguientes errores:</div>
@@ -389,7 +391,7 @@
                             </template>
                         </ul>
                     </div>
-                    
+
                     <!-- Formulario -->
                     <div x-show="!loading" class="mt-4">
                         <form @submit.prevent="submitForm">
@@ -397,10 +399,10 @@
                                 <!-- Nombre Completo -->
                                 <div>
                                     <label for="edit_nombre_completo" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                                    <input 
-                                        type="text" 
-                                        id="edit_nombre_completo" 
-                                        x-model="userData.nombre_completo" 
+                                    <input
+                                        type="text"
+                                        id="edit_nombre_completo"
+                                        x-model="userData.nombre_completo"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         required
                                     >
@@ -409,45 +411,45 @@
                                 <!-- Cédula -->
                                 <div>
                                     <label for="edit_cedula" class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
-                                    <input 
-                                        type="text" 
-                                        id="edit_cedula" 
-                                        x-model="userData.cedula" 
+                                    <input
+                                        type="text"
+                                        id="edit_cedula"
+                                        x-model="userData.cedula"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         required
                                     >
                                 </div>
-                                
+
                                 <!-- Correo Electrónico -->
                                 <div>
                                     <label for="edit_correo_electronico" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                                    <input 
-                                        type="email" 
-                                        id="edit_correo_electronico" 
-                                        x-model="userData.correo_electronico" 
+                                    <input
+                                        type="email"
+                                        id="edit_correo_electronico"
+                                        x-model="userData.correo_electronico"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         required
                                     >
                                 </div>
-                                
+
                                 <!-- Nombre de Usuario -->
                                 <div>
                                     <label for="edit_nombre_usuario" class="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario</label>
-                                    <input 
-                                        type="text" 
-                                        id="edit_nombre_usuario" 
-                                        x-model="userData.nombre_usuario" 
+                                    <input
+                                        type="text"
+                                        id="edit_nombre_usuario"
+                                        x-model="userData.nombre_usuario"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         required
                                     >
                                 </div>
-                                
+
                                 <!-- Rol -->
                                 <div>
                                     <label for="edit_rol" class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                                    <select 
-                                        id="edit_rol" 
-                                        x-model="userData.rol" 
+                                    <select
+                                        id="edit_rol"
+                                        x-model="userData.rol"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         required
                                     >
@@ -456,7 +458,7 @@
                                         <option value="Asesor">Asesor</option>
                                     </select>
                                 </div>
-                                
+
                                 <!-- Cambiar Contraseña -->
                                 <div>
                                     <label class="flex items-center">
@@ -465,35 +467,35 @@
                                     </label>
                                 </div>
                             </div>
-                            
+
                             <!-- Campos de contraseña (condicionales) -->
                             <div x-show="showPassword" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- Contraseña -->
                                 <div>
                                     <label for="edit_password" class="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
-                                    <input 
-                                        type="password" 
-                                        id="edit_password" 
-                                        x-model="userData.password" 
+                                    <input
+                                        type="password"
+                                        id="edit_password"
+                                        x-model="userData.password"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         :required="showPassword"
                                     >
                                     <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
                                 </div>
-                                
+
                                 <!-- Confirmar Contraseña -->
                                 <div>
                                     <label for="edit_password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmar Contraseña</label>
-                                    <input 
-                                        type="password" 
-                                        id="edit_password_confirmation" 
-                                        x-model="userData.password_confirmation" 
+                                    <input
+                                        type="password"
+                                        id="edit_password_confirmation"
+                                        x-model="userData.password_confirmation"
                                         class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
                                         :required="showPassword"
                                     >
                                 </div>
                             </div>
-                            
+
                             <div class="mt-8 flex justify-end space-x-3">
                                 <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
                                     Cancelar
@@ -508,15 +510,15 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal para Confirmar Eliminación -->
-    <div 
+    <div
         x-data="deleteUserModal()"
         x-cloak
         @keydown.escape.window="isOpen = false"
     >
-        <div 
-            x-show="isOpen" 
+        <div
+            x-show="isOpen"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100"
@@ -526,8 +528,8 @@
             class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
             style="display: none;"
         >
-            <div 
-                @click.away="isOpen = false" 
+            <div
+                @click.away="isOpen = false"
                 class="bg-white rounded-lg shadow-2xl w-full max-w-md"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
@@ -549,7 +551,7 @@
                             Esta acción no se puede deshacer.
                         </p>
                     </div>
-                    
+
                     <div class="mt-6 flex justify-center space-x-4">
                         <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer">
                             Cancelar
@@ -602,7 +604,7 @@
                 showPassword: false,
                 loading: false,
                 errors: {},
-                
+
                 init() {
                     this.$watch('$store.modals.editUser.isOpen', value => {
                         if (value) {
@@ -621,7 +623,7 @@
                         }
                     });
                 },
-                
+
                 resetForm() {
                     this.userId = null;
                     this.userData = {
@@ -636,7 +638,7 @@
                     this.showPassword = false;
                     this.errors = {};
                 },
-                
+
                 loadUserData() {
                     this.loading = true;
                     fetch(`/users/${this.userId}`)
@@ -658,28 +660,28 @@
                             this.loading = false;
                         });
                 },
-                
+
                 submitForm() {
                     // Crear un nuevo FormData y token CSRF
                     const formData = new FormData();
                     const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    
+
                     // Añadir los campos al FormData
                     formData.append('nombre_completo', this.userData.nombre_completo);
                     formData.append('cedula', this.userData.cedula);
                     formData.append('correo_electronico', this.userData.correo_electronico);
                     formData.append('nombre_usuario', this.userData.nombre_usuario);
                     formData.append('rol', this.userData.rol);
-                    
+
                     // Añadir contraseña solo si se ha cambiado
                     if (this.userData.password) {
                         formData.append('password', this.userData.password);
                         formData.append('password_confirmation', this.userData.password_confirmation);
                     }
-                    
+
                     // Añadir el método PUT para Laravel
                     formData.append('_method', 'PUT');
-                    
+
                     // Enviar la petición
                     fetch(`/users/${this.userId}`, {
                         method: 'POST',
@@ -709,12 +711,12 @@
                     });
                 }
             }));
-            
+
             Alpine.data('deleteUserModal', () => ({
                 isOpen: false,
                 userId: null,
                 userName: '',
-                
+
                 init() {
                     this.$watch('$store.modals.deleteUser.isOpen', value => {
                         if (value) {
@@ -732,7 +734,7 @@
                         }
                     });
                 },
-                
+
                 deleteUser() {
                     const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 

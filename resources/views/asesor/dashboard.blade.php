@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dashboard Asesor - Hospital Universitario del Valle</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
@@ -91,6 +92,14 @@
 
                     <!-- Menú de opciones -->
                     <div class="flex items-center space-x-2">
+                        <!-- Botón para repetir audio del último turno -->
+                        <button id="repetir-audio-btn"
+                                class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200 text-sm flex items-center gap-2"
+                                title="Repetir audio del último turno llamado">
+                            <span>🔊</span>
+                            <span>Repetir Audio</span>
+                        </button>
+
                         <a href="{{ route('asesor.cambiar-caja') }}"
                            class="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors duration-200 text-sm">
                             Cambiar Caja
@@ -887,9 +896,71 @@
             // Agregar event listeners a todos los botones de llamar
             agregarEventListenersBotonesLlamar();
 
+            // Agregar event listener al botón de repetir audio
+            agregarEventListenerRepetirAudio();
+
             // Verificar estado del turno en el servidor
             verificarEstadoTurnoEnServidor();
         });
+
+        // Función para manejar el botón de repetir audio
+        function agregarEventListenerRepetirAudio() {
+            const btnRepetirAudio = document.getElementById('repetir-audio-btn');
+
+            if (btnRepetirAudio) {
+                btnRepetirAudio.addEventListener('click', function() {
+                    repetirAudioUltimoTurno();
+                });
+            }
+        }
+
+        // Función para solicitar repetición del audio
+        function repetirAudioUltimoTurno() {
+            const btnRepetirAudio = document.getElementById('repetir-audio-btn');
+
+            // Deshabilitar botón temporalmente
+            btnRepetirAudio.disabled = true;
+            btnRepetirAudio.innerHTML = '<span>🔄</span><span>Enviando...</span>';
+
+            // Hacer petición al servidor
+            fetch('/api/repetir-audio-turno', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Solicitud de repetición enviada');
+
+                    // Cambiar botón temporalmente para mostrar éxito
+                    btnRepetirAudio.innerHTML = '<span>✅</span><span>Enviado</span>';
+                    btnRepetirAudio.className = 'px-4 py-2 bg-green-500 text-white rounded-lg transition-colors duration-200 text-sm flex items-center gap-2';
+
+                    // Usar localStorage para comunicación entre pestañas
+                    localStorage.setItem('repetir-audio-turno', Date.now().toString());
+
+                } else {
+                    console.error('❌ Error en solicitud:', data.message);
+                    alert('Error al solicitar repetición: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error de red:', error);
+                alert('Error de conexión al solicitar repetición');
+            })
+            .finally(() => {
+                // Restaurar botón después de 2 segundos
+                setTimeout(() => {
+                    btnRepetirAudio.disabled = false;
+                    btnRepetirAudio.innerHTML = '<span>🔊</span><span>Repetir Audio</span>';
+                    btnRepetirAudio.className = 'px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200 text-sm flex items-center gap-2';
+                }, 2000);
+            });
+        }
     </script>
 </body>
 </html>

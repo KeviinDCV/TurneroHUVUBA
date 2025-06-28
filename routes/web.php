@@ -36,6 +36,11 @@ Route::get('/api/csrf-token', function() {
 })->name('api.csrf-token')
     ->middleware(['no.session.api']);
 
+// API para repetir audio del último turno (requiere autenticación)
+Route::post('/api/repetir-audio-turno', [TurnoController::class, 'repetirAudioTurno'])
+    ->name('api.repetir-audio-turno')
+    ->middleware(['auth']);
+
 // Rutas que requieren autenticación pero manejan redirección automática
 Route::get('/admin/usuarios', function () {
     if (!Auth::check()) {
