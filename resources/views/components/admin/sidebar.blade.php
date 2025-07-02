@@ -4,11 +4,11 @@
 @endphp
 
 <!-- Sidebar -->
-<aside class="w-72 bg-hospital-blue text-white shadow-xl flex flex-col sidebar-full-height fixed md:relative inset-y-0 left-0 z-30 transform md:transform-none transition-transform duration-300 ease-in-out"
+<aside class="sidebar-responsive w-72 bg-hospital-blue text-white shadow-xl flex flex-col sidebar-full-height fixed md:relative inset-y-0 left-0 z-30 transform md:transform-none transition-transform duration-300 ease-in-out"
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
 
     <!-- Header del Sidebar -->
-    <div class="p-6 border-b border-white/20 flex-shrink-0">
+    <div class="sidebar-header p-6 border-b border-white/20 flex-shrink-0">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-md p-1">
@@ -29,7 +29,7 @@
     </div>
 
     <!-- Información del Usuario -->
-    <div class="p-4 border-b border-white/20 bg-white/10">
+    <div class="sidebar-user p-4 border-b border-white/20 bg-white/10">
         <div class="flex items-center space-x-3">
             <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center border border-white/30">
                 <span class="text-sm font-medium">{{ substr($user->nombre_completo, 0, 1) }}</span>
@@ -46,7 +46,7 @@
 
     <!-- Navegación -->
     <div class="flex-1 overflow-y-auto sidebar-nav">
-        <nav class="space-y-1 p-4 pb-20">
+        <nav class="sidebar-nav space-y-1 p-4 pb-20">
             <!-- Inicio -->
             <a href="{{ route('admin.dashboard') }}" class="sidebar-item group w-full flex items-center justify-start {{ $currentRoute === 'admin.dashboard' ? 'bg-white/20 text-white border-l-4 border-white shadow-md relative' : 'text-blue-200 hover:text-white hover:bg-white/10' }} p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
                 <svg class="mr-3 h-5 w-5 {{ $currentRoute === 'admin.dashboard' ? '' : 'group-hover:text-white transition-colors' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -15,14 +15,9 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        /* Evitar scroll innecesario */
+        /* Permitir scroll en el panel izquierdo */
         html, body {
             height: 100%;
-            overflow: hidden;
-        }
-        /* Asegurar que la tabla de historial sea visible */
-        .historial-tabla {
-            z-index: 1000;
         }
         /* Animación para el spinner */
         @keyframes spin {
@@ -52,174 +47,17 @@
         .highlight-update {
             background-color: rgba(59, 130, 246, 0.2); /* Blue highlight */
         }
-
-        /* Responsive Design - Mejoras para resoluciones pequeñas */
-        @media (max-height: 800px) {
-            /* Reducir padding general */
-            .panel-left {
-                padding: 1rem !important;
-            }
-            .panel-right {
-                padding: 1rem !important;
-            }
-
-            /* Reducir tamaños de texto en panel derecho */
-            .turno-display {
-                font-size: 3rem !important;
-                margin-bottom: 1rem !important;
-            }
-            .servicio-display {
-                font-size: 2rem !important;
-            }
-
-            /* Reducir padding de botones */
-            .action-buttons button {
-                padding: 0.5rem 1.5rem !important;
-                font-size: 0.875rem !important;
-            }
-
-            /* Reducir espaciado en secciones */
-            .section-spacing {
-                margin-bottom: 1rem !important;
-            }
-
-            /* Ajustar tabla de servicios */
-            .services-table .grid-item {
-                padding: 0.5rem !important;
-                font-size: 0.75rem !important;
-            }
-
-            /* Ajustar tabla de historial */
-            .historial-table .grid-item {
-                padding: 0.375rem !important;
-                font-size: 0.75rem !important;
-            }
-        }
-
-        @media (max-height: 700px) {
-            /* Para pantallas muy pequeñas */
-            .turno-display {
-                font-size: 2.5rem !important;
-                margin-bottom: 0.5rem !important;
-            }
-            .servicio-display {
-                font-size: 1.5rem !important;
-            }
-
-            .panel-left, .panel-right {
-                padding: 0.75rem !important;
-            }
-
-            .action-buttons {
-                margin-bottom: 1rem !important;
-            }
-        }
-
-        @media (max-width: 1400px) {
-            /* Ajustes para anchos menores */
-            .services-table .grid-item,
-            .historial-table .grid-item {
-                font-size: 0.75rem !important;
-                padding: 0.5rem !important;
-            }
-
-            /* Reducir padding de inputs */
-            .input-group input {
-                padding: 0.5rem !important;
-                font-size: 0.875rem !important;
-            }
-        }
-
-        @media (max-width: 1200px) {
-            /* Para pantallas más pequeñas */
-            .services-table .grid-item,
-            .historial-table .grid-item {
-                font-size: 0.7rem !important;
-                padding: 0.375rem !important;
-            }
-
-            .turno-display {
-                font-size: 2rem !important;
-            }
-            .servicio-display {
-                font-size: 1.25rem !important;
-            }
-        }
-
-        /* Mejoras específicas para resolución 1366x768 */
-        @media (max-width: 1366px) and (max-height: 768px) {
-            .panel-left, .panel-right {
-                padding: 0.75rem !important;
-            }
-
-            .turno-display {
-                font-size: 2.5rem !important;
-                margin-bottom: 0.75rem !important;
-            }
-
-            .servicio-display {
-                font-size: 1.5rem !important;
-            }
-
-            .action-buttons button {
-                padding: 0.5rem 1.25rem !important;
-                font-size: 0.875rem !important;
-            }
-
-            .services-table .grid-item,
-            .historial-table .grid-item {
-                font-size: 0.7rem !important;
-                padding: 0.375rem !important;
-            }
-
-            .section-spacing {
-                margin-bottom: 0.75rem !important;
-            }
-
-            /* Mejorar botones pequeños */
-            .btn-llamar-siguiente {
-                font-size: 0.65rem !important;
-                padding: 0.25rem 0.5rem !important;
-            }
-
-            /* Ajustar títulos */
-            h2 {
-                font-size: 1rem !important;
-                margin-bottom: 0.75rem !important;
-            }
-        }
-
-        /* Asegurar que los elementos no se desborden */
-        * {
-            box-sizing: border-box;
-        }
-
-        /* Mejorar legibilidad en pantallas pequeñas */
-        @media (max-height: 600px) {
-            .turno-display {
-                font-size: 2rem !important;
-                margin-bottom: 0.5rem !important;
-            }
-
-            .servicio-display {
-                font-size: 1.25rem !important;
-            }
-
-            .action-buttons {
-                margin-bottom: 0.5rem !important;
-            }
-        }
     </style>
 </head>
 <body class="bg-gray-100 h-screen">
     <!-- Interfaz de llamado de turnos -->
-    <div class="h-screen flex bg-gray-100 overflow-hidden">
+    <div class="h-screen flex bg-gray-100">
         <!-- Panel Izquierdo -->
-        <div class="w-1/2 bg-white panel-left p-6 shadow-lg overflow-y-auto">
-            <div class="section-spacing mb-6">
+        <div class="w-1/2 bg-white p-6 shadow-lg overflow-y-auto" style="padding-bottom: 20px;">
+            <div class="mb-6">
                 <h2 class="text-lg font-medium text-gray-700 mb-4">Llamar Turno Específico</h2>
 
-                <div class="input-group flex items-center gap-2 mb-4">
+                <div class="flex items-center gap-2 mb-4">
                     <input
                         type="text"
                         id="codigo-turno"
@@ -246,16 +84,22 @@
                     >
                         Llamar
                     </button>
+                    <button
+                        id="btn-calificar"
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors duration-200"
+                    >
+                        Calificar
+                    </button>
                 </div>
             </div>
 
             <!-- Tabla de servicios -->
-            <div class="services-table border border-gray-300 rounded overflow-hidden">
+            <div class="border border-gray-300 rounded overflow-hidden">
                 <div class="text-white grid grid-cols-4 text-sm font-medium" style="background-color: #064b9e;">
-                    <div class="grid-item p-3 border-r border-blue-400">SERVICIO</div>
-                    <div class="grid-item p-3 border-r border-blue-400 text-center">CANTIDAD</div>
-                    <div class="grid-item p-3 border-r border-blue-400 text-center">APLAZADOS</div>
-                    <div class="grid-item p-3 text-center">OPCIÓN</div>
+                    <div class="p-3 border-r border-blue-400">SERVICIO</div>
+                    <div class="p-3 border-r border-blue-400 text-center">CANTIDAD</div>
+                    <div class="p-3 border-r border-blue-400 text-center">APLAZADOS</div>
+                    <div class="p-3 text-center">OPCIÓN</div>
                 </div>
 
                 <div id="servicios-container">
@@ -264,7 +108,7 @@
                     <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} servicio-principal"
                          data-servicio-id="{{ $servicio['id'] }}"
                          data-tiene-hijos="{{ $servicio['tiene_hijos'] ? 'true' : 'false' }}">
-                        <div class="grid-item p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
+                        <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
                             @if($servicio['tiene_hijos'])
                                 <svg class="w-4 h-4 mr-1 chevron-icon text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
@@ -272,13 +116,13 @@
                             @endif
                             {{ $servicio['nombre'] }}
                         </div>
-                        <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $servicio['pendientes'] }}">
+                        <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $servicio['pendientes'] }}">
                             {{ $servicio['pendientes'] }}
                         </div>
-                        <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $servicio['aplazados'] }}">
+                        <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $servicio['aplazados'] }}">
                             {{ $servicio['aplazados'] }}
                         </div>
-                        <div class="grid-item p-3 text-center">
+                        <div class="p-3 text-center">
                             <button
                                 class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                 data-servicio-id="{{ $servicio['id'] }}"
@@ -294,12 +138,12 @@
                     @if($servicio['tiene_hijos'] && count($servicio['subservicios']) > 0)
                         @foreach($servicio['subservicios'] as $subservicio)
                             <div class="grid grid-cols-4 text-sm {{ $loop->even ? 'bg-gray-50' : 'bg-white' }} subservicio-row" data-parent-id="{{ $servicio['id'] }}">
-                                <div class="grid-item p-3 border-r border-gray-200 font-medium servicio-nombre">
+                                <div class="p-3 border-r border-gray-200 font-medium servicio-nombre">
                                     {{ $subservicio['nombre'] }}
                                 </div>
-                                <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $subservicio['pendientes'] }}">{{ $subservicio['pendientes'] }}</div>
-                                <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $subservicio['aplazados'] }}">{{ $subservicio['aplazados'] }}</div>
-                                <div class="grid-item p-3 text-center">
+                                <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $subservicio['pendientes'] }}">{{ $subservicio['pendientes'] }}</div>
+                                <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $subservicio['aplazados'] }}">{{ $subservicio['aplazados'] }}</div>
+                                <div class="p-3 text-center">
                                     <button
                                         class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                         data-servicio-id="{{ $subservicio['id'] }}"
@@ -321,32 +165,50 @@
             </div>
 
             <!-- HISTORIAL DE TURNOS LLAMADOS -->
-            <div class="historial-table mt-8 border border-gray-300 rounded overflow-hidden">
-                <div class="text-white grid grid-cols-6 text-sm font-medium" style="background-color: #064b9e;">
-                    <div class="grid-item p-3 border-r border-blue-400">TURNO</div>
-                    <div class="grid-item p-3 border-r border-blue-400">SERVICIO</div>
-                    <div class="grid-item p-3 border-r border-blue-400">ESTADO</div>
-                    <div class="grid-item p-3 border-r border-blue-400">HORA</div>
-                    <div class="grid-item p-3 border-r border-blue-400">TIEMPO</div>
-                    <div class="grid-item p-3 text-center">ACCIONES</div>
+            <div class="mt-8">
+                <div class="bg-blue-50 border border-blue-200 rounded-t-lg px-4 py-3">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Historial de Turnos Llamados
+                    </h3>
+                    <p class="text-xs text-gray-600 mt-1">Turnos que has llamado hoy - Gestiona desde aquí si hay problemas de conexión</p>
                 </div>
-
-                <div id="historial-turnos-tbody" class="bg-white">
-                    <div class="grid grid-cols-6 text-sm bg-white p-6 text-center text-gray-500">
-                        <div class="col-span-6 flex items-center justify-center">
-                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span class="text-sm">Cargando historial...</span>
-                        </div>
+                <div class="bg-white border border-blue-200 border-t-0 rounded-b-lg overflow-hidden">
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 border-b border-gray-200">TURNO</th>
+                                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 border-b border-gray-200">SERVICIO</th>
+                                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 border-b border-gray-200">ESTADO</th>
+                                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 border-b border-gray-200">HORA</th>
+                                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 border-b border-gray-200">TIEMPO</th>
+                                    <th class="px-3 py-2 text-center text-xs font-bold text-gray-700 border-b border-gray-200">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historial-turnos-tbody" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="6" class="px-3 py-8 text-center text-gray-500">
+                                        <div class="flex items-center justify-center">
+                                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span class="text-sm">Cargando historial...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Panel Derecho -->
-        <div class="w-1/2 text-white relative overflow-hidden panel-right" style="background: linear-gradient(135deg, #064b9e 0%, #0a5bb8 100%);">
+        <div class="w-1/2 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #064b9e 0%, #0a5bb8 100%);">
             <!-- Elementos decorativos -->
             <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32"></div>
             <div class="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full translate-y-32 -translate-x-32"></div>
@@ -359,12 +221,12 @@
 
                 <!-- Centro -->
                 <div class="flex-1 flex flex-col justify-center items-center">
-                    <div class="turno-display text-6xl font-light mb-8 tracking-wider" id="turno-actual">TURNO</div>
-                    <div class="servicio-display text-4xl font-light tracking-wider" id="servicio-actual">SERVICIO</div>
+                    <div class="text-6xl font-light mb-8 tracking-wider" id="turno-actual">TURNO</div>
+                    <div class="text-4xl font-light tracking-wider" id="servicio-actual">SERVICIO</div>
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="action-buttons flex justify-center gap-4 mb-8">
+                <div class="flex justify-center gap-4 mb-8">
                     <button
                         id="btn-atender"
                         class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
@@ -404,6 +266,8 @@
         </div>
     </div>
 
+
+
     <!-- Modal para notificaciones -->
     <div id="notification-modal" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
         <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl animate-fade-in">
@@ -423,6 +287,41 @@
                 </button>
             </div>
         </div>
+
+        <!-- TABLA DE HISTORIAL DE TURNOS LLAMADOS -->
+        <div class="historial-tabla fixed bottom-0 left-0 right-0 bg-white border-t-2 border-blue-500 shadow-lg" style="height: 200px; overflow-y: auto; z-index: 1000;">
+            <div class="px-4 py-2 bg-blue-50 border-b border-gray-200">
+                <h3 class="text-lg font-bold text-gray-900">🕒 Historial de Turnos Llamados</h3>
+                <p class="text-xs text-gray-600">Turnos que has llamado hoy - Gestiona desde aquí si hay problemas de conexión</p>
+            </div>
+            <div class="p-2">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-2 py-1 text-left text-xs font-bold text-gray-700">TURNO</th>
+                            <th class="px-2 py-1 text-left text-xs font-bold text-gray-700">SERVICIO</th>
+                            <th class="px-2 py-1 text-left text-xs font-bold text-gray-700">ESTADO</th>
+                            <th class="px-2 py-1 text-left text-xs font-bold text-gray-700">HORA</th>
+                            <th class="px-2 py-1 text-left text-xs font-bold text-gray-700">TIEMPO</th>
+                            <th class="px-2 py-1 text-center text-xs font-bold text-gray-700">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historial-turnos-tbody-duplicado" class="bg-white" style="display: none;">
+                        <tr>
+                            <td colspan="6" class="px-2 py-4 text-center text-gray-500">
+                                <div class="flex items-center justify-center">
+                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-sm">Cargando historial...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -437,6 +336,7 @@
         const codigoInput = document.getElementById('codigo-turno');
         const numeroInput = document.getElementById('numero-turno');
         const btnLlamarEspecifico = document.getElementById('btn-llamar-especifico');
+        const btnCalificar = document.getElementById('btn-calificar');
         const btnAtender = document.getElementById('btn-atender');
         const btnAplazar = document.getElementById('btn-aplazar');
         const turnoActualElement = document.getElementById('turno-actual');
@@ -605,7 +505,7 @@
                         <div class="grid grid-cols-4 text-sm ${bgClass} servicio-principal"
                              data-servicio-id="${servicio.id}"
                              data-tiene-hijos="${servicio.tiene_hijos ? 'true' : 'false'}">
-                            <div class="grid-item p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
+                            <div class="p-3 border-r border-gray-200 font-medium servicio-nombre flex items-center">
                                 ${servicio.tiene_hijos ? `
                                     <svg class="w-4 h-4 mr-1 chevron-icon text-blue-700 ${estaExpandido ? 'rotate-chevron' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
@@ -613,13 +513,13 @@
                                 ` : ''}
                                 ${servicio.nombre}
                             </div>
-                            <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${servicio.pendientes}">
+                            <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${servicio.pendientes}">
                                 ${servicio.pendientes}
                             </div>
-                            <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${servicio.aplazados}">
+                            <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${servicio.aplazados}">
                                 ${servicio.aplazados}
                             </div>
-                            <div class="grid-item p-3 text-center">
+                            <div class="p-3 text-center">
                                 <button
                                     class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                     data-servicio-id="${servicio.id}"
@@ -642,12 +542,12 @@
                                 <div class="grid grid-cols-4 text-sm ${subBgClass} subservicio-row"
                                      data-parent-id="${servicio.id}"
                                      style="display: ${displayStyle}">
-                                    <div class="grid-item p-3 border-r border-gray-200 font-medium servicio-nombre">
+                                    <div class="p-3 border-r border-gray-200 font-medium servicio-nombre">
                                         ${subservicio.nombre}
                                     </div>
-                                    <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${subservicio.pendientes}">${subservicio.pendientes}</div>
-                                    <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${subservicio.aplazados}">${subservicio.aplazados}</div>
-                                    <div class="grid-item p-3 text-center">
+                                    <div class="p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${subservicio.pendientes}">${subservicio.pendientes}</div>
+                                    <div class="p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${subservicio.aplazados}">${subservicio.aplazados}</div>
+                                    <div class="p-3 text-center">
                                         <button
                                             class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                             data-servicio-id="${subservicio.id}"
@@ -842,11 +742,6 @@
         btnAplazar.addEventListener('click', function() {
             if (!turnoActual) return;
 
-            // Detener el contador
-            if (intervalTiempo) {
-                clearInterval(intervalTiempo);
-            }
-
             fetch('{{ route("asesor.aplazar-turno") }}', {
                 method: 'POST',
                 headers: {
@@ -854,8 +749,7 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
-                    turno_id: turnoActual.id,
-                    duracion: tiempoTranscurrido
+                    turno_id: turnoActual.id
                 })
             })
             .then(response => response.json())
@@ -925,11 +819,11 @@
 
             if (!turnos || turnos.length === 0) {
                 tbody.innerHTML = `
-                    <div class="grid grid-cols-6 text-sm bg-white p-6 text-center text-gray-500">
-                        <div class="col-span-6">
+                    <tr>
+                        <td colspan="6" class="px-2 py-4 text-center text-gray-500">
                             <span class="text-sm">No hay turnos llamados hoy</span>
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                 `;
                 return;
             }
@@ -951,12 +845,16 @@
                 if (turno.estado === 'llamado') {
                     acciones = `
                         <button onclick="marcarAtendidoDesdeHistorial('${turno.codigo_completo}')"
-                                class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">
+                                class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 mr-1">
                             Atender
                         </button>
                         <button onclick="aplazarTurnoDesdeHistorial('${turno.codigo_completo}')"
-                                class="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600">
+                                class="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600 mr-1">
                             Aplazar
+                        </button>
+                        <button onclick="volverLlamarTurno('${turno.codigo_completo}')"
+                                class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                            Repetir
                         </button>
                     `;
                 } else {
@@ -966,20 +864,20 @@
                 }
 
                 return `
-                    <div class="grid grid-cols-6 text-sm bg-white border-b border-gray-200 hover:bg-gray-50">
-                        <div class="grid-item p-3 border-r border-gray-200 font-medium">${turno.codigo_completo}</div>
-                        <div class="grid-item p-3 border-r border-gray-200">${turno.servicio?.nombre || 'N/A'}</div>
-                        <div class="grid-item p-3 border-r border-gray-200">
+                    <tr class="border-b border-gray-100">
+                        <td class="px-2 py-2 font-medium text-xs">${turno.codigo_completo}</td>
+                        <td class="px-2 py-2 text-xs">${turno.servicio?.nombre || 'N/A'}</td>
+                        <td class="px-2 py-2">
                             <span class="px-2 py-1 rounded-full text-xs font-medium ${estadoColor}">
                                 ${turno.estado.toUpperCase()}
                             </span>
-                        </div>
-                        <div class="grid-item p-3 border-r border-gray-200">${horaLlamado}</div>
-                        <div class="grid-item p-3 border-r border-gray-200 font-mono">${tiempoTranscurrido}</div>
-                        <div class="grid-item p-3 flex items-center justify-center space-x-2">
+                        </td>
+                        <td class="px-2 py-2 text-xs">${horaLlamado}</td>
+                        <td class="px-2 py-2 text-xs font-mono">${tiempoTranscurrido}</td>
+                        <td class="px-2 py-2 text-center">
                             ${acciones}
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                 `;
             }).join('');
         }
@@ -988,11 +886,11 @@
         function mostrarErrorHistorial(mensaje) {
             const tbody = document.getElementById('historial-turnos-tbody');
             tbody.innerHTML = `
-                <div class="grid grid-cols-6 text-sm bg-white p-6 text-center text-red-500">
-                    <div class="col-span-6">
+                <tr>
+                    <td colspan="6" class="px-2 py-4 text-center text-red-500">
                         <span class="text-sm">❌ ${mensaje}</span>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `;
         }
 
@@ -1012,12 +910,10 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log('🔍 Respuesta completa del servidor:', data);
                 if (data.success) {
                     console.log('✅ Turno marcado como atendido');
-                    console.log('⏱️ Duración retornada:', data.duracion, 'segundos');
                     cargarHistorialTurnos(); // Recargar historial
-                    actualizarEstadisticasServicios(); // Actualizar estadísticas
+                    actualizarEstadisticas(); // Actualizar estadísticas
                 } else {
                     console.error('❌ Error al marcar como atendido:', data.message);
                     alert('Error: ' + data.message);
@@ -1048,7 +944,7 @@
                 if (data.success) {
                     console.log('⏸️ Turno aplazado');
                     cargarHistorialTurnos(); // Recargar historial
-                    actualizarEstadisticasServicios(); // Actualizar estadísticas
+                    actualizarEstadisticas(); // Actualizar estadísticas
                 } else {
                     console.error('❌ Error al aplazar:', data.message);
                     alert('Error: ' + data.message);
@@ -1098,8 +994,8 @@
             // Cargar historial inicial
             cargarHistorialTurnos();
 
-            // Recargar historial cada 5 segundos para ver el tiempo en tiempo real
-            setInterval(cargarHistorialTurnos, 5000);
+            // Recargar historial cada 30 segundos
+            setInterval(cargarHistorialTurnos, 30000);
         });
     </script>
 </body>

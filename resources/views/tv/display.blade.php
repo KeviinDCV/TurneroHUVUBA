@@ -175,10 +175,10 @@
             </div>
 
             <!-- Center Header - Hospital Info con Logo -->
-            <div class="bg-hospital-blue-light p-4 pl-48 pr-2 flex items-center space-x-3 justify-end col-span-2">
+            <div class="bg-hospital-blue-light p-4 pl-32 pr-2 flex items-center space-x-4 justify-end col-span-2">
                 <!-- Logo del Hospital -->
                 <div class="flex-shrink-0">
-                    <img src="{{ asset('images/logo.png') }}" alt="Logo Hospital Universitario del Valle" class="h-20 w-auto">
+                    <img src="{{ asset('images/logoacreditacion.png') }}" alt="Logo Hospital Universitario del Valle" class="h-24 w-auto max-w-none" style="mix-blend-mode: multiply; filter: contrast(1.2);">
                 </div>
 
                 <!-- Información del Hospital -->
@@ -963,8 +963,39 @@
                 console.log('⚠️ Sincronización inicial - cola protegida, manteniendo estado actual');
             }
 
-            // Hacer primera sincronización
-            updateQueue();
+            // Hacer primera sincronización y marcar turnos existentes como ya reproducidos
+            fetch('/api/turnos-llamados')
+                .then(response => response.json())
+                .then(data => {
+                    const turnosExistentes = data.turnos || [];
+
+                    // SOLUCIÓN: Marcar todos los turnos existentes como ya reproducidos
+                    // para evitar que suenen cuando alguien ingresa por primera vez a la página
+                    const turnosLlamandoExistentes = turnosExistentes.filter(t => t.estado === 'llamado');
+                    turnosLlamandoExistentes.forEach(turno => {
+                        marcarTurnoReproducido(turno.id);
+                    });
+
+                    if (turnosLlamandoExistentes.length > 0) {
+                        console.log(`🔇 ${turnosLlamandoExistentes.length} turnos existentes marcados como ya reproducidos:`,
+                                   turnosLlamandoExistentes.map(t => t.codigo_completo));
+                    } else {
+                        console.log('ℹ️ No hay turnos existentes en estado "llamado" al cargar la página');
+                    }
+
+                    // Actualizar la lista local y renderizar
+                    turnos = [...turnosExistentes];
+                    renderTurnos(turnos);
+
+                    actualizarIndicadorSync('sincronizado');
+                    console.log('✅ Sincronización inicial completada - solo los turnos nuevos sonarán a partir de ahora');
+                })
+                .catch(error => {
+                    console.error('Error en sincronización inicial:', error);
+                    actualizarIndicadorSync('error');
+                    // Fallback: hacer sincronización normal
+                    updateQueue();
+                });
         }
 
         // Escuchar eventos de Pusher para turnos en tiempo real

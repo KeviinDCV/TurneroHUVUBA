@@ -641,7 +641,7 @@
 
                 loadUserData() {
                     this.loading = true;
-                    fetch(`/users/${this.userId}`)
+                    fetch(`/admin/usuarios/${this.userId}`)
                         .then(response => response.json())
                         .then(data => {
                             this.userData = {
@@ -683,7 +683,7 @@
                     formData.append('_method', 'PUT');
 
                     // Enviar la petición
-                    fetch(`/users/${this.userId}`, {
+                    fetch(`/admin/usuarios/${this.userId}`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': token,
@@ -746,7 +746,7 @@
 
                     console.log('Deleting user with ID:', this.userId);
 
-                    fetch(`/users/${this.userId}`, {
+                    fetch(`/admin/usuarios/${this.userId}`, {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': token,

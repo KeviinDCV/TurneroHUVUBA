@@ -134,36 +134,105 @@ class Turno extends Model
         ]);
     }
 
-    public function marcarComoAtendido()
+    public function marcarComoAtendido($duracionFrontend = null)
     {
-        // Calcular la duración en segundos si existe fecha de llamado
-        $duracion = null;
-        if ($this->fecha_llamado) {
-            $duracion = now()->diffInSeconds($this->fecha_llamado);
+        // Usar la duración del frontend (cronómetro real) si está disponible
+        $duracion = $duracionFrontend;
+
+        // Si no hay duración del frontend, calcular desde fecha_llamado
+        if ($duracion === null && $this->fecha_llamado) {
+            try {
+                // Hacer el cálculo completamente en UTC para evitar problemas de zona horaria
+                $fechaInicio = \Carbon\Carbon::parse($this->fecha_llamado)->utc();
+                $fechaFin = \Carbon\Carbon::now()->utc();
+
+                // Calcular diferencia en segundos de forma más explícita
+                if ($fechaFin->greaterThan($fechaInicio)) {
+                    $duracion = $fechaInicio->diffInSeconds($fechaFin);
+                } else {
+                    $duracion = 0; // Si la fecha de fin es anterior o igual, usar 0
+                }
+
+                // Log para debugging (comentado para evitar spam)
+                // \Log::info('Calculando duración automática', [
+                //     'turno_id' => $this->id,
+                //     'codigo_completo' => $this->codigo_completo,
+                //     'fecha_llamado_original' => $this->fecha_llamado,
+                //     'fecha_inicio_utc' => $fechaInicio->toDateTimeString(),
+                //     'fecha_fin_utc' => $fechaFin->toDateTimeString(),
+                //     'duracion_calculada' => $duracion
+                // ]);
+            } catch (\Exception $e) {
+                // En caso de error, usar 0 segundos
+                $duracion = 0;
+                \Log::error('Error calculando duración', [
+                    'turno_id' => $this->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
-        
+
+        // Asegurar que la duración no sea null
+        $duracion = $duracion ?? 0;
+
+        // Log final para verificar qué se está guardando (comentado para evitar spam)
+        // \Log::info('Guardando turno como atendido', [
+        //     'turno_id' => $this->id,
+        //     'codigo_completo' => $this->codigo_completo,
+        //     'duracion_final' => $duracion,
+        //     'duracion_frontend' => $duracionFrontend
+        // ]);
+
         $this->update([
             'estado' => 'atendido',
             'fecha_atencion' => now(),
             'duracion_atencion' => $duracion
         ]);
-        
+
         return $duracion;
     }
 
-    public function marcarComoAplazado()
+    public function marcarComoAplazado($duracionFrontend = null)
     {
+        // Calcular duración transcurrida hasta el momento del aplazamiento
+        $duracion = $duracionFrontend;
+
+        // Si no hay duración del frontend, calcular desde fecha_llamado
+        if ($duracion === null && $this->fecha_llamado) {
+            try {
+                // Hacer el cálculo completamente en UTC para evitar problemas de zona horaria
+                $fechaInicio = \Carbon\Carbon::parse($this->fecha_llamado)->utc();
+                $fechaFin = \Carbon\Carbon::now()->utc();
+
+                // Calcular diferencia en segundos correctamente
+                if ($fechaFin->greaterThan($fechaInicio)) {
+                    $duracion = $fechaInicio->diffInSeconds($fechaFin);
+                } else {
+                    $duracion = 0;
+                }
+            } catch (\Exception $e) {
+                // En caso de error, usar 0 segundos
+                $duracion = 0;
+            }
+        }
+
+        // Asegurar que la duración no sea null
+        $duracion = $duracion ?? 0;
+
         $this->update([
             'estado' => 'aplazado',
-            'fecha_llamado' => null
+            'fecha_llamado' => null,
+            'duracion_atencion' => $duracion
         ]);
+
+        return $duracion;
     }
 
     // Método estático para generar el siguiente número de turno
     public static function siguienteNumero($servicioId, $fecha = null)
     {
         $fecha = $fecha ?: Carbon::today();
-        
+
         $ultimoTurno = static::where('servicio_id', $servicioId)
             ->whereDate('fecha_creacion', $fecha)
             ->orderBy('numero', 'desc')
@@ -181,7 +250,7 @@ class Turno extends Model
         }
 
         $numero = static::siguienteNumero($servicioId);
-        
+
         return static::create([
             'codigo' => $servicio->codigo,
             'numero' => $numero,

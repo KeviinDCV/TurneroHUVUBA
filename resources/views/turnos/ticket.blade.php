@@ -1,3 +1,6 @@
+@php
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,20 +49,20 @@
             font-weight: bold;
             letter-spacing: 2px;
         }
-        
+
         .fade-in {
             animation: fadeIn 0.8s ease-in-out;
         }
-        
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         .pulse {
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -127,17 +130,30 @@
             <div>• Diríjase a la caja indicada</div>
         </div>
 
+        <!-- QR Code Section -->
+        <div class="mb-3">
+            <div class="border-t border-dashed border-gray-500 my-3"></div>
+            <div class="text-xs text-gray-600 mb-2 font-bold">SEGUIMIENTO EN TIEMPO REAL</div>
+            <div class="flex justify-center mb-2">
+                {!! QrCode::size(80)->generate(route('mobile.display', ['turno' => $turno->id])) !!}
+            </div>
+            <div class="text-xs text-gray-700 leading-tight">
+                <div class="font-medium">Escanee el código QR para</div>
+                <div>seguir su turno desde el móvil</div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <div class="text-xs text-gray-600 border-t border-dashed border-gray-400 pt-2">
             <div class="font-bold">TURNERO HUV</div>
             <div>Sistema de Gestión de Turnos</div>
         </div>
     </div>
-    
+
     <!-- Action Buttons -->
     <div class="no-print fixed bottom-6 left-0 right-0 flex justify-center space-x-4">
-        <button 
-            onclick="window.print()" 
+        <button
+            onclick="window.print()"
             class="px-6 py-3 text-white rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl pulse"
             style="background-color: #064b9e;"
         >
@@ -146,9 +162,9 @@
             </svg>
             Imprimir Ticket
         </button>
-        
-        <button 
-            onclick="window.location.href='{{ route('turnos.menu') }}'" 
+
+        <button
+            onclick="window.location.href='{{ route('turnos.menu') }}'"
             class="px-6 py-3 bg-gray-600 text-white rounded-lg shadow-lg transition-all duration-200 hover:bg-gray-700 hover:shadow-xl"
         >
             <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,19 +173,19 @@
             Volver al Menú
         </button>
     </div>
-    
+
     <!-- Auto-print script -->
     <script>
         // Auto-print después de 2 segundos
         setTimeout(function() {
             window.print();
         }, 2000);
-        
+
         // Vibración si está disponible
         if (navigator.vibrate) {
             navigator.vibrate([200, 100, 200]);
         }
-        
+
         // Reproducir sonido de éxito
         try {
             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');

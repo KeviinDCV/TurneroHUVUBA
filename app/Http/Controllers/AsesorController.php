@@ -8,6 +8,7 @@ use App\Models\Caja;
 use App\Models\User;
 use App\Models\Servicio;
 use App\Models\Turno;
+use App\Broadcasting\TurneroBroadcaster;
 use Carbon\Carbon;
 
 class AsesorController extends Controller
@@ -137,8 +138,34 @@ class AsesorController extends Controller
 
         // Verificar que tenga una caja seleccionada
         $cajaId = session('caja_seleccionada');
+
+        // Si no hay caja en sesión, buscar en la base de datos
         if (!$cajaId) {
-            return redirect()->route('asesor.seleccionar-caja');
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+
+            if ($cajaAsignada && $cajaAsignada->estaOcupada()) {
+                // Actualizar el session_id en la base de datos para la nueva sesión
+                $cajaAsignada->update([
+                    'session_id' => session()->getId(),
+                    'fecha_asignacion' => now(), // Renovar la fecha de asignación
+                    'ip_asesor' => request()->ip()
+                ]);
+
+                // Restaurar la caja en la sesión
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+
+                \Log::info("Caja restaurada en sesión para usuario {$user->nombre_usuario}", [
+                    'caja_id' => $cajaAsignada->id,
+                    'caja_nombre' => $cajaAsignada->nombre,
+                    'nueva_session_id' => session()->getId()
+                ]);
+            } else {
+                // No tiene caja asignada, redirigir a selección
+                return redirect()->route('asesor.seleccionar-caja');
+            }
         }
 
         $caja = Caja::find($cajaId);
@@ -147,6 +174,14 @@ class AsesorController extends Controller
             session()->forget('caja_seleccionada');
             return redirect()->route('asesor.seleccionar-caja')
                 ->withErrors(['caja' => 'La caja seleccionada ya no está disponible.']);
+        }
+
+        // Verificar que la caja siga asignada al usuario actual
+        if (!$caja->estaOcupadaPor($user->id)) {
+            // La caja ya no está asignada a este usuario, limpiar sesión
+            session()->forget('caja_seleccionada');
+            return redirect()->route('asesor.seleccionar-caja')
+                ->withErrors(['caja' => 'La caja ya no está asignada a tu usuario.']);
         }
 
         // Obtener servicios asignados al asesor con estadísticas de turnos
@@ -553,15 +588,53 @@ class AsesorController extends Controller
             return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
         }
 
+        // Validar que se proporcione turno_id O codigo_completo
         $request->validate([
-            'turno_id' => 'required|exists:turnos,id',
+            'turno_id' => 'nullable|exists:turnos,id',
+            'codigo_completo' => 'nullable|string',
             'duracion' => 'nullable|integer'
         ]);
 
-        $turno = Turno::find($request->turno_id);
+        // Buscar turno por ID o por código completo
+        if ($request->has('turno_id')) {
+            $turno = Turno::find($request->turno_id);
+        } elseif ($request->has('codigo_completo')) {
+            // Extraer código y número del código completo (ej: "CP-001" -> código="CP", número=1)
+            $codigoCompleto = $request->codigo_completo;
+            $partes = explode('-', $codigoCompleto);
 
-        // Verificar que el turno esté asignado a esta caja y asesor
-        if ($turno->caja_id != $cajaId || $turno->asesor_id != $user->id) {
+            if (count($partes) !== 2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Formato de código completo inválido'
+                ]);
+            }
+
+            $codigo = $partes[0];
+            $numero = (int) $partes[1];
+
+            $turno = Turno::where('codigo', $codigo)
+                ->where('numero', $numero)
+                ->where('asesor_id', $user->id)
+                ->where('caja_id', $cajaId)
+                ->delDia()
+                ->first();
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar turno_id o codigo_completo'
+            ]);
+        }
+
+        if (!$turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Turno no encontrado'
+            ]);
+        }
+
+        // Verificar que el turno esté asignado a esta caja y asesor (solo si se buscó por turno_id)
+        if ($request->has('turno_id') && ($turno->caja_id != $cajaId || $turno->asesor_id != $user->id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tiene permisos para atender este turno'
@@ -575,8 +648,17 @@ class AsesorController extends Controller
             ]);
         }
 
-        // Marcar como atendido y obtener la duración calculada
-        $duracion = $turno->marcarComoAtendido();
+        // Marcar como atendido usando la duración del cronómetro del frontend
+        $duracionFrontend = $request->duracion; // Duración en segundos del cronómetro
+        $duracion = $turno->marcarComoAtendido($duracionFrontend);
+
+        // Log adicional para debugging (comentado para evitar spam)
+        // \Log::info('Respuesta marcarAtendido', [
+        //     'turno_id' => $turno->id,
+        //     'codigo_completo' => $turno->codigo_completo,
+        //     'duracion_retornada' => $duracion,
+        //     'duracion_guardada' => $turno->fresh()->duracion_atencion
+        // ]);
 
         return response()->json([
             'success' => true,
@@ -597,14 +679,53 @@ class AsesorController extends Controller
             return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
         }
 
+        // Validar que se proporcione turno_id O codigo_completo
         $request->validate([
-            'turno_id' => 'required|exists:turnos,id'
+            'turno_id' => 'nullable|exists:turnos,id',
+            'codigo_completo' => 'nullable|string',
+            'duracion' => 'nullable|integer'
         ]);
 
-        $turno = Turno::find($request->turno_id);
+        // Buscar turno por ID o por código completo
+        if ($request->has('turno_id')) {
+            $turno = Turno::find($request->turno_id);
+        } elseif ($request->has('codigo_completo')) {
+            // Extraer código y número del código completo (ej: "CP-001" -> código="CP", número=1)
+            $codigoCompleto = $request->codigo_completo;
+            $partes = explode('-', $codigoCompleto);
 
-        // Verificar que el turno esté asignado a esta caja y asesor
-        if ($turno->caja_id != $cajaId || $turno->asesor_id != $user->id) {
+            if (count($partes) !== 2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Formato de código completo inválido'
+                ]);
+            }
+
+            $codigo = $partes[0];
+            $numero = (int) $partes[1];
+
+            $turno = Turno::where('codigo', $codigo)
+                ->where('numero', $numero)
+                ->where('asesor_id', $user->id)
+                ->where('caja_id', $cajaId)
+                ->delDia()
+                ->first();
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar turno_id o codigo_completo'
+            ]);
+        }
+
+        if (!$turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Turno no encontrado'
+            ]);
+        }
+
+        // Verificar que el turno esté asignado a esta caja y asesor (solo si se buscó por turno_id)
+        if ($request->has('turno_id') && ($turno->caja_id != $cajaId || $turno->asesor_id != $user->id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tiene permisos para aplazar este turno'
@@ -618,7 +739,9 @@ class AsesorController extends Controller
             ]);
         }
 
-        $turno->marcarComoAplazado();
+        // Aplazar turno usando la duración del cronómetro del frontend
+        $duracionFrontend = $request->duracion; // Duración en segundos del cronómetro
+        $turno->marcarComoAplazado($duracionFrontend);
 
         return response()->json([
             'success' => true,
@@ -769,6 +892,220 @@ class AsesorController extends Controller
         }
 
         return response()->json(['turno_en_proceso' => false]);
+    }
+
+    /**
+     * Verificar el estado de un turno específico
+     */
+    public function verificarEstadoTurno($turnoId)
+    {
+        $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
+
+        if (!$user->esAsesor() || !$cajaId) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $turno = Turno::find($turnoId);
+
+        if (!$turno) {
+            return response()->json([
+                'existe' => false,
+                'mensaje' => 'Turno no encontrado'
+            ]);
+        }
+
+        // Verificar que el turno pertenece al asesor y caja actual
+        if ($turno->asesor_id != $user->id || $turno->caja_id != $cajaId) {
+            return response()->json([
+                'existe' => false,
+                'mensaje' => 'Turno no pertenece al asesor actual'
+            ]);
+        }
+
+        return response()->json([
+            'existe' => true,
+            'estado' => $turno->estado,
+            'codigo_completo' => $turno->codigo_completo,
+            'fecha_llamado' => $turno->fecha_llamado,
+            'fecha_atencion' => $turno->fecha_atencion
+        ]);
+    }
+
+    /**
+     * Obtener historial de turnos llamados por el asesor hoy
+     */
+    public function historialTurnos()
+    {
+        $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
+
+        if (!$user->esAsesor() || !$cajaId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+
+        $turnos = Turno::where('asesor_id', $user->id)
+            ->where('caja_id', $cajaId)
+            ->whereIn('estado', ['llamado', 'atendido', 'aplazado'])
+            ->whereNotNull('fecha_llamado')
+            ->delDia()
+            ->with('servicio')
+            ->orderBy('fecha_llamado', 'desc')
+            ->get();
+
+        $turnosFormateados = $turnos->map(function ($turno) {
+            // Calcular tiempo transcurrido
+            $tiempoTranscurrido = '00:00';
+
+            if ($turno->estado === 'atendido' && $turno->duracion_atencion) {
+                // Para turnos atendidos, usar la duración guardada (en segundos)
+                $duracion = (int) $turno->duracion_atencion;
+
+                // Si la duración es negativa, mostrar el valor para debugging
+                if ($duracion < 0) {
+                    $tiempoTranscurrido = 'NEG:' . abs($duracion);
+                } else {
+                    $minutos = floor($duracion / 60);
+                    $segundos = $duracion % 60;
+                    $tiempoTranscurrido = sprintf('%02d:%02d', $minutos, $segundos);
+                }
+            } elseif ($turno->estado === 'llamado' && $turno->fecha_llamado) {
+                // Para turnos en proceso, calcular tiempo desde llamado hasta ahora
+                try {
+                    // Hacer el cálculo completamente en UTC para evitar problemas de zona horaria
+                    $fechaInicio = \Carbon\Carbon::parse($turno->fecha_llamado)->utc();
+                    $fechaFin = \Carbon\Carbon::now()->utc();
+
+                    // Log para debugging del historial (comentado para evitar spam en logs)
+                    // \Log::info('Calculando tiempo historial para turno llamado', [
+                    //     'turno_id' => $turno->id,
+                    //     'codigo_completo' => $turno->codigo_completo,
+                    //     'fecha_llamado_original' => $turno->fecha_llamado,
+                    //     'fecha_inicio_utc' => $fechaInicio->toDateTimeString(),
+                    //     'fecha_fin_utc' => $fechaFin->toDateTimeString(),
+                    //     'is_future' => $fechaInicio->isFuture()
+                    // ]);
+
+                    // Asegurar que la fecha de inicio no sea posterior a la fecha actual
+                    if ($fechaInicio->isFuture()) {
+                        $tiempoTranscurrido = '00:00';
+                        // \Log::info('Fecha de inicio es futura, usando 00:00');
+                    } else {
+                        // Calcular diferencia correctamente: fecha_fin - fecha_inicio
+                        $diferenciaSegundos = $fechaInicio->diffInSeconds($fechaFin);
+
+                        // \Log::info('Diferencia calculada', [
+                        //     'diferencia_segundos' => $diferenciaSegundos,
+                        //     'fecha_inicio' => $fechaInicio->toDateTimeString(),
+                        //     'fecha_fin' => $fechaFin->toDateTimeString()
+                        // ]);
+
+                        // diffInSeconds siempre devuelve un valor positivo, así que no necesitamos verificar negativos
+                        $minutos = floor($diferenciaSegundos / 60);
+                        $segundos = $diferenciaSegundos % 60;
+                        $tiempoTranscurrido = sprintf('%02d:%02d', $minutos, $segundos);
+                    }
+                } catch (\Exception $e) {
+                    // En caso de error al parsear la fecha, mostrar ERROR
+                    $tiempoTranscurrido = 'ERR:' . $e->getMessage();
+                    \Log::error('Error calculando tiempo historial', [
+                        'turno_id' => $turno->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            } elseif ($turno->estado === 'aplazado' && $turno->duracion_atencion) {
+                // Para turnos aplazados, usar la duración guardada
+                $duracion = max(0, (int) $turno->duracion_atencion); // Asegurar que no sea negativo
+                $minutos = floor($duracion / 60);
+                $segundos = $duracion % 60;
+                $tiempoTranscurrido = sprintf('%02d:%02d', $minutos, $segundos);
+            }
+
+            return [
+                'id' => $turno->id,
+                'codigo_completo' => $turno->codigo_completo,
+                'servicio' => [
+                    'nombre' => $turno->servicio ? $turno->servicio->nombre : 'Servicio no encontrado'
+                ],
+                'estado' => $turno->estado,
+                'fecha_llamado' => $turno->fecha_llamado,
+                'fecha_atencion' => $turno->fecha_atencion,
+                'prioridad' => $turno->prioridad,
+                'tiempo_transcurrido' => $tiempoTranscurrido
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'turnos' => $turnosFormateados
+        ]);
+    }
+
+    /**
+     * Volver a llamar un turno aplazado
+     */
+    public function volverLlamarTurno(Request $request)
+    {
+        $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
+
+        if (!$user->esAsesor() || !$cajaId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+
+        // Verificar si ya tiene un turno en proceso
+        $turnoEnProceso = Turno::where('asesor_id', $user->id)
+            ->where('caja_id', $cajaId)
+            ->where('estado', 'llamado')
+            ->delDia()
+            ->first();
+
+        if ($turnoEnProceso) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe marcar el turno actual como "Atendido" antes de llamar otro turno.',
+                'turno_en_proceso' => $turnoEnProceso->codigo_completo
+            ], 400);
+        }
+
+        $request->validate([
+            'turno_id' => 'required|integer|exists:turnos,id'
+        ]);
+
+        $turno = Turno::find($request->turno_id);
+
+        // Verificar que el turno pertenece al asesor
+        if ($turno->asesor_id != $user->id || $turno->caja_id != $cajaId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permisos para gestionar este turno'
+            ], 403);
+        }
+
+        // Verificar que el turno esté aplazado
+        if ($turno->estado !== 'aplazado') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo se pueden volver a llamar turnos aplazados'
+            ], 400);
+        }
+
+        // Marcar como llamado nuevamente
+        $turno->marcarComoLlamado($cajaId, $user->id);
+
+        // Transmitir el evento
+        TurneroBroadcaster::notificarTurnoLlamado($turno);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Turno {$turno->codigo_completo} llamado nuevamente",
+            'turno' => [
+                'id' => $turno->id,
+                'codigo_completo' => $turno->codigo_completo,
+                'servicio' => $turno->servicio->nombre,
+                'prioridad' => $turno->prioridad
+            ]
+        ]);
     }
 
 

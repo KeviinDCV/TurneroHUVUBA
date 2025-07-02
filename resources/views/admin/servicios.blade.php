@@ -18,10 +18,10 @@
                              x-transition:leave="transition ease-in duration-200"
                              x-transition:leave-start="opacity-100"
                              x-transition:leave-end="opacity-0"
-                             class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+                             class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
                              style="display: none;">
-                            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-                                <div class="mt-3">
+                            <div @click.away="openModal = false" class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
+                                <div class="p-6">
                                     <div class="flex items-center justify-between mb-4">
                                         <h3 class="text-lg font-medium text-gray-900">Crear Nuevo Servicio</h3>
                                         <button @click="openModal = false" class="text-gray-400 hover:text-gray-600">
@@ -324,11 +324,11 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+         class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
          style="display: none;"
          @edit-servicio.window="showEditModal = true; editingServicio = $event.detail">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
+        <div @click.away="showEditModal = false" class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
+            <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Editar Servicio</h3>
                     <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600">

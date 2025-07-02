@@ -20,23 +20,7 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
-        @keyframes pulse-number {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
 
-        @keyframes slide-in {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-pulse-number {
-            animation: pulse-number 2s ease-in-out infinite;
-        }
-
-        .animate-slide-in {
-            animation: slide-in 0.8s ease-out;
-        }
 
         .bg-hospital-blue {
             background-color: #064b9e;
@@ -107,48 +91,30 @@
             border-radius: 6px;
         }
 
-        /* Transiciones para multimedia */
+        /* Transiciones para multimedia - simplificadas */
         .media-transition {
-            transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+            transition: opacity 0.3s ease;
         }
 
         .media-fade-in {
             opacity: 1;
-            transform: scale(1);
         }
 
         .media-fade-out {
             opacity: 0;
-            transform: scale(0.95);
         }
 
         .media-loading {
             opacity: 0;
-            transform: scale(1.05);
-        }
-
-        /* Animación de entrada suave */
-        @keyframes mediaEnter {
-            0% {
-                opacity: 0;
-                transform: scale(0.95) translateY(10px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
-        }
-
-        .media-enter {
-            animation: mediaEnter 1s ease-out forwards;
         }
 
         /* Optimizaciones para móvil */
         .mobile-container {
-            min-height: 100vh;
-            min-height: 100dvh; /* Para navegadores modernos */
+            height: 100vh;
+            height: 100dvh; /* Para navegadores modernos */
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         /* Evitar zoom en inputs */
@@ -167,14 +133,14 @@
         }
     </style>
 </head>
-<body class="w-full bg-white overflow-x-hidden">
+<body class="w-full bg-white overflow-hidden">
     <div class="mobile-container bg-white">
         <!-- Header Section - Compacto para móvil -->
         <div class="bg-hospital-blue-light p-3">
             <div class="flex items-center justify-between">
                 <!-- Logo y Hospital Info -->
-                <div class="flex items-center space-x-2">
-                    <img src="{{ asset('images/logo.png') }}" alt="Logo HUV" class="h-8 w-auto">
+                <div class="flex items-center space-x-3">
+                    <img src="{{ asset('images/logoacreditacion.png') }}" alt="Logo HUV" class="h-10 w-auto max-w-none" style="mix-blend-mode: multiply; filter: contrast(1.2);">
                     <div>
                         <h2 class="text-sm font-bold text-hospital-blue leading-tight">HOSPITAL UNIVERSITARIO</h2>
                         <h3 class="text-sm font-bold text-hospital-blue leading-tight">DEL VALLE</h3>
@@ -188,6 +154,61 @@
                 </div>
             </div>
         </div>
+
+        @if(isset($turnoInfo) && $turnoInfo)
+        <!-- Información del Turno Personal -->
+        <div id="turno-personal-container" class="gradient-hospital text-white p-3 shadow-lg">
+            <script>console.log('🎯 TurnoInfo encontrado:', @json($turnoInfo));</script>
+
+
+
+            <div class="text-center">
+                <div class="flex items-center justify-center mb-2">
+                    <svg class="w-6 h-6 mr-2 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h2 class="text-lg font-bold text-white drop-shadow-lg">Su Turno</h2>
+                </div>
+
+                <div class="bg-white rounded-lg p-2 mb-2 shadow-lg border border-hospital-blue border-opacity-30">
+                    <div class="text-2xl font-bold mb-1 text-hospital-blue">{{ $turnoInfo['turno']->codigo_completo }}</div>
+                    <div class="text-sm text-hospital-blue font-medium">{{ $turnoInfo['turno']->servicio->nombre }}</div>
+                </div>
+
+                <div id="turno-estado-container">
+                @if($turnoInfo['turno']->estado === 'atendido')
+                    <div class="bg-green-500 bg-opacity-80 rounded-lg p-3 shadow-lg border border-green-300">
+                        <div class="text-sm font-medium text-white drop-shadow-md">✅ Su turno ya fue atendido</div>
+                    </div>
+                @elseif($turnoInfo['turno']->estado === 'llamado')
+                    <div class="bg-yellow-500 bg-opacity-80 rounded-lg p-3 animate-pulse shadow-lg border border-yellow-300">
+                        <div class="text-sm font-medium text-white drop-shadow-md">🔔 Su turno está siendo llamado</div>
+                        <div class="text-xs mt-1 text-white drop-shadow-md">Diríjase a la caja indicada</div>
+                    </div>
+                @else
+                    <div class="bg-white bg-opacity-30 rounded-lg p-3 shadow-lg border border-white border-opacity-40">
+                        @if($turnoInfo['turnos_adelante'] > 0)
+                            <div class="text-sm font-medium text-white drop-shadow-md">Faltan {{ $turnoInfo['turnos_adelante'] }} turnos</div>
+                            <div class="text-xs mt-1 text-white drop-shadow-md">Tiempo estimado: {{ $turnoInfo['tiempo_estimado'] }} minutos</div>
+                        @else
+                            <div class="text-sm font-medium text-white drop-shadow-md">Su turno será llamado próximamente</div>
+                        @endif
+                    </div>
+                @endif
+                </div>
+            </div>
+        </div>
+        @else
+        <script>
+            console.log('❌ No hay turnoInfo disponible');
+            console.log('🔍 URL actual:', window.location.href);
+            console.log('🔍 Parámetros URL:', new URLSearchParams(window.location.search).get('turno'));
+            console.log('🔍 Variables disponibles:', {
+                turnoInfo: @json($turnoInfo ?? 'undefined'),
+                tvConfig: @json(isset($tvConfig) ? 'exists' : 'missing')
+            });
+        </script>
+        @endif
 
         <!-- Main Content - Stack vertical para móvil -->
         <div class="flex flex-col flex-1">
@@ -223,19 +244,35 @@
 
             <!-- Patient Queue - Dinámico desde el servidor -->
             <div class="bg-hospital-blue-light p-3">
-                <div class="grid grid-cols-2 gap-2" id="patient-queue">
-                    <!-- Los turnos se cargarán dinámicamente aquí -->
+                <div class="space-y-2" id="patient-queue">
+                    <!-- Placeholders iniciales -->
+                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-400">---</div>
+                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-400">---</div>
+                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-400">---</div>
+                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-400">---</div>
+                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Mensaje informativo para usuarios -->
-                <div class="mt-3 text-center">
-                    <div class="text-xs text-hospital-blue font-semibold">
-                        🔊 Manténgase atento al llamado de su turno
-                    </div>
-                    <div class="text-xs text-gray-600 mt-1">
-                        Los turnos se muestran en tiempo real
-                    </div>
-                </div>
+
             </div>
         </div>
 
@@ -301,6 +338,15 @@
         let reproduciendoAudio = false; // Estado de reproducción actual
         let colaProtegida = false; // Protección contra limpieza de cola durante reproducción
         let sessionId = null; // ID único de sesión para evitar duplicados
+
+        // Variables para seguimiento de turno personal
+        @if($turnoInfo)
+        let turnoPersonalId = {{ $turnoInfo['turno']->id }};
+        let turnoPersonalCodigo = '{{ $turnoInfo['turno']->codigo_completo }}';
+        @else
+        let turnoPersonalId = null;
+        let turnoPersonalCodigo = null;
+        @endif
 
         // Actualizar configuración del TV desde el servidor
         function updateTvConfig() {
@@ -1096,6 +1142,10 @@
                         }
                     }
 
+                    // Renderizar los turnos actualizados
+                    console.log('📱 Llamando renderTurnos desde updateQueue con:', newTurnos.length, 'turnos');
+                    renderTurnos(newTurnos);
+
                     // Log de estado para debugging (solo cuando hay cambios)
                     const llamandoCount = newTurnos.filter(t => t.estado === 'llamado').length;
                     const atendidoCount = newTurnos.filter(t => t.estado === 'atendido').length;
@@ -1112,28 +1162,42 @@
 
         // Renderizar los turnos en el contenedor (COPIADO EXACTAMENTE DE LA VISTA TV)
         function renderTurnos(turnosList) {
+            console.log('📱 Renderizando turnos en móvil:', turnosList);
             const container = document.getElementById('patient-queue');
+
+            if (!container) {
+                console.error('❌ Contenedor patient-queue no encontrado');
+                return;
+            }
 
             // Conservar el contenedor pero limpiar su contenido
             container.innerHTML = '';
 
             // Verificar si hay turnos para mostrar
             if (!turnosList || turnosList.length === 0) {
-                // Mostrar placeholder cuando no hay turnos
-                const placeholder = document.createElement('div');
-                placeholder.className = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg opacity-50';
-                placeholder.innerHTML = `
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-gray-400">---</div>
-                        <div class="text-xs font-semibold text-gray-400">SIN TURNOS</div>
-                    </div>
-                `;
-                container.appendChild(placeholder);
+                console.log('📱 No hay turnos para mostrar, mostrando placeholders');
+                // Mostrar 5 placeholders cuando no hay turnos (igual que en TV)
+                for (let i = 0; i < 5; i++) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg opacity-50';
+                    placeholder.innerHTML = `
+                        <div class="grid grid-cols-2 gap-4 items-center">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-gray-400">---</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-sm font-semibold text-gray-400">DISPONIBLE</div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(placeholder);
+                }
+                console.log('📱 Renderizado completado. Elementos en contenedor:', container.children.length);
                 return;
             }
 
-            // Limitar a los últimos 6 turnos para vista móvil
-            const turnosParaMostrar = turnosList.slice(-6);
+            // Limitar a los últimos 5 turnos para vista móvil (igual que TV)
+            const turnosParaMostrar = turnosList.slice(-5);
 
             // Mostrar turnos existentes
             for (let i = 0; i < turnosParaMostrar.length; i++) {
@@ -1144,16 +1208,9 @@
 
                 // Determinar estilo según el estado
                 const esAtendido = turno.estado === 'atendido';
-                const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
 
                 // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
                 let clases = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg';
-
-                // Animación solo para turnos nuevos llamados
-                if (i === turnosParaMostrar.length - 1 && !yaAnimado && !esAtendido) {
-                    clases += ' animate-slide-in';
-                    sessionStorage.setItem('turno_animado_' + turno.id, 'true');
-                }
 
                 turnoElement.className = clases;
 
@@ -1165,9 +1222,13 @@
                 turnoElement.innerHTML = `
                     <div class="relative">
                         ${estadoBadge}
-                        <div class="text-center">
-                            <div class="text-2xl font-bold ${i === turnosParaMostrar.length - 1 && !esAtendido ? 'animate-pulse-number' : ''}">${turno.codigo_completo}</div>
-                            <div class="text-xs font-semibold">${turno.caja || 'CAJA ' + turno.numero_caja}</div>
+                        <div class="grid grid-cols-2 gap-4 items-center">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold">${turno.codigo_completo}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-sm font-semibold">CAJA ${turno.numero_caja || ''}</div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1175,18 +1236,98 @@
                 container.appendChild(turnoElement);
             }
 
-            // Si hay menos de 6 turnos, llenar con placeholders
-            while (container.children.length < 6) {
+            // Si hay menos de 5 turnos, llenar con placeholders
+            while (container.children.length < 5) {
                 const placeholder = document.createElement('div');
-                placeholder.className = 'bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50';
+                placeholder.className = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg opacity-50';
                 placeholder.innerHTML = `
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-gray-400">---</div>
-                        <div class="text-xs font-semibold text-gray-400">DISPONIBLE</div>
+                    <div class="grid grid-cols-2 gap-4 items-center">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-400">---</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm font-semibold text-gray-400">DISPONIBLE</div>
+                        </div>
                     </div>
                 `;
                 container.appendChild(placeholder);
             }
+
+            console.log('📱 Renderizado completado. Elementos en contenedor:', container.children.length);
+        }
+
+        // Función para actualizar información del turno personal
+        function actualizarTurnoPersonal() {
+            if (!turnoPersonalId) return;
+
+            fetch(`/api/turno-status/${turnoPersonalId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.turno) {
+                        const turno = data.turno;
+                        const infoContainer = document.getElementById('turno-personal-container');
+
+                        if (infoContainer) {
+                            // Actualizar el estado visual según el estado del turno
+                            let estadoHtml = '';
+                            let containerClass = 'gradient-hospital';
+
+                            if (turno.estado === 'atendido') {
+                                containerClass = 'gradient-hospital';
+                                estadoHtml = `
+                                    <div class="bg-green-500 bg-opacity-80 rounded-lg p-3 shadow-lg border border-green-300">
+                                        <div class="text-sm font-medium text-white drop-shadow-md">✅ Su turno ya fue atendido</div>
+                                    </div>
+                                `;
+                            } else if (turno.estado === 'llamado') {
+                                containerClass = 'gradient-hospital';
+                                estadoHtml = `
+                                    <div class="bg-yellow-500 bg-opacity-80 rounded-lg p-3 animate-pulse shadow-lg border border-yellow-300">
+                                        <div class="text-sm font-medium text-white drop-shadow-md">🔔 Su turno está siendo llamado</div>
+                                        <div class="text-xs mt-1 text-white drop-shadow-md">Diríjase a la caja ${turno.numero_caja || 'indicada'}</div>
+                                    </div>
+                                `;
+                            } else {
+                                // Pendiente o aplazado
+                                const turnosAdelante = data.turnos_adelante || 0;
+                                const tiempoEstimado = turnosAdelante * 3;
+
+                                estadoHtml = `
+                                    <div class="bg-white bg-opacity-30 rounded-lg p-3 shadow-lg border border-white border-opacity-40">
+                                        ${turnosAdelante > 0 ?
+                                            `<div class="text-sm font-medium text-white drop-shadow-md">Faltan ${turnosAdelante} turnos</div>
+                                             <div class="text-xs mt-1 text-white drop-shadow-md">Tiempo estimado: ${tiempoEstimado} minutos</div>` :
+                                            `<div class="text-sm font-medium text-white drop-shadow-md">Su turno será llamado próximamente</div>`
+                                        }
+                                    </div>
+                                `;
+                            }
+
+                            // Actualizar el contenedor
+                            infoContainer.className = `${containerClass} text-white p-4 shadow-lg`;
+
+                            // Actualizar la información del turno (código y servicio)
+                            const codigoDiv = infoContainer.querySelector('.text-2xl.font-bold');
+                            const servicioDiv = infoContainer.querySelector('.text-sm.font-medium');
+
+                            if (codigoDiv) {
+                                codigoDiv.textContent = turno.codigo_completo;
+                            }
+                            if (servicioDiv && turno.servicio) {
+                                servicioDiv.textContent = turno.servicio;
+                            }
+
+                            // Actualizar el contenido del estado
+                            const estadoContainer = document.getElementById('turno-estado-container');
+                            if (estadoContainer) {
+                                estadoContainer.innerHTML = estadoHtml;
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error actualizando turno personal:', error);
+                });
         }
 
         // Función para sincronización inicial
@@ -1208,8 +1349,37 @@
                 console.log('⚠️ Sincronización inicial - cola protegida, manteniendo estado actual');
             }
 
-            // Hacer primera sincronización
-            updateQueue();
+            // Hacer primera sincronización y marcar turnos existentes como ya reproducidos
+            fetch('/api/turnos-llamados')
+                .then(response => response.json())
+                .then(data => {
+                    const turnosExistentes = data.turnos || [];
+
+                    // SOLUCIÓN: Marcar todos los turnos existentes como ya reproducidos
+                    // para evitar que suenen cuando alguien ingresa por primera vez a la página
+                    const turnosLlamandoExistentes = turnosExistentes.filter(t => t.estado === 'llamado');
+                    turnosLlamandoExistentes.forEach(turno => {
+                        marcarTurnoReproducido(turno.id);
+                    });
+
+                    if (turnosLlamandoExistentes.length > 0) {
+                        console.log(`🔇 ${turnosLlamandoExistentes.length} turnos existentes marcados como ya reproducidos:`,
+                                   turnosLlamandoExistentes.map(t => t.codigo_completo));
+                    } else {
+                        console.log('ℹ️ No hay turnos existentes en estado "llamado" al cargar la página');
+                    }
+
+                    // Actualizar la lista local y renderizar
+                    turnos = [...turnosExistentes];
+                    renderTurnos(turnos);
+
+                    console.log('✅ Sincronización inicial completada - solo los turnos nuevos sonarán a partir de ahora');
+                })
+                .catch(error => {
+                    console.error('Error en sincronización inicial:', error);
+                    // Fallback: hacer sincronización normal
+                    updateQueue();
+                });
         }
 
         // Escuchar eventos para turnos en tiempo real (COPIADO EXACTAMENTE DE LA VISTA TV)
@@ -1405,6 +1575,13 @@
             // Configurar actualizaciones periódicas
             setInterval(updateTvConfig, 5000); // Cada 5 segundos
             setInterval(loadMultimedia, 10000); // Cada 10 segundos
+
+            // Actualizar turno personal si existe
+            if (turnoPersonalId) {
+                setInterval(actualizarTurnoPersonal, 3000); // Cada 3 segundos
+                // Actualización inicial
+                setTimeout(actualizarTurnoPersonal, 1000);
+            }
 
             // Asegurar que el ticker esté funcionando si está habilitado
             setTimeout(() => {

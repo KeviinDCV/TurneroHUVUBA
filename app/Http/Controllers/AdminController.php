@@ -273,6 +273,18 @@ class AdminController extends Controller
                         ]);
                         $cleanedBoxes += $cajasLiberadas;
                     }
+
+                    // También liberar cajas que puedan estar asignadas por session_id
+                    $cajasLiberadasPorSession = Caja::where('session_id', $user->session_id)->count();
+                    if ($cajasLiberadasPorSession > 0) {
+                        Caja::where('session_id', $user->session_id)->update([
+                            'asesor_activo_id' => null,
+                            'session_id' => null,
+                            'fecha_asignacion' => null,
+                            'ip_asesor' => null
+                        ]);
+                        $cleanedBoxes += $cajasLiberadasPorSession;
+                    }
                 }
             }
 
@@ -289,7 +301,7 @@ class AdminController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Limpieza de sesiones completada exitosamente',
+                'message' => 'Limpieza de sesiones expiradas completada exitosamente. Se han liberado las cajas asignadas.',
                 'data' => [
                     'usuarios_limpiados' => $cleanedUsers,
                     'cajas_liberadas' => $cleanedBoxes,
@@ -301,6 +313,299 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al limpiar sesiones: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Limpiar todas las sesiones de todos los usuarios
+     */
+    public function cleanAllSessions(Request $request)
+    {
+        // Verificar que el usuario sea administrador
+        if (!Auth::user()->esAdministrador()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para realizar esta acción'
+            ], 403);
+        }
+
+        try {
+            // Obtener todos los usuarios con session_id (activos)
+            $usersWithSessions = User::whereNotNull('session_id')->get();
+            $cleanedUsers = $usersWithSessions->count();
+            $cleanedBoxes = 0;
+
+            foreach ($usersWithSessions as $user) {
+                // Liberar cualquier caja que el usuario tenga asignada (antes de limpiar sesión)
+                $cajasLiberadas = Caja::where('asesor_activo_id', $user->id)->count();
+                if ($cajasLiberadas > 0) {
+                    Caja::where('asesor_activo_id', $user->id)->update([
+                        'asesor_activo_id' => null,
+                        'session_id' => null,
+                        'fecha_asignacion' => null,
+                        'ip_asesor' => null
+                    ]);
+                    $cleanedBoxes += $cajasLiberadas;
+                }
+
+                // También liberar cajas que puedan estar asignadas por session_id
+                if ($user->session_id) {
+                    $cajasLiberadasPorSession = Caja::where('session_id', $user->session_id)->count();
+                    if ($cajasLiberadasPorSession > 0) {
+                        Caja::where('session_id', $user->session_id)->update([
+                            'asesor_activo_id' => null,
+                            'session_id' => null,
+                            'fecha_asignacion' => null,
+                            'ip_asesor' => null
+                        ]);
+                        $cleanedBoxes += $cajasLiberadasPorSession;
+                    }
+                }
+
+                // Limpiar sesión del usuario
+                $user->limpiarSession();
+            }
+
+            // Liberar cualquier caja huérfana que pueda haber quedado
+            $cajasHuerfanas = Caja::whereNotNull('asesor_activo_id')
+                ->whereNotIn('asesor_activo_id', User::whereNotNull('session_id')->pluck('id'))
+                ->count();
+
+            if ($cajasHuerfanas > 0) {
+                Caja::whereNotNull('asesor_activo_id')
+                    ->whereNotIn('asesor_activo_id', User::whereNotNull('session_id')->pluck('id'))
+                    ->update([
+                        'asesor_activo_id' => null,
+                        'session_id' => null,
+                        'fecha_asignacion' => null,
+                        'ip_asesor' => null
+                    ]);
+                $cleanedBoxes += $cajasHuerfanas;
+            }
+
+            // Limpiar todas las sesiones de la tabla sessions
+            $allSessionsCount = DB::table('sessions')->count();
+            if ($allSessionsCount > 0) {
+                DB::table('sessions')->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Todas las sesiones han sido limpiadas exitosamente. Se han liberado todas las cajas asignadas.',
+                'data' => [
+                    'usuarios_limpiados' => $cleanedUsers,
+                    'cajas_liberadas' => $cleanedBoxes,
+                    'sesiones_eliminadas' => $allSessionsCount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al limpiar todas las sesiones: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Limpiar sesión de un usuario específico
+     */
+    public function cleanUserSession(Request $request)
+    {
+        // Verificar que el usuario sea administrador
+        if (!Auth::user()->esAdministrador()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para realizar esta acción'
+            ], 403);
+        }
+
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id'
+        ]);
+
+        try {
+            $user = User::findOrFail($request->user_id);
+
+            // Verificar que el usuario tenga una sesión activa
+            if (!$user->session_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El usuario seleccionado no tiene una sesión activa'
+                ]);
+            }
+
+            $userName = $user->nombre_completo;
+            $cleanedBoxes = 0;
+
+            // Liberar cualquier caja que el usuario tenga asignada por ID de usuario
+            $cajasLiberadas = Caja::where('asesor_activo_id', $user->id)->count();
+            if ($cajasLiberadas > 0) {
+                Caja::where('asesor_activo_id', $user->id)->update([
+                    'asesor_activo_id' => null,
+                    'session_id' => null,
+                    'fecha_asignacion' => null,
+                    'ip_asesor' => null
+                ]);
+                $cleanedBoxes += $cajasLiberadas;
+            }
+
+            // También liberar cajas que puedan estar asignadas por session_id
+            if ($user->session_id) {
+                $cajasLiberadasPorSession = Caja::where('session_id', $user->session_id)
+                    ->where('asesor_activo_id', '!=', $user->id) // Evitar duplicados
+                    ->count();
+                if ($cajasLiberadasPorSession > 0) {
+                    Caja::where('session_id', $user->session_id)
+                        ->where('asesor_activo_id', '!=', $user->id)
+                        ->update([
+                            'asesor_activo_id' => null,
+                            'session_id' => null,
+                            'fecha_asignacion' => null,
+                            'ip_asesor' => null
+                        ]);
+                    $cleanedBoxes += $cajasLiberadasPorSession;
+                }
+            }
+
+            // Eliminar la sesión de la tabla sessions si existe
+            $sessionDeleted = 0;
+            if ($user->session_id) {
+                $sessionDeleted = DB::table('sessions')->where('id', $user->session_id)->delete();
+            }
+
+            // Limpiar sesión del usuario
+            $user->limpiarSession();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sesión de {$userName} limpiada exitosamente. Se han liberado las cajas asignadas.",
+                'data' => [
+                    'usuario_limpiado' => $userName,
+                    'cajas_liberadas' => $cleanedBoxes,
+                    'sesion_eliminada' => $sessionDeleted > 0
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al limpiar la sesión del usuario: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Emergencia - Eliminar turnos según la opción seleccionada
+     */
+    public function emergencyTurnos(Request $request)
+    {
+        // Verificar que el usuario sea administrador
+        if (!Auth::user()->esAdministrador()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para realizar esta acción'
+            ], 403);
+        }
+
+        $request->validate([
+            'option' => 'required|in:pending,today,service',
+            'service_id' => 'required_if:option,service|exists:servicios,id'
+        ]);
+
+        try {
+            $option = $request->input('option');
+            $serviceId = $request->input('service_id');
+            $deletedCount = 0;
+            $message = '';
+
+            switch ($option) {
+                case 'pending':
+                    // Eliminar solo turnos pendientes y aplazados del día actual
+                    $deletedCount = Turno::whereDate('fecha_creacion', Carbon::today())
+                        ->whereIn('estado', ['pendiente', 'aplazado'])
+                        ->delete();
+
+                    $message = "Se eliminaron {$deletedCount} turnos pendientes y aplazados del día actual.";
+                    break;
+
+                case 'today':
+                    // Eliminar todos los turnos del día actual
+                    $deletedCount = Turno::whereDate('fecha_creacion', Carbon::today())
+                        ->delete();
+
+                    $message = "Se eliminaron {$deletedCount} turnos del día actual (todos los estados).";
+                    break;
+
+                case 'service':
+                    // Eliminar todos los turnos de un servicio específico del día actual
+                    $servicio = Servicio::find($serviceId);
+                    if (!$servicio) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Servicio no encontrado'
+                        ], 404);
+                    }
+
+                    $deletedCount = Turno::whereDate('fecha_creacion', Carbon::today())
+                        ->where('servicio_id', $serviceId)
+                        ->delete();
+
+                    $message = "Se eliminaron {$deletedCount} turnos del servicio '{$servicio->nombre}' del día actual.";
+                    break;
+            }
+
+            // Log de la acción de emergencia
+            \Log::warning('Acción de emergencia - Eliminación de turnos', [
+                'usuario' => Auth::user()->nombre_usuario,
+                'opcion' => $option,
+                'servicio_id' => $serviceId,
+                'turnos_eliminados' => $deletedCount,
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'turnos_eliminados' => $deletedCount,
+                    'opcion' => $option,
+                    'servicio_id' => $serviceId
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en emergencia de turnos', [
+                'error' => $e->getMessage(),
+                'usuario' => Auth::user()->nombre_usuario,
+                'opcion' => $request->input('option'),
+                'servicio_id' => $request->input('service_id')
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar turnos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener servicios activos para el selector de emergencia
+     */
+    public function getServiciosActivos()
+    {
+        try {
+            $servicios = Servicio::where('estado', 'activo')
+                ->select('id', 'nombre', 'codigo')
+                ->orderBy('nombre')
+                ->get();
+
+            return response()->json($servicios);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar servicios: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -320,7 +625,7 @@ class AdminController extends Controller
     private function getUsuariosActivosData()
     {
         $usuarios = User::activos()
-            ->select('id', 'nombre_completo', 'rol', 'estado_asesor', 'last_activity', 'session_id', 'session_start')
+            ->select('id', 'nombre_completo', 'nombre_usuario', 'rol', 'estado_asesor', 'last_activity', 'session_id', 'session_start')
             ->get();
 
         return $usuarios->map(function($usuario) {
@@ -344,6 +649,7 @@ class AdminController extends Controller
             return [
                 'id' => $usuario->id,
                 'name' => $usuario->nombre_completo,
+                'nombre_usuario' => $usuario->nombre_usuario,
                 'rol' => $usuario->rol,
                 'availability' => $disponibilidad,
                 'status' => strtoupper($usuario->getEstadoFormateado()),

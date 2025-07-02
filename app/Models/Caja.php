@@ -75,7 +75,7 @@ class Caja extends Model
         return !empty($this->asesor_activo_id) &&
                !empty($this->session_id) &&
                $this->fecha_asignacion &&
-               $this->fecha_asignacion->diffInMinutes(now()) < 30; // 30 minutos de timeout
+               $this->fecha_asignacion->diffInMinutes(now()) < 15; // 15 minutos de timeout (consistente con middleware)
     }
 
     /**
@@ -138,7 +138,7 @@ class Caja extends Model
         return $query->where(function($q) {
             $q->whereNull('asesor_activo_id')
               ->orWhereNull('session_id')
-              ->orWhere('fecha_asignacion', '<', now()->subMinutes(30));
+              ->orWhere('fecha_asignacion', '<', now()->subMinutes(15));
         })->where('estado', 'activa');
     }
 
@@ -149,6 +149,6 @@ class Caja extends Model
     {
         return $query->whereNotNull('asesor_activo_id')
                     ->whereNotNull('session_id')
-                    ->where('fecha_asignacion', '>=', now()->subMinutes(30));
+                    ->where('fecha_asignacion', '>=', now()->subMinutes(15));
     }
 }

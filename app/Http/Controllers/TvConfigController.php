@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TvConfig;
 use App\Models\Multimedia;
+use App\Models\Turno;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -91,10 +92,128 @@ class TvConfigController extends Controller
     /**
      * Mostrar la página móvil con configuración del TV
      */
-    public function showMobile()
+    public function showMobile(Request $request)
     {
         $tvConfig = TvConfig::getCurrentConfig();
-        return view('mobile.display', compact('tvConfig'));
+        $turnoInfo = null;
+
+        // Verificar si se proporcionó un ID de turno
+        $turnoId = $request->get('turno');
+        if ($turnoId) {
+            $turno = \App\Models\Turno::with('servicio')->find($turnoId);
+
+            // Verificar que el turno existe y es del día actual
+            if ($turno && $turno->fecha_creacion->isToday()) {
+                // Calcular posición en la cola
+                $posicionEnCola = $this->calcularPosicionEnCola($turno);
+
+                $turnoInfo = [
+                    'turno' => $turno,
+                    'posicion' => $posicionEnCola['posicion'],
+                    'turnos_adelante' => $posicionEnCola['turnos_adelante'],
+                    'tiempo_estimado' => $posicionEnCola['tiempo_estimado']
+                ];
+            }
+        }
+
+        return view('mobile.display', compact('tvConfig', 'turnoInfo'));
+    }
+
+    /**
+     * Calcular la posición de un turno en la cola
+     */
+    private function calcularPosicionEnCola($turno)
+    {
+        // Si el turno ya fue atendido
+        if ($turno->estado === 'atendido') {
+            return [
+                'posicion' => 0,
+                'turnos_adelante' => 0,
+                'tiempo_estimado' => 0,
+                'mensaje' => 'Su turno ya fue atendido'
+            ];
+        }
+
+        // Si el turno está siendo llamado actualmente
+        if ($turno->estado === 'llamado') {
+            return [
+                'posicion' => 0,
+                'turnos_adelante' => 0,
+                'tiempo_estimado' => 0,
+                'mensaje' => 'Su turno está siendo llamado'
+            ];
+        }
+
+        // Para turnos pendientes o aplazados, calcular posición
+        $turnosAdelante = \App\Models\Turno::where('servicio_id', $turno->servicio_id)
+            ->whereDate('fecha_creacion', $turno->fecha_creacion)
+            ->whereIn('estado', ['pendiente', 'aplazado'])
+            ->where('numero', '<', $turno->numero)
+            ->count();
+
+        // Estimar tiempo (asumiendo 3 minutos promedio por turno)
+        $tiempoEstimado = $turnosAdelante * 3;
+
+        return [
+            'posicion' => $turnosAdelante + 1,
+            'turnos_adelante' => $turnosAdelante,
+            'tiempo_estimado' => $tiempoEstimado,
+            'mensaje' => $turnosAdelante > 0 ?
+                "Faltan {$turnosAdelante} turnos para ser atendido" :
+                "Su turno será llamado próximamente"
+        ];
+    }
+
+    /**
+     * Obtener el estado actual de un turno específico (API)
+     */
+    public function getTurnoStatus($turnoId)
+    {
+        try {
+            $turno = Turno::with('servicio')->find($turnoId);
+
+            if (!$turno) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Turno no encontrado'
+                ], 404);
+            }
+
+            // Verificar que el turno sea del día actual
+            if (!$turno->fecha_creacion->isToday()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El turno no es del día actual'
+                ], 400);
+            }
+
+            // Calcular posición en la cola
+            $posicionInfo = $this->calcularPosicionEnCola($turno);
+
+            return response()->json([
+                'success' => true,
+                'turno' => [
+                    'id' => $turno->id,
+                    'codigo_completo' => $turno->codigo_completo,
+                    'estado' => $turno->estado,
+                    'numero_caja' => $turno->caja ? $turno->caja->nombre : null,
+                    'servicio' => $turno->servicio->nombre,
+                    'fecha_creacion' => $turno->fecha_creacion->format('Y-m-d H:i:s'),
+                    'fecha_llamado' => $turno->fecha_llamado ? $turno->fecha_llamado->format('Y-m-d H:i:s') : null,
+                    'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('Y-m-d H:i:s') : null
+                ],
+                'posicion' => $posicionInfo['posicion'],
+                'turnos_adelante' => $posicionInfo['turnos_adelante'],
+                'tiempo_estimado' => $posicionInfo['tiempo_estimado'],
+                'mensaje' => $posicionInfo['mensaje']
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener estado del turno: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

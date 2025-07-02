@@ -193,6 +193,191 @@
             display: none !important;
         }
 
+        /* ===== RESPONSIVE DESIGN IMPROVEMENTS ===== */
+
+        /* Mejoras para resoluciones pequeñas */
+        @media (max-height: 800px) {
+            /* Reducir padding general */
+            .dashboard-container {
+                padding: 0.75rem !important;
+            }
+
+            /* Reducir espaciado entre secciones */
+            .dashboard-section {
+                margin-top: 1.5rem !important;
+            }
+
+            /* Tablas más compactas */
+            .dashboard-table th,
+            .dashboard-table td {
+                padding: 0.5rem !important;
+                font-size: 0.875rem !important;
+            }
+
+            /* Títulos más pequeños */
+            .dashboard-title {
+                font-size: 1rem !important;
+                margin-bottom: 0.75rem !important;
+            }
+
+            /* Botones más compactos */
+            .dashboard-button {
+                padding: 0.5rem 1rem !important;
+                font-size: 0.875rem !important;
+            }
+
+            /* Badges más pequeños */
+            .dashboard-badge {
+                padding: 0.25rem 0.5rem !important;
+                font-size: 0.75rem !important;
+            }
+        }
+
+        @media (max-height: 700px) {
+            /* Para pantallas muy pequeñas */
+            .dashboard-container {
+                padding: 0.5rem !important;
+            }
+
+            .dashboard-section {
+                margin-top: 1rem !important;
+            }
+
+            .dashboard-table th,
+            .dashboard-table td {
+                padding: 0.375rem !important;
+                font-size: 0.8rem !important;
+            }
+
+            .dashboard-title {
+                font-size: 0.9rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+
+            /* Iconos más pequeños */
+            .dashboard-icon {
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+            }
+
+            .dashboard-icon svg {
+                width: 1.25rem !important;
+                height: 1.25rem !important;
+            }
+        }
+
+        @media (max-width: 1400px) {
+            /* Ajustes para anchos menores */
+            .dashboard-table th,
+            .dashboard-table td {
+                font-size: 0.875rem !important;
+                padding: 0.5rem !important;
+            }
+
+            /* Sidebar más estrecha */
+            .sidebar-responsive {
+                width: 16rem !important;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            /* Para pantallas más pequeñas */
+            .dashboard-table th,
+            .dashboard-table td {
+                font-size: 0.8rem !important;
+                padding: 0.375rem !important;
+            }
+
+            .sidebar-responsive {
+                width: 14rem !important;
+            }
+        }
+
+        /* Mejoras específicas para resolución 1366x768 */
+        @media (max-width: 1366px) and (max-height: 768px) {
+            .dashboard-container {
+                padding: 0.75rem !important;
+            }
+
+            .dashboard-section {
+                margin-top: 1.25rem !important;
+            }
+
+            .dashboard-table th,
+            .dashboard-table td {
+                font-size: 0.8rem !important;
+                padding: 0.375rem !important;
+            }
+
+            .dashboard-title {
+                font-size: 1rem !important;
+                margin-bottom: 0.75rem !important;
+            }
+
+            .dashboard-button {
+                padding: 0.5rem 0.875rem !important;
+                font-size: 0.8rem !important;
+            }
+
+            .dashboard-badge {
+                padding: 0.25rem 0.5rem !important;
+                font-size: 0.7rem !important;
+            }
+
+            /* Header más compacto */
+            .header-responsive {
+                padding: 0.5rem 1rem !important;
+            }
+
+            .header-title {
+                font-size: 1.25rem !important;
+            }
+
+            /* Sidebar más compacta */
+            .sidebar-responsive {
+                width: 14rem !important;
+            }
+
+            .sidebar-header {
+                padding: 1rem !important;
+            }
+
+            .sidebar-user {
+                padding: 0.75rem !important;
+            }
+
+            .sidebar-nav {
+                padding: 0.75rem !important;
+            }
+
+            .sidebar-item {
+                padding: 0.5rem 0.75rem !important;
+                font-size: 0.875rem !important;
+            }
+        }
+
+        /* Asegurar que los elementos no se desborden */
+        * {
+            box-sizing: border-box;
+        }
+
+        /* Mejorar legibilidad en pantallas muy pequeñas */
+        @media (max-height: 600px) {
+            .dashboard-container {
+                padding: 0.5rem !important;
+            }
+
+            .dashboard-section {
+                margin-top: 0.75rem !important;
+            }
+
+            .dashboard-table th,
+            .dashboard-table td {
+                font-size: 0.75rem !important;
+                padding: 0.25rem !important;
+            }
+        }
+
         @yield('styles')
     </style>
 </head>

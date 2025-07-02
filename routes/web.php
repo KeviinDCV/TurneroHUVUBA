@@ -93,8 +93,14 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::post('/tv-config/multimedia/{id}/toggle', [TvConfigController::class, 'toggleMultimedia'])->name('admin.tv-config.multimedia.toggle');
     Route::delete('/tv-config/multimedia/{id}', [TvConfigController::class, 'destroyMultimedia'])->name('admin.tv-config.multimedia.destroy');
 
-    // Ruta para limpiar sesiones expiradas manualmente
+    // Rutas para limpiar sesiones
     Route::post('/admin/clean-sessions', [AdminController::class, 'cleanExpiredSessions'])->name('admin.clean-sessions');
+    Route::post('/admin/clean-all-sessions', [AdminController::class, 'cleanAllSessions'])->name('admin.clean-all-sessions');
+    Route::post('/admin/clean-user-session', [AdminController::class, 'cleanUserSession'])->name('admin.clean-user-session');
+
+    // Rutas para emergencia de turnos
+    Route::post('/admin/emergency-turnos', [AdminController::class, 'emergencyTurnos'])->name('admin.emergency-turnos');
+    Route::get('/api/servicios-activos', [AdminController::class, 'getServiciosActivos'])->name('api.servicios-activos');
 
     // API para obtener usuarios activos con sus estados
     Route::get('/api/admin/usuarios-activos', [AdminController::class, 'getUsuariosActivos'])->name('api.admin.usuarios-activos');
@@ -150,6 +156,9 @@ Route::middleware(['auth', 'asesor.role', 'update.user.activity', 'clean.expired
     Route::post('/asesor/marcar-atendido', [AsesorController::class, 'marcarAtendido'])->name('asesor.marcar-atendido');
     Route::post('/asesor/aplazar-turno', [AsesorController::class, 'aplazarTurno'])->name('asesor.aplazar-turno');
     Route::get('/asesor/verificar-turno-en-proceso', [AsesorController::class, 'verificarTurnoEnProceso'])->name('asesor.verificar-turno-en-proceso');
+    Route::get('/api/turno/{turno}/estado', [AsesorController::class, 'verificarEstadoTurno'])->name('api.turno.estado');
+    Route::get('/asesor/historial-turnos', [AsesorController::class, 'historialTurnos'])->name('asesor.historial-turnos');
+    Route::post('/asesor/volver-llamar-turno', [AsesorController::class, 'volverLlamarTurno'])->name('asesor.volver-llamar-turno');
 
     // API para obtener estadísticas de servicios para el asesor (actualización en tiempo real)
     Route::get('/api/asesor/servicios-estadisticas', [AsesorController::class, 'getServiciosEstadisticas'])->name('api.asesor.servicios-estadisticas');
@@ -189,6 +198,9 @@ Route::middleware(['no.session.api'])->group(function () {
 
     // API para obtener turnos llamados (para TV)
     Route::get('/api/turnos-llamados', [TvConfigController::class, 'getTurnosLlamados'])->name('api.turnos-llamados');
+
+    // API para obtener estado de un turno específico
+    Route::get('/api/turno-status/{turno}', [TvConfigController::class, 'getTurnoStatus'])->name('api.turno-status');
 });
 
 // Ruta para el visualizador del atril
