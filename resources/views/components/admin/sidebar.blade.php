@@ -4,7 +4,7 @@
 @endphp
 
 <!-- Sidebar -->
-<aside class="sidebar-responsive w-72 bg-hospital-blue text-white shadow-xl flex flex-col sidebar-full-height fixed md:relative inset-y-0 left-0 z-30 transform md:transform-none transition-transform duration-300 ease-in-out"
+<aside class="sidebar-responsive w-72 bg-hospital-blue text-white shadow-xl flex flex-col sidebar-full-height fixed inset-y-0 left-0 z-30 transform md:transform-none transition-transform duration-300 ease-in-out"
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
 
     <!-- Header del Sidebar -->

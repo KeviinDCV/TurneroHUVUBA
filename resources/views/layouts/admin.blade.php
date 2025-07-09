@@ -91,10 +91,13 @@
             background-color: rgba(0, 0, 0, 0.5);
         }
 
-        /* Fix para sidebar que cubra toda la altura del contenido */
+        /* Fix para sidebar que cubra toda la altura del viewport */
         .sidebar-full-height {
-            min-height: 100vh;
-            height: auto;
+            height: 100vh !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            overflow-y: auto !important;
         }
 
         /* Asegurar que el contenedor principal tenga la altura correcta */
@@ -102,13 +105,161 @@
             min-height: 100vh;
         }
 
-        /* Para pantallas grandes, la sidebar debe ser sticky */
+        /* Para pantallas grandes, asegurar que el sidebar esté fijo */
         @media (min-width: 768px) {
             .sidebar-full-height {
-                position: sticky;
-                top: 0;
-                height: 100vh;
-                overflow-y: auto;
+                height: 100vh !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                overflow-y: auto !important;
+                z-index: 30 !important;
+            }
+
+        }
+
+        /* Header fijo para todas las pantallas */
+        .header-responsive {
+            position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            z-index: 20 !important;
+        }
+
+        /* ===== RESPONSIVE BREAKPOINTS MEJORADOS ===== */
+
+        /* Móviles (hasta 767px) */
+        @media (max-width: 767px) {
+            .header-responsive {
+                left: 0 !important;
+            }
+            .sidebar-responsive {
+                width: 16rem !important; /* Sidebar más estrecha en móviles */
+            }
+        }
+
+        /* Tablets y pantallas pequeñas (768px - 1023px) */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .sidebar-responsive {
+                width: 14rem !important; /* 224px */
+            }
+            .header-responsive {
+                left: 14rem !important;
+            }
+        }
+
+        /* Resoluciones problemáticas como 1024x666, 1024x768 */
+        @media (min-width: 1024px) and (max-width: 1199px) {
+            .sidebar-responsive {
+                width: 15rem !important; /* 240px */
+            }
+            .header-responsive {
+                left: 15rem !important;
+            }
+        }
+
+        /* Pantallas medianas (1200px - 1399px) */
+        @media (min-width: 1200px) and (max-width: 1399px) {
+            .sidebar-responsive {
+                width: 16rem !important; /* 256px */
+            }
+            .header-responsive {
+                left: 16rem !important;
+            }
+        }
+
+        /* Pantallas grandes (1400px+) */
+        @media (min-width: 1400px) {
+            .sidebar-responsive {
+                width: 18rem !important; /* 288px - valor original */
+            }
+            .header-responsive {
+                left: 18rem !important;
+            }
+        }
+
+        /* ===== MARGENES DEL CONTENIDO PRINCIPAL ===== */
+
+        /* Móviles - sin margen porque sidebar es overlay */
+        @media (max-width: 767px) {
+            .main-content {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* Tablets y pantallas pequeñas */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .main-content {
+                margin-left: 14rem !important;
+            }
+        }
+
+        /* Resoluciones problemáticas como 1024x666 */
+        @media (min-width: 1024px) and (max-width: 1199px) {
+            .main-content {
+                margin-left: 15rem !important;
+            }
+        }
+
+        /* Pantallas medianas */
+        @media (min-width: 1200px) and (max-width: 1399px) {
+            .main-content {
+                margin-left: 16rem !important;
+            }
+        }
+
+        /* Pantallas grandes */
+        @media (min-width: 1400px) {
+            .main-content {
+                margin-left: 18rem !important;
+            }
+        }
+
+        /* ===== MEJORAS ADICIONALES PARA MÓVILES ===== */
+
+        /* Asegurar que en móviles el sidebar sea overlay completo */
+        @media (max-width: 767px) {
+            .sidebar-full-height {
+                width: 16rem !important;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+
+            .sidebar-full-height.translate-x-0 {
+                transform: translateX(0) !important;
+            }
+
+            /* Header en móviles debe ocupar todo el ancho */
+            .header-responsive {
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+            }
+        }
+
+        /* ===== MEJORAS PARA RESOLUCIONES ESPECÍFICAS ===== */
+
+        /* Resolución 1024x666 y similares */
+        @media (min-width: 1024px) and (max-width: 1199px) and (max-height: 768px) {
+            .sidebar-responsive {
+                width: 14rem !important;
+            }
+            .header-responsive {
+                left: 14rem !important;
+            }
+            .main-content {
+                margin-left: 14rem !important;
+            }
+
+            /* Hacer elementos más compactos */
+            .sidebar-header {
+                padding: 0.75rem !important;
+            }
+            .sidebar-nav {
+                padding: 0.5rem !important;
+            }
+            .header-responsive {
+                padding: 0.5rem 1rem !important;
             }
         }
 
@@ -266,30 +417,20 @@
             }
         }
 
+        /* Reglas de tabla responsive - sin conflicto con sidebar */
         @media (max-width: 1400px) {
-            /* Ajustes para anchos menores */
             .dashboard-table th,
             .dashboard-table td {
                 font-size: 0.875rem !important;
                 padding: 0.5rem !important;
             }
-
-            /* Sidebar más estrecha */
-            .sidebar-responsive {
-                width: 16rem !important;
-            }
         }
 
         @media (max-width: 1200px) {
-            /* Para pantallas más pequeñas */
             .dashboard-table th,
             .dashboard-table td {
                 font-size: 0.8rem !important;
                 padding: 0.375rem !important;
-            }
-
-            .sidebar-responsive {
-                width: 14rem !important;
             }
         }
 
@@ -333,10 +474,7 @@
                 font-size: 1.25rem !important;
             }
 
-            /* Sidebar más compacta */
-            .sidebar-responsive {
-                width: 14rem !important;
-            }
+            /* Sidebar más compacta - ancho controlado por reglas principales */
 
             .sidebar-header {
                 padding: 1rem !important;
@@ -400,7 +538,7 @@
         @include('components.admin.sidebar')
 
         <!-- Main Content -->
-        <main class="flex-1 md:ml-0">
+        <main class="flex-1 main-content pt-16">
             <div class="p-4 md:p-6">
                 @yield('content')
             </div>

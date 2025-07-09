@@ -189,6 +189,122 @@
             }
         }
 
+        /* ===== RESPONSIVE MEJORADO PARA BOTONES DE ACCIONES ===== */
+
+        /* Resoluciones muy bajas (hasta 1023px) */
+        @media (max-width: 1023px) {
+            .historial-table .grid-item {
+                font-size: 0.7rem !important;
+                padding: 0.25rem !important;
+            }
+
+            /* Botones de acciones más compactos */
+            .historial-action-btn {
+                padding: 0.125rem 0.25rem !important;
+                font-size: 0.6rem !important;
+                margin: 0.125rem !important;
+            }
+        }
+
+        /* Resoluciones problemáticas como 1024x666 */
+        @media (min-width: 1024px) and (max-width: 1199px) {
+            .historial-table .grid-item {
+                font-size: 0.75rem !important;
+                padding: 0.375rem !important;
+            }
+
+            /* Botones de acciones compactos */
+            .historial-action-btn {
+                padding: 0.25rem 0.375rem !important;
+                font-size: 0.65rem !important;
+                margin: 0.125rem !important;
+            }
+        }
+
+        /* Pantallas muy pequeñas en altura */
+        @media (max-height: 600px) {
+            .historial-table .grid-item {
+                font-size: 0.65rem !important;
+                padding: 0.25rem !important;
+            }
+
+            .historial-action-btn {
+                padding: 0.125rem 0.25rem !important;
+                font-size: 0.55rem !important;
+                margin: 0.0625rem !important;
+            }
+        }
+
+        /* Mejoras para móviles */
+        @media (max-width: 767px) {
+            .historial-table {
+                overflow-x: auto;
+            }
+
+            .historial-table .grid-item {
+                min-width: 60px;
+                font-size: 0.6rem !important;
+                padding: 0.25rem !important;
+            }
+
+            .historial-action-btn {
+                padding: 0.125rem 0.25rem !important;
+                font-size: 0.55rem !important;
+                margin: 0.0625rem !important;
+                display: block !important;
+                width: 100% !important;
+                margin-bottom: 0.125rem !important;
+            }
+
+            /* Hacer paneles apilables en móviles */
+            .h-screen.flex {
+                flex-direction: column !important;
+            }
+
+            .w-1\/2 {
+                width: 100% !important;
+                height: auto !important;
+            }
+        }
+
+        /* Mejoras adicionales para la columna de acciones */
+        .historial-action-btn {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Asegurar que la tabla sea responsive */
+        .historial-table {
+            min-width: 100%;
+            table-layout: fixed;
+        }
+
+        /* Grid personalizado para dar más espacio a la columna de acciones */
+        .historial-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1.5fr; /* Más espacio para ACCIONES */
+        }
+
+        /* Responsive para el grid personalizado */
+        @media (max-width: 1199px) {
+            .historial-grid {
+                grid-template-columns: 0.8fr 1.5fr 0.8fr 0.8fr 0.8fr 1.8fr; /* Aún más espacio para acciones en pantallas pequeñas */
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .historial-grid {
+                grid-template-columns: 0.7fr 1.2fr 0.7fr 0.7fr 0.7fr 2fr; /* Máximo espacio para acciones */
+            }
+        }
+
+        @media (max-width: 767px) {
+            .historial-grid {
+                grid-template-columns: 0.6fr 1fr 0.6fr 0.6fr 0.6fr 2.2fr; /* Priorizar acciones en móviles */
+            }
+        }
+
         /* Asegurar que los elementos no se desborden */
         * {
             box-sizing: border-box;
@@ -322,7 +438,7 @@
 
             <!-- HISTORIAL DE TURNOS LLAMADOS -->
             <div class="historial-table mt-8 border border-gray-300 rounded overflow-hidden">
-                <div class="text-white grid grid-cols-6 text-sm font-medium" style="background-color: #064b9e;">
+                <div class="text-white historial-grid text-sm font-medium" style="background-color: #064b9e;">
                     <div class="grid-item p-3 border-r border-blue-400">TURNO</div>
                     <div class="grid-item p-3 border-r border-blue-400">SERVICIO</div>
                     <div class="grid-item p-3 border-r border-blue-400">ESTADO</div>
@@ -332,7 +448,7 @@
                 </div>
 
                 <div id="historial-turnos-tbody" class="bg-white">
-                    <div class="grid grid-cols-6 text-sm bg-white p-6 text-center text-gray-500">
+                    <div class="historial-grid text-sm bg-white p-6 text-center text-gray-500">
                         <div class="col-span-6 flex items-center justify-center">
                             <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -925,7 +1041,7 @@
 
             if (!turnos || turnos.length === 0) {
                 tbody.innerHTML = `
-                    <div class="grid grid-cols-6 text-sm bg-white p-6 text-center text-gray-500">
+                    <div class="historial-grid text-sm bg-white p-6 text-center text-gray-500">
                         <div class="col-span-6">
                             <span class="text-sm">No hay turnos llamados hoy</span>
                         </div>
@@ -951,11 +1067,11 @@
                 if (turno.estado === 'llamado') {
                     acciones = `
                         <button onclick="marcarAtendidoDesdeHistorial('${turno.codigo_completo}')"
-                                class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">
+                                class="historial-action-btn px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">
                             Atender
                         </button>
                         <button onclick="aplazarTurnoDesdeHistorial('${turno.codigo_completo}')"
-                                class="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600">
+                                class="historial-action-btn px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600">
                             Aplazar
                         </button>
                     `;
@@ -966,7 +1082,7 @@
                 }
 
                 return `
-                    <div class="grid grid-cols-6 text-sm bg-white border-b border-gray-200 hover:bg-gray-50">
+                    <div class="historial-grid text-sm bg-white border-b border-gray-200 hover:bg-gray-50">
                         <div class="grid-item p-3 border-r border-gray-200 font-medium">${turno.codigo_completo}</div>
                         <div class="grid-item p-3 border-r border-gray-200">${turno.servicio?.nombre || 'N/A'}</div>
                         <div class="grid-item p-3 border-r border-gray-200">
@@ -976,7 +1092,7 @@
                         </div>
                         <div class="grid-item p-3 border-r border-gray-200">${horaLlamado}</div>
                         <div class="grid-item p-3 border-r border-gray-200 font-mono">${tiempoTranscurrido}</div>
-                        <div class="grid-item p-3 flex items-center justify-center space-x-2">
+                        <div class="grid-item p-3 flex items-center justify-center space-x-1 flex-wrap">
                             ${acciones}
                         </div>
                     </div>
@@ -988,7 +1104,7 @@
         function mostrarErrorHistorial(mensaje) {
             const tbody = document.getElementById('historial-turnos-tbody');
             tbody.innerHTML = `
-                <div class="grid grid-cols-6 text-sm bg-white p-6 text-center text-red-500">
+                <div class="historial-grid text-sm bg-white p-6 text-center text-red-500">
                     <div class="col-span-6">
                         <span class="text-sm">❌ ${mensaje}</span>
                     </div>
@@ -1016,6 +1132,13 @@
                 if (data.success) {
                     console.log('✅ Turno marcado como atendido');
                     console.log('⏱️ Duración retornada:', data.duracion, 'segundos');
+
+                    // Verificar si el turno marcado como atendido es el turno actual
+                    if (turnoActual && turnoActual.codigo_completo === codigoCompleto) {
+                        console.log('🔄 El turno atendido es el turno actual, limpiando interfaz...');
+                        limpiarInterfazTurno();
+                    }
+
                     cargarHistorialTurnos(); // Recargar historial
                     actualizarEstadisticasServicios(); // Actualizar estadísticas
                 } else {
@@ -1047,6 +1170,13 @@
             .then(data => {
                 if (data.success) {
                     console.log('⏸️ Turno aplazado');
+
+                    // Verificar si el turno aplazado es el turno actual
+                    if (turnoActual && turnoActual.codigo_completo === codigoCompleto) {
+                        console.log('🔄 El turno aplazado es el turno actual, limpiando interfaz...');
+                        limpiarInterfazTurno();
+                    }
+
                     cargarHistorialTurnos(); // Recargar historial
                     actualizarEstadisticasServicios(); // Actualizar estadísticas
                 } else {

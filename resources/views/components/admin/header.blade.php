@@ -1,5 +1,5 @@
 <!-- Header -->
-<header class="bg-hospital-blue text-white header-responsive px-6 py-3 flex items-center justify-between">
+<header class="bg-hospital-blue text-white header-responsive px-6 py-3 flex items-center justify-between fixed top-0 left-0 md:left-72 right-0 z-20">
     <div class="flex items-center space-x-4">
         <!-- Botón hamburguesa para móviles -->
         <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-white hover:bg-hospital-blue-hover p-2 rounded">
