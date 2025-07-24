@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Turno;
+use App\Models\TurnoHistorial;
 use App\Models\Servicio;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -184,6 +185,338 @@ class ReportesController extends Controller
         $filename = 'reporte_turnos_' . $fechaInicio->format('Y-m-d') . '_' . $fechaFin->format('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    /**
+     * Exportar dashboard histórico
+     */
+    public function exportarDashboardHistorico(Request $request)
+    {
+        $request->validate([
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'servicio_id' => 'nullable|integer',
+            'formato' => 'required|in:excel,pdf'
+        ]);
+
+        $fechaInicio = Carbon::parse($request->fecha_inicio)->startOfDay();
+        $fechaFin = Carbon::parse($request->fecha_fin)->endOfDay();
+        $servicioId = $request->servicio_id;
+
+        // Obtener datos para el dashboard
+        $dashboardData = $this->obtenerDatosDashboardHistorico($fechaInicio, $fechaFin, $servicioId);
+
+        if ($request->formato === 'excel') {
+            return $this->exportarDashboardExcel($dashboardData, $fechaInicio, $fechaFin);
+        } else {
+            return $this->exportarDashboardPDF($dashboardData, $fechaInicio, $fechaFin);
+        }
+    }
+
+    /**
+     * Obtener datos para el dashboard histórico
+     */
+    private function obtenerDatosDashboardHistorico($fechaInicio, $fechaFin, $servicioId = null)
+    {
+        // Usar TurnoHistorial para datos históricos, como lo hace GraficosController
+        // Filtrar solo los registros de 'creacion' para evitar duplicados
+        $query = TurnoHistorial::with(['servicio', 'asesor', 'caja'])
+            ->whereBetween('fecha_creacion', [$fechaInicio, $fechaFin])
+            ->where('tipo_backup', 'creacion');
+
+        if ($servicioId) {
+            $query->where('servicio_id', $servicioId);
+        }
+
+        $turnos = $query->get();
+
+        // Debug logging
+        \Log::info('Dashboard Export Debug', [
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'servicio_id' => $servicioId,
+            'total_turnos_query' => $turnos->count(),
+            'sample_turnos' => $turnos->take(3)->toArray()
+        ]);
+
+        // Estadísticas generales
+        $estadisticasGenerales = [
+            'total_turnos' => $turnos->count(),
+            'turnos_atendidos' => $turnos->where('estado', 'atendido')->count(),
+            'turnos_pendientes' => $turnos->where('estado', 'pendiente')->count(),
+            'turnos_llamados' => $turnos->where('estado', 'llamado')->count(),
+            'turnos_aplazados' => $turnos->where('estado', 'aplazado')->count(),
+            'turnos_cancelados' => $turnos->where('estado', 'cancelado')->count(),
+            'tiempo_promedio_atencion' => $this->calcularTiempoPromedioAtencion($turnos),
+            'servicios_activos' => $turnos->pluck('servicio_id')->unique()->count(),
+            'asesores_activos' => $turnos->pluck('asesor_id')->unique()->count()
+        ];
+
+        // Distribución por servicios
+        $distribucionServicios = $turnos->filter(function($turno) {
+                return $turno->servicio;
+            })
+            ->groupBy(function($turno) {
+                return $turno->servicio->nombre;
+            })
+            ->map(function ($turnosServicio) {
+                return $turnosServicio->count();
+            })->toArray();
+
+        // Distribución por estados
+        $distribucionEstados = $turnos->groupBy('estado')
+            ->map(function ($turnosEstado) {
+                return $turnosEstado->count();
+            })->toArray();
+
+        // Top asesores
+        $topAsesores = $turnos->where('estado', 'atendido')
+            ->filter(function($turno) {
+                return $turno->asesor;
+            })
+            ->groupBy(function($turno) {
+                return $turno->asesor->nombre_completo ?? $turno->asesor->nombre_usuario ?? 'Sin nombre';
+            })
+            ->map(function ($turnosAsesor) {
+                return $turnosAsesor->count();
+            })
+            ->sortDesc()
+            ->take(10)
+            ->toArray();
+
+        // Análisis por horas
+        $analisisHoras = $turnos->groupBy(function ($turno) {
+            return Carbon::parse($turno->fecha_creacion)->format('H');
+        })->map(function ($turnosHora) {
+            return $turnosHora->count();
+        })->toArray();
+
+        return [
+            'estadisticas_generales' => $estadisticasGenerales,
+            'distribucion_servicios' => $distribucionServicios,
+            'distribucion_estados' => $distribucionEstados,
+            'top_asesores' => $topAsesores,
+            'analisis_horas' => $analisisHoras,
+            'turnos_detalle' => $turnos->take(100) // Limitar para el reporte
+        ];
+    }
+
+    /**
+     * Exportar dashboard a Excel
+     */
+    private function exportarDashboardExcel($dashboardData, $fechaInicio, $fechaFin)
+    {
+        $spreadsheet = new Spreadsheet();
+
+        // Hoja 1: Resumen Dashboard
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Dashboard Histórico');
+
+        // Encabezado
+        $sheet->setCellValue('A1', 'DASHBOARD HISTÓRICO - SISTEMA DE TURNOS');
+        $sheet->setCellValue('A2', 'Hospital Universitario del Valle');
+        $sheet->setCellValue('A3', 'Período: ' . $fechaInicio->format('d/m/Y') . ' - ' . $fechaFin->format('d/m/Y'));
+        $sheet->setCellValue('A4', 'Generado: ' . Carbon::now()->format('d/m/Y H:i:s'));
+
+        // Estadísticas generales
+        $row = 6;
+        $sheet->setCellValue('A' . $row, 'ESTADÍSTICAS GENERALES');
+        $row++;
+
+        foreach ($dashboardData['estadisticas_generales'] as $key => $value) {
+            $label = ucwords(str_replace('_', ' ', $key));
+            $sheet->setCellValue('A' . $row, $label);
+            $sheet->setCellValue('B' . $row, $value);
+            $row++;
+        }
+
+        // Distribución por servicios
+        $row += 2;
+        $sheet->setCellValue('A' . $row, 'DISTRIBUCIÓN POR SERVICIOS');
+        $row++;
+        $sheet->setCellValue('A' . $row, 'Servicio');
+        $sheet->setCellValue('B' . $row, 'Cantidad');
+        $row++;
+
+        foreach ($dashboardData['distribucion_servicios'] as $servicio => $cantidad) {
+            $sheet->setCellValue('A' . $row, $servicio);
+            $sheet->setCellValue('B' . $row, $cantidad);
+            $row++;
+        }
+
+        // Distribución por estados
+        $row += 2;
+        $sheet->setCellValue('A' . $row, 'DISTRIBUCIÓN POR ESTADOS');
+        $row++;
+        $sheet->setCellValue('A' . $row, 'Estado');
+        $sheet->setCellValue('B' . $row, 'Cantidad');
+        $row++;
+
+        foreach ($dashboardData['distribucion_estados'] as $estado => $cantidad) {
+            $sheet->setCellValue('A' . $row, ucfirst($estado));
+            $sheet->setCellValue('B' . $row, $cantidad);
+            $row++;
+        }
+
+        // TOP ASESORES - Esta es la sección principal que faltaba
+        $row += 2;
+        $sheet->setCellValue('A' . $row, 'TOP ASESORES (CASOS ATENDIDOS)');
+        $row++;
+        $sheet->setCellValue('A' . $row, 'Asesor');
+        $sheet->setCellValue('B' . $row, 'Casos Atendidos');
+        $row++;
+
+        foreach ($dashboardData['top_asesores'] as $asesor => $cantidad) {
+            $sheet->setCellValue('A' . $row, $asesor);
+            $sheet->setCellValue('B' . $row, $cantidad);
+            $row++;
+        }
+
+        // Análisis por horas
+        $row += 2;
+        $sheet->setCellValue('A' . $row, 'ANÁLISIS POR HORAS');
+        $row++;
+        $sheet->setCellValue('A' . $row, 'Hora');
+        $sheet->setCellValue('B' . $row, 'Cantidad de Turnos');
+        $row++;
+
+        foreach ($dashboardData['analisis_horas'] as $hora => $cantidad) {
+            $sheet->setCellValue('A' . $row, $hora . ':00');
+            $sheet->setCellValue('B' . $row, $cantidad);
+            $row++;
+        }
+
+        // Aplicar estilos
+        $this->aplicarEstilosDashboard($sheet);
+
+        $filename = 'dashboard_historico_' . $fechaInicio->format('Y-m-d') . '_' . $fechaFin->format('Y-m-d') . '.xlsx';
+
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function() use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Exportar dashboard a PDF
+     */
+    private function exportarDashboardPDF($dashboardData, $fechaInicio, $fechaFin)
+    {
+        $data = [
+            'dashboard_data' => $dashboardData,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+            'fecha_generacion' => Carbon::now()
+        ];
+
+        $pdf = Pdf::loadView('admin.reportes.dashboard-pdf', $data);
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'dashboard_historico_' . $fechaInicio->format('Y-m-d') . '_' . $fechaFin->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Calcular tiempo promedio de atención
+     */
+    private function calcularTiempoPromedioAtencion($turnos)
+    {
+        $turnosAtendidos = $turnos->where('estado', 'atendido')
+            ->whereNotNull('duracion_atencion');
+
+        if ($turnosAtendidos->count() === 0) {
+            return 0;
+        }
+
+        // TurnoHistorial ya tiene duracion_atencion en segundos, convertir a minutos
+        $tiempoPromedio = $turnosAtendidos->avg('duracion_atencion');
+
+        return round($tiempoPromedio / 60, 1); // Convertir segundos a minutos
+    }
+
+    /**
+     * Aplicar estilos al dashboard de Excel
+     */
+    private function aplicarEstilosDashboard($sheet)
+    {
+        // Estilo para el título
+        $sheet->getStyle('A1:B1')->getFont()->setBold(true)->setSize(16);
+        $sheet->getStyle('A1:B1')->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setRGB('064b9e');
+        $sheet->getStyle('A1:B1')->getFont()->getColor()->setRGB('FFFFFF');
+
+        // Autoajustar columnas
+        $sheet->getColumnDimension('A')->setAutoSize(true);
+        $sheet->getColumnDimension('B')->setAutoSize(true);
+
+        // Obtener la última fila con datos para aplicar bordes dinámicamente
+        $lastRow = $sheet->getHighestRow();
+
+        // Bordes para las celdas con datos
+        $sheet->getStyle('A1:B' . $lastRow)->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN);
+
+        // Aplicar estilo de encabezado a las secciones principales
+        $this->aplicarEstilosSeccionesDashboard($sheet);
+    }
+
+    /**
+     * Aplicar estilos específicos a las secciones del dashboard
+     */
+    private function aplicarEstilosSeccionesDashboard($sheet)
+    {
+        $lastRow = $sheet->getHighestRow();
+
+        // Buscar y aplicar estilos a los encabezados de sección
+        for ($row = 1; $row <= $lastRow; $row++) {
+            $cellValue = $sheet->getCell('A' . $row)->getValue();
+
+            // Si la celda contiene un encabezado de sección (texto en mayúsculas)
+            if (is_string($cellValue) &&
+                (strpos($cellValue, 'ESTADÍSTICAS') !== false ||
+                 strpos($cellValue, 'DISTRIBUCIÓN') !== false ||
+                 strpos($cellValue, 'TOP ASESORES') !== false ||
+                 strpos($cellValue, 'ANÁLISIS') !== false)) {
+
+                // Aplicar estilo de encabezado de sección
+                $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 12],
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => 'E8F4FD']
+                    ],
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_MEDIUM,
+                        ],
+                    ],
+                ]);
+            }
+
+            // Aplicar estilo a los encabezados de columnas (Asesor, Casos Atendidos, etc.)
+            if (is_string($cellValue) &&
+                (strpos($cellValue, 'Asesor') !== false ||
+                 strpos($cellValue, 'Servicio') !== false ||
+                 strpos($cellValue, 'Estado') !== false ||
+                 strpos($cellValue, 'Hora') !== false ||
+                 strpos($cellValue, 'Cantidad') !== false ||
+                 strpos($cellValue, 'Casos Atendidos') !== false)) {
+
+                // Aplicar estilo de encabezado de columna
+                $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
+                    'font' => ['bold' => true],
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => 'F0F8FF']
+                    ]
+                ]);
+            }
+        }
     }
 
     /**

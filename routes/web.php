@@ -127,9 +127,21 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::get('/api/graficos/distribucion-prioridades', [GraficosController::class, 'distribucionPrioridades'])->name('api.graficos.distribucion-prioridades');
     Route::get('/api/graficos/estadisticas-generales', [GraficosController::class, 'estadisticasGenerales'])->name('api.graficos.estadisticas-generales');
 
+    // APIs para gráficos históricos
+    Route::get('/api/graficos/historial/volumen-por-tiempo', [GraficosController::class, 'historialVolumenPorTiempo'])->name('api.graficos.historial.volumen-por-tiempo');
+    Route::get('/api/graficos/historial/distribucion-servicios', [GraficosController::class, 'historialDistribucionServicios'])->name('api.graficos.historial.distribucion-servicios');
+    Route::get('/api/graficos/historial/distribucion-estados', [GraficosController::class, 'historialDistribucionEstados'])->name('api.graficos.historial.distribucion-estados');
+    Route::get('/api/graficos/historial/horas-pico', [GraficosController::class, 'historialHorasPico'])->name('api.graficos.historial.horas-pico');
+    Route::get('/api/graficos/historial/tiempo-atencion', [GraficosController::class, 'historialTiempoAtencion'])->name('api.graficos.historial.tiempo-atencion');
+    Route::get('/api/graficos/historial/rendimiento-asesores', [GraficosController::class, 'historialRendimientoAsesores'])->name('api.graficos.historial.rendimiento-asesores');
+    Route::get('/api/graficos/historial/estadisticas-generales', [GraficosController::class, 'historialEstadisticasGenerales'])->name('api.graficos.historial.estadisticas-generales');
+    Route::get('/api/graficos/historial/patrones-dia-semana', [GraficosController::class, 'historialPatronesDiaSemana'])->name('api.graficos.historial.patrones-dia-semana');
+    Route::get('/api/graficos/historial/eficiencia-servicios', [GraficosController::class, 'historialEficienciaServicios'])->name('api.graficos.historial.eficiencia-servicios');
+
     // Rutas para reportes
     Route::get('/reportes', [ReportesController::class, 'index'])->name('admin.reportes');
     Route::post('/reportes/generar', [ReportesController::class, 'generarReporte'])->name('admin.reportes.generar');
+    Route::post('/reportes/dashboard-historico', [ReportesController::class, 'exportarDashboardHistorico'])->name('admin.reportes.dashboard-historico');
 
     // Sistema de Voz
     Route::prefix('voice')->name('voice.')->group(function () {
