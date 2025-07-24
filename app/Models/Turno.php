@@ -7,6 +7,34 @@ use Carbon\Carbon;
 
 class Turno extends Model
 {
+    /**
+     * Boot del modelo para configurar eventos automáticos
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Crear backup automáticamente cuando se crea un turno
+        static::created(function ($turno) {
+            TurnoHistorial::crearDesdeturno($turno, 'creacion');
+        });
+
+        // Crear backup automáticamente cuando se actualiza un turno
+        static::updated(function ($turno) {
+            TurnoHistorial::crearDesdeturno($turno, 'actualizacion', [
+                'cambios' => $turno->getChanges(),
+                'valores_anteriores' => $turno->getOriginal()
+            ]);
+        });
+
+        // Crear backup automáticamente antes de eliminar un turno
+        static::deleting(function ($turno) {
+            TurnoHistorial::crearDesdeturno($turno, 'eliminacion', [
+                'motivo' => 'Turno eliminado del sistema principal'
+            ]);
+        });
+    }
+
     protected $fillable = [
         'codigo',
         'numero',
@@ -44,6 +72,11 @@ class Turno extends Model
     public function asesor()
     {
         return $this->belongsTo(User::class, 'asesor_id');
+    }
+
+    public function historial()
+    {
+        return $this->hasMany(TurnoHistorial::class, 'turno_original_id');
     }
 
     // Scopes

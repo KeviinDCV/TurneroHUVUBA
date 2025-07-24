@@ -498,6 +498,10 @@ class AdminController extends Controller
 
     /**
      * Emergencia - Eliminar turnos según la opción seleccionada
+     *
+     * IMPORTANTE: Esta función solo elimina registros de la tabla 'turnos' (temporal).
+     * Los registros del historial en 'turno_historial' NUNCA son afectados,
+     * manteniendo así un registro permanente de todos los turnos creados.
      */
     public function emergencyTurnos(Request $request)
     {
@@ -556,12 +560,17 @@ class AdminController extends Controller
                     break;
             }
 
+            // Verificar que el historial se mantiene intacto
+            $historialCount = \App\Models\TurnoHistorial::count();
+
             // Log de la acción de emergencia
             \Log::warning('Acción de emergencia - Eliminación de turnos', [
                 'usuario' => Auth::user()->nombre_usuario,
                 'opcion' => $option,
                 'servicio_id' => $serviceId,
                 'turnos_eliminados' => $deletedCount,
+                'historial_preservado' => $historialCount,
+                'nota' => 'El historial de turnos permanece intacto - solo se eliminan registros temporales',
                 'timestamp' => now()
             ]);
 
