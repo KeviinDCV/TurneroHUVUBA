@@ -226,7 +226,7 @@
             <!-- Right Side - Patient Queue -->
             <div class="bg-hospital-blue-light p-8 col-span-2">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
-                <div class="space-y-3" id="patient-queue">
+                <div class="space-y-3 overflow-hidden" id="patient-queue">
                     <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in">
                         <div class="grid grid-cols-2 gap-4 items-center">
                             <div class="text-center">
@@ -727,8 +727,13 @@
             // Conservar el contenedor pero limpiar su contenido
             container.innerHTML = '';
 
+            // Limitar a máximo 5 turnos para evitar desbordamiento visual
+            // Los turnos vienen ordenados por fecha_llamado DESC (más recientes primero)
+            // Esto implementa un comportamiento FIFO: nuevo turno entra al principio, el más antiguo sale
+            const turnosLimitados = turnosList.slice(0, 5);
+
             // No hay turnos, mostramos placeholders
-            if (turnosList.length === 0) {
+            if (turnosLimitados.length === 0) {
                 for (let i = 0; i < 5; i++) {
                     const placeholderElement = document.createElement('div');
                     placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50';
@@ -749,9 +754,9 @@
                 return;
             }
 
-            // Mostrar turnos existentes
-            for (let i = 0; i < turnosList.length; i++) {
-                const turno = turnosList[i];
+            // Mostrar turnos existentes (máximo 5)
+            for (let i = 0; i < turnosLimitados.length; i++) {
+                const turno = turnosLimitados[i];
 
                 // Crear elemento del turno
                 const turnoElement = document.createElement('div');
@@ -794,7 +799,7 @@
             }
 
             // Si hay menos de 5 turnos, rellenar con placeholders
-            for (let i = turnosList.length; i < 5; i++) {
+            for (let i = turnosLimitados.length; i < 5; i++) {
                 const placeholderElement = document.createElement('div');
                 placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50';
 
