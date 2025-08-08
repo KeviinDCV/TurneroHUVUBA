@@ -8,7 +8,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket de Turno - Hospital Universitario del Valle</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+    @include('components.favicon')
     <style>
         @media print {
             body {

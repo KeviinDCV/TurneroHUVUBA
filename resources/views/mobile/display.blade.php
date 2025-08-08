@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <title>{{ config('app.name', 'Turnero HUV') }} - Vista Móvil</title>
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+    @include('components.favicon')
 
     <!-- Fonts - Optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

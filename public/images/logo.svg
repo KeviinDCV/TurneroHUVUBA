@@ -1,0 +1,15 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular -->
+  <circle cx="64" cy="64" r="60" fill="#064b9e" stroke="#ffffff" stroke-width="4"/>
+  
+  <!-- Cruz médica -->
+  <rect x="54" y="24" width="20" height="80" fill="#ffffff" rx="2"/>
+  <rect x="24" y="54" width="80" height="20" fill="#ffffff" rx="2"/>
+  
+  <!-- Texto HUV -->
+  <text x="64" y="105" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#064b9e">HUV</text>
+  
+  <!-- Detalles decorativos -->
+  <circle cx="64" cy="64" r="8" fill="#064b9e"/>
+  <circle cx="64" cy="64" r="4" fill="#ffffff"/>
+</svg>

@@ -36,6 +36,27 @@ Route::get('/api/csrf-token', function() {
 })->name('api.csrf-token')
     ->middleware(['no.session.api']);
 
+// Ruta de debug para CSRF (solo en desarrollo)
+Route::get('/debug/csrf', function() {
+    if (config('app.env') !== 'local') {
+        abort(404);
+    }
+
+    return response()->json([
+        'csrf_token' => csrf_token(),
+        'session_id' => session()->getId(),
+        'session_started' => session()->isStarted(),
+        'app_url' => config('app.url'),
+        'app_env' => config('app.env'),
+        'session_config' => [
+            'driver' => config('session.driver'),
+            'domain' => config('session.domain'),
+            'secure' => config('session.secure'),
+            'same_site' => config('session.same_site'),
+        ]
+    ]);
+})->name('debug.csrf');
+
 // API para repetir audio del último turno (requiere autenticación)
 Route::post('/api/repetir-audio-turno', [TurnoController::class, 'repetirAudioTurno'])
     ->name('api.repetir-audio-turno')
