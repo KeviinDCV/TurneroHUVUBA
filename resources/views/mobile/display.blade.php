@@ -110,11 +110,34 @@
 
         /* Optimizaciones para móvil */
         .mobile-container {
-            height: 100vh;
-            height: 100dvh; /* Para navegadores modernos */
+            min-height: 100vh;
+            min-height: 100dvh; /* Para navegadores modernos */
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+        }
+
+        /* Asegurar scroll vertical */
+        html, body {
+            overflow-x: hidden;
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100vh;
+            -webkit-overflow-scrolling: touch; /* Para iOS */
+        }
+
+        /* Forzar scroll en móviles */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: scroll !important;
+                height: auto !important;
+                position: relative !important;
+            }
+
+            .mobile-container {
+                overflow: visible !important;
+                height: auto !important;
+                min-height: 100vh;
+            }
         }
 
         /* Evitar zoom en inputs */
@@ -131,10 +154,67 @@
         .hide-scrollbar::-webkit-scrollbar {
             display: none;
         }
+
+        /* Responsive para sección de turnos móvil - Sin restricciones de altura */
+        #patient-queue {
+            /* Permitir crecimiento natural del contenido */
+        }
+
+        /* Ajustes responsive para diferentes tamaños de celular */
+        @media (max-height: 667px) {
+            /* iPhone SE, iPhone 8 y similares */
+            .mobile-container {
+                font-size: 14px;
+            }
+
+            #patient-queue .text-lg {
+                font-size: 1rem !important;
+            }
+
+            #patient-queue .text-sm {
+                font-size: 0.75rem !important;
+            }
+        }
+
+        /* Ajustes para pantallas muy pequeñas */
+        @media (max-width: 320px) {
+            /* iPhone 5/SE y similares */
+            .mobile-container {
+                font-size: 12px;
+            }
+
+            #patient-queue .min-h-\[70px\] {
+                min-height: 60px !important;
+            }
+
+            #patient-queue .p-4 {
+                padding: 0.75rem !important;
+            }
+        }
+
+        /* Ajustes para pantallas medianas */
+        @media (min-width: 375px) and (max-width: 414px) {
+            /* iPhone 6/7/8, iPhone X/11 Pro y similares */
+            #patient-queue .text-lg {
+                font-size: 1.125rem !important;
+            }
+        }
+
+        /* Ajustes para pantallas grandes de móvil */
+        @media (min-width: 415px) {
+            /* iPhone Plus, iPhone 11/XR y similares */
+            #patient-queue .text-lg {
+                font-size: 1.25rem !important;
+            }
+
+            #patient-queue .text-sm {
+                font-size: 0.875rem !important;
+            }
+        }
     </style>
 </head>
-<body class="w-full bg-white overflow-hidden">
-    <div class="mobile-container bg-white">
+<body class="w-full bg-white overflow-y-auto">
+    <div class="mobile-container bg-white min-h-screen">
         <!-- Header Section - Compacto para móvil -->
         <div class="bg-hospital-blue-light p-3">
             <div class="flex items-center justify-between">
@@ -150,7 +230,6 @@
                 <!-- Hora -->
                 <div class="text-right">
                     <p class="text-lg text-hospital-blue font-semibold" id="current-time">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
-                    <p class="text-xs text-hospital-blue">Turnero HUV</p>
                 </div>
             </div>
         </div>
@@ -211,9 +290,9 @@
         @endif
 
         <!-- Main Content - Stack vertical para móvil -->
-        <div class="flex flex-col flex-1">
+        <div class="flex flex-col">
             <!-- Multimedia Content - Ahora arriba -->
-            <div class="bg-hospital-blue-light p-3 flex-1">
+            <div class="bg-hospital-blue-light p-3">
                 <div class="bg-white rounded-lg mobile-border mobile-shadow aspect-video flex items-center justify-center relative overflow-hidden" id="multimedia-container">
                     <!-- Contenido multimedia dinámico -->
                     <div id="multimedia-content" class="w-full h-full flex items-center justify-center">
@@ -243,36 +322,53 @@
             </div>
 
             <!-- Patient Queue - Dinámico desde el servidor -->
-            <div class="bg-hospital-blue-light p-3">
-                <div class="space-y-2" id="patient-queue">
-                    <!-- Placeholders iniciales -->
-                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-gray-400">---</div>
-                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+            <div class="bg-hospital-blue-light p-4 pb-16">
+                <div class="space-y-3" id="patient-queue">
+                    <!-- Placeholders iniciales para móvil (4 turnos) -->
+                    <div class="gradient-hospital text-white p-4 mobile-shadow rounded-lg opacity-50 min-h-[70px] flex items-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left pl-2">
+                                <div class="text-lg font-bold text-gray-300">----</div>
+                            </div>
+                            <div class="text-right pr-2">
+                                <div class="text-sm font-semibold text-gray-300">CAJA -</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-gray-400">---</div>
-                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                    <div class="gradient-hospital text-white p-4 mobile-shadow rounded-lg opacity-50 min-h-[70px] flex items-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left pl-2">
+                                <div class="text-lg font-bold text-gray-300">----</div>
+                            </div>
+                            <div class="text-right pr-2">
+                                <div class="text-sm font-semibold text-gray-300">CAJA -</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-gray-400">---</div>
-                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                    <div class="gradient-hospital text-white p-4 mobile-shadow rounded-lg opacity-50 min-h-[70px] flex items-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left pl-2">
+                                <div class="text-lg font-bold text-gray-300">----</div>
+                            </div>
+                            <div class="text-right pr-2">
+                                <div class="text-sm font-semibold text-gray-300">CAJA -</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="bg-gray-200 p-3 mobile-shadow rounded-lg opacity-50">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-gray-400">---</div>
-                            <div class="text-xs font-semibold text-gray-400">CARGANDO</div>
+                    <div class="gradient-hospital text-white p-4 mobile-shadow rounded-lg opacity-50 min-h-[70px] flex items-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left pl-2">
+                                <div class="text-lg font-bold text-gray-300">----</div>
+                            </div>
+                            <div class="text-right pr-2">
+                                <div class="text-sm font-semibold text-gray-300">CAJA -</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-
+                <!-- Espacio adicional para scroll -->
+                <div class="h-20 bg-hospital-blue-light"></div>
             </div>
         </div>
 
@@ -285,14 +381,7 @@
             </div>
         </div>
 
-        <!-- Footer - Mínimo -->
-        <div class="bg-white border-t border-hospital-blue px-2 py-1 text-center relative">
-            <p class="text-xs text-gray-500">
-                <span class="font-semibold text-hospital-blue">Turnero HUV</span>
-            </p>
-            <!-- Indicador de actualización -->
-            <div id="updateIndicator" class="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full opacity-0 transition-opacity duration-300"></div>
-        </div>
+
     </div>
 
     <script>
@@ -1176,17 +1265,17 @@
             // Verificar si hay turnos para mostrar
             if (!turnosList || turnosList.length === 0) {
                 console.log('📱 No hay turnos para mostrar, mostrando placeholders');
-                // Mostrar 5 placeholders cuando no hay turnos (igual que en TV)
-                for (let i = 0; i < 5; i++) {
+                // Mostrar 4 placeholders para móvil (optimizado para pantallas pequeñas)
+                for (let i = 0; i < 4; i++) {
                     const placeholder = document.createElement('div');
-                    placeholder.className = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg opacity-50';
+                    placeholder.className = 'gradient-hospital text-white p-4 mobile-shadow rounded-lg opacity-50 min-h-[70px] flex items-center';
                     placeholder.innerHTML = `
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-gray-400">---</div>
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left pl-2">
+                                <div class="text-lg font-bold text-gray-300">----</div>
                             </div>
-                            <div class="text-center">
-                                <div class="text-sm font-semibold text-gray-400">DISPONIBLE</div>
+                            <div class="text-right pr-2">
+                                <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                             </div>
                         </div>
                     `;
@@ -1196,8 +1285,8 @@
                 return;
             }
 
-            // Limitar a los últimos 5 turnos para vista móvil (igual que TV)
-            const turnosParaMostrar = turnosList.slice(-5);
+            // Limitar a los últimos 4 turnos para vista móvil (optimizado para celulares)
+            const turnosParaMostrar = turnosList.slice(-4);
 
             // Mostrar turnos existentes
             for (let i = 0; i < turnosParaMostrar.length; i++) {
@@ -1209,8 +1298,8 @@
                 // Determinar estilo según el estado
                 const esAtendido = turno.estado === 'atendido';
 
-                // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
-                let clases = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg';
+                // Diseño optimizado para móvil
+                let clases = 'gradient-hospital text-white p-4 mobile-shadow rounded-lg min-h-[70px] flex items-center';
 
                 turnoElement.className = clases;
 
@@ -1220,13 +1309,13 @@
                     '';
 
                 turnoElement.innerHTML = `
-                    <div class="relative">
+                    <div class="relative w-full">
                         ${estadoBadge}
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold">${turno.codigo_completo}</div>
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left pl-2">
+                                <div class="text-lg font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right pr-2">
                                 <div class="text-sm font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -1236,17 +1325,17 @@
                 container.appendChild(turnoElement);
             }
 
-            // Si hay menos de 5 turnos, llenar con placeholders
-            while (container.children.length < 5) {
+            // Si hay menos de 4 turnos, llenar con placeholders
+            while (container.children.length < 4) {
                 const placeholder = document.createElement('div');
-                placeholder.className = 'gradient-hospital text-white p-3 mobile-shadow rounded-lg opacity-50';
+                placeholder.className = 'gradient-hospital text-white p-4 mobile-shadow rounded-lg opacity-50 min-h-[70px] flex items-center';
                 placeholder.innerHTML = `
-                    <div class="grid grid-cols-2 gap-4 items-center">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-gray-400">---</div>
+                    <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="text-left pl-2">
+                            <div class="text-lg font-bold text-gray-300">----</div>
                         </div>
-                        <div class="text-center">
-                            <div class="text-sm font-semibold text-gray-400">DISPONIBLE</div>
+                        <div class="text-right pr-2">
+                            <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                         </div>
                     </div>
                 `;
