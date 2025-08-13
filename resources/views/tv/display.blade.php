@@ -223,6 +223,25 @@
             .responsive-header > div:first-child p {
                 font-size: 0.875rem !important;
             }
+
+            /* Ajustes específicos para turnos en pantallas pequeñas */
+            .turno-numero {
+                font-size: clamp(1.5rem, 4vw, 3rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(1rem, 2.25vw, 1.5rem) !important;
+            }
+
+            /* Reducir padding en turnos para pantallas pequeñas */
+            .responsive-queue-section .p-3 {
+                padding: 0.5rem !important;
+            }
+
+            /* Ajustar espaciado entre turnos */
+            .responsive-queue-section #patient-queue {
+                gap: 0.25rem !important;
+            }
         }
 
         /* Pantallas medianas (tablets, laptops pequeños) */
@@ -241,6 +260,15 @@
             .text-8xl { font-size: 4rem !important; }
 
             .ticker-text { font-size: 1rem !important; }
+
+            /* Ajustes para turnos en pantallas medianas */
+            .turno-numero {
+                font-size: clamp(1.75rem, 3.5vw, 3.5rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(1.125rem, 2vw, 1.5rem) !important;
+            }
         }
 
         /* Pantallas grandes (laptops, monitores estándar) */
@@ -316,6 +344,20 @@
             .p-8 { padding: 0.5rem !important; }
             .p-6 { padding: 0.5rem !important; }
             .p-4 { padding: 0.25rem !important; }
+
+            /* Ajustes extremos para turnos en landscape móvil */
+            .turno-numero {
+                font-size: clamp(1rem, 2.5vw, 2rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.75rem, 1.5vw, 1.125rem) !important;
+            }
+
+            /* Reducir espaciado al mínimo */
+            .responsive-queue-section #patient-queue {
+                gap: 0.125rem !important;
+            }
         }
 
         /* Clases responsive dinámicas */
@@ -431,25 +473,144 @@
             flex-direction: column;
             height: 100%;
             justify-content: space-between;
-            gap: 0.75rem;
+            gap: 0;
+            padding: 0.5rem 0;
         }
 
         .responsive-queue-section #patient-queue > div {
             flex: 1;
-            min-height: 0;
+            height: calc(20% - 0.4rem);
+            min-height: 60px;
+            max-height: none;
+            overflow: hidden;
+            box-sizing: border-box;
+            margin-bottom: 0.5rem;
         }
 
-        /* Ajustes específicos para diferentes resoluciones */
+        .responsive-queue-section #patient-queue > div:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Contenedor interno de cada turno */
+        .turno-content {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Texto de turnos con límites estrictos y mejor escalado */
+        .turno-numero {
+            font-size: clamp(1.75rem, 4.5vw, 4rem);
+            line-height: 1;
+            max-height: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .turno-caja {
+            font-size: clamp(1.125rem, 2.25vw, 1.75rem);
+            line-height: 1.2;
+            max-height: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        /* Ajustes específicos para diferentes alturas de pantalla */
         @media (max-height: 800px) {
-            .responsive-queue-section .text-6xl { font-size: 2.5rem !important; }
-            .responsive-queue-section .text-3xl { font-size: 1.25rem !important; }
-            .responsive-queue-section .p-4 { padding: 0.75rem !important; }
+            .turno-numero {
+                font-size: clamp(1.5rem, 3.5vw, 3rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(1rem, 2vw, 1.5rem) !important;
+            }
+
+            .responsive-queue-section .p-4 {
+                padding: 0.75rem !important;
+            }
         }
 
         @media (max-height: 600px) {
-            .responsive-queue-section .text-6xl { font-size: 2rem !important; }
-            .responsive-queue-section .text-3xl { font-size: 1rem !important; }
-            .responsive-queue-section .p-4 { padding: 0.5rem !important; }
+            .turno-numero {
+                font-size: clamp(1.25rem, 3vw, 2.5rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.875rem, 1.75vw, 1.25rem) !important;
+            }
+
+            .responsive-queue-section .p-4 {
+                padding: 0.5rem !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.25rem !important;
+            }
+        }
+
+        @media (max-height: 400px) {
+            .turno-numero {
+                font-size: clamp(1rem, 2.5vw, 2rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.75rem, 1.5vw, 1rem) !important;
+            }
+
+            .responsive-queue-section .p-4 {
+                padding: 0.25rem !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.125rem !important;
+            }
+        }
+
+        /* Prevenir desbordamiento en resoluciones altas */
+        .responsive-queue-section .text-6xl {
+            max-height: 100%;
+            line-height: 1;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .responsive-queue-section .text-3xl {
+            max-height: 100%;
+            line-height: 1.2;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Limitar el tamaño máximo de fuente para evitar desbordamiento */
+        @media (min-width: 1441px) {
+            .responsive-queue-section .text-6xl {
+                font-size: min(4rem, 8vh) !important;
+                max-height: 8vh;
+            }
+            .responsive-queue-section .text-3xl {
+                font-size: min(1.5rem, 4vh) !important;
+                max-height: 4vh;
+            }
+        }
+
+        @media (min-width: 1921px) {
+            .responsive-queue-section .text-6xl {
+                font-size: min(5rem, 10vh) !important;
+                max-height: 10vh;
+            }
+            .responsive-queue-section .text-3xl {
+                font-size: min(2rem, 5vh) !important;
+                max-height: 5vh;
+            }
+        }
+
+        /* Asegurar que cada turno no exceda su espacio asignado */
+        .responsive-queue-section #patient-queue > div {
+            max-height: calc(20vh - 1rem);
+            overflow: hidden;
         }
 
         /* Ajustes para el logo del hospital */
@@ -532,57 +693,57 @@
             <div class="bg-hospital-blue-light p-8 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
                 <div class="space-y-3 overflow-hidden" id="patient-queue">
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center">
+                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold animate-pulse-number">U001</div>
+                                <div class="turno-numero font-bold animate-pulse-number">U001</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA 1</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA 1</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.2s;">
+                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.2s;">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold">U002</div>
+                                <div class="turno-numero font-bold">U002</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA 2</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA 2</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.4s;">
+                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.4s;">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold">U003</div>
+                                <div class="turno-numero font-bold">U003</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA 3</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA 3</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.6s;">
+                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.6s;">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold">U004</div>
+                                <div class="turno-numero font-bold">U004</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA 4</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA 4</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.8s;">
+                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.8s;">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold">U005</div>
+                                <div class="turno-numero font-bold">U005</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA 5</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA 5</div>
                             </div>
                         </div>
                     </div>
@@ -1107,15 +1268,15 @@
             if (turnosLimitados.length === 0) {
                 for (let i = 0; i < 5; i++) {
                     const placeholderElement = document.createElement('div');
-                    placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50 flex items-center';
+                    placeholderElement.className = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                     placeholderElement.innerHTML = `
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold">----</div>
+                                <div class="turno-numero font-bold">----</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA -</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA -</div>
                             </div>
                         </div>
                     `;
@@ -1137,7 +1298,7 @@
                 const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
 
                 // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
-                let clases = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg flex items-center';
+                let clases = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg flex items-center h-full';
 
                 // Animación solo para turnos nuevos llamados
                 if (i === 0 && !yaAnimado && !esAtendido) {
@@ -1157,10 +1318,10 @@
                         ${estadoBadge}
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
-                                <div class="text-6xl font-bold">${turno.codigo_completo}</div>
+                                <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="text-3xl font-semibold">CAJA ${turno.numero_caja || ''}</div>
+                            <div class="text-right flex items-center justify-end pr-2">
+                                <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
                     </div>
@@ -1172,15 +1333,15 @@
             // Si hay menos de 5 turnos, rellenar con placeholders
             for (let i = turnosLimitados.length; i < 5; i++) {
                 const placeholderElement = document.createElement('div');
-                placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50 flex items-center';
+                placeholderElement.className = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                 placeholderElement.innerHTML = `
                     <div class="grid grid-cols-2 gap-4 items-center w-full">
                         <div class="text-left flex items-center">
-                            <div class="text-6xl font-bold">----</div>
+                            <div class="turno-numero font-bold">----</div>
                         </div>
-                        <div class="text-right flex items-center justify-end">
-                            <div class="text-3xl font-semibold">CAJA -</div>
+                        <div class="text-right flex items-center justify-end pr-2">
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
                 `;

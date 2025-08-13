@@ -186,7 +186,7 @@
                         <div class="text-xs mt-1 text-white drop-shadow-md">Diríjase a la caja indicada</div>
                     </div>
                 @else
-                    <div class="bg-white bg-opacity-30 rounded-lg p-3 shadow-lg border border-white border-opacity-40">
+                    <div class="bg-blue-600 bg-opacity-90 rounded-lg p-3 shadow-lg border border-blue-500">
                         @if($turnoInfo['turnos_adelante'] > 0)
                             <div class="text-sm font-medium text-white drop-shadow-md">Faltan {{ $turnoInfo['turnos_adelante'] }} turnos</div>
                             <div class="text-xs mt-1 text-white drop-shadow-md">Tiempo estimado: {{ $turnoInfo['tiempo_estimado'] }} minutos</div>
@@ -1293,7 +1293,7 @@
                                 const tiempoEstimado = turnosAdelante * 3;
 
                                 estadoHtml = `
-                                    <div class="bg-white bg-opacity-30 rounded-lg p-3 shadow-lg border border-white border-opacity-40">
+                                    <div class="bg-blue-600 bg-opacity-90 rounded-lg p-3 shadow-lg border border-blue-500">
                                         ${turnosAdelante > 0 ?
                                             `<div class="text-sm font-medium text-white drop-shadow-md">Faltan ${turnosAdelante} turnos</div>
                                              <div class="text-xs mt-1 text-white drop-shadow-md">Tiempo estimado: ${tiempoEstimado} minutos</div>` :
