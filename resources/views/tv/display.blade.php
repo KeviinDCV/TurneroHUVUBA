@@ -161,12 +161,317 @@
         .media-enter {
             animation: mediaEnter 1s ease-out forwards;
         }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+
+        /* Variables CSS para escalado dinámico */
+        :root {
+            --scale-factor: 1;
+            --header-height: 8rem;
+            --ticker-height: 4rem;
+        }
+
+        /* Pantallas muy pequeñas (móviles en landscape, tablets pequeñas) */
+        @media (max-width: 768px) {
+            :root {
+                --scale-factor: 0.6;
+                --header-height: 6rem;
+                --ticker-height: 3rem;
+            }
+
+            .text-5xl { font-size: 2rem !important; }
+            .text-4xl { font-size: 1.5rem !important; }
+            .text-3xl { font-size: 1.25rem !important; }
+            .text-2xl { font-size: 1rem !important; }
+            .text-xl { font-size: 0.875rem !important; }
+            .text-6xl { font-size: 2.5rem !important; }
+            .text-8xl { font-size: 3rem !important; }
+
+            .ticker-text { font-size: 0.875rem !important; }
+
+            .p-8 { padding: 1rem !important; }
+            .p-6 { padding: 0.75rem !important; }
+            .p-4 { padding: 0.5rem !important; }
+
+            .space-y-3 > * + * { margin-top: 0.5rem !important; }
+
+            /* Layout vertical para pantallas pequeñas */
+            .responsive-main {
+                display: flex !important;
+                flex-direction: column !important;
+            }
+
+            .responsive-main > div:first-child {
+                flex: 2 !important;
+                min-height: 60% !important;
+            }
+
+            .responsive-main > div:last-child {
+                flex: 1 !important;
+                min-height: 40% !important;
+            }
+
+            /* Ajustar header para pantallas pequeñas */
+            .responsive-header {
+                grid-template-columns: 1fr 2fr 1fr !important;
+            }
+
+            .responsive-header > div:first-child h1 {
+                font-size: 1.5rem !important;
+            }
+
+            .responsive-header > div:first-child p {
+                font-size: 0.875rem !important;
+            }
+        }
+
+        /* Pantallas medianas (tablets, laptops pequeños) */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            :root {
+                --scale-factor: 0.8;
+                --header-height: 7rem;
+                --ticker-height: 3.5rem;
+            }
+
+            .text-5xl { font-size: 2.5rem !important; }
+            .text-4xl { font-size: 2rem !important; }
+            .text-3xl { font-size: 1.5rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-6xl { font-size: 3rem !important; }
+            .text-8xl { font-size: 4rem !important; }
+
+            .ticker-text { font-size: 1rem !important; }
+        }
+
+        /* Pantallas grandes (laptops, monitores estándar) */
+        @media (min-width: 1025px) and (max-width: 1440px) {
+            :root {
+                --scale-factor: 1;
+                --header-height: 8rem;
+                --ticker-height: 4rem;
+            }
+        }
+
+        /* Pantallas muy grandes (monitores 4K, TVs) */
+        @media (min-width: 1441px) {
+            :root {
+                --scale-factor: 1.3;
+                --header-height: 10rem;
+                --ticker-height: 5rem;
+            }
+
+            .text-5xl { font-size: 4rem !important; }
+            .text-4xl { font-size: 3rem !important; }
+            .text-3xl { font-size: 2rem !important; }
+            .text-2xl { font-size: 1.5rem !important; }
+            .text-xl { font-size: 1.25rem !important; }
+            .text-6xl { font-size: 5rem !important; }
+            .text-8xl { font-size: 8rem !important; }
+
+            .ticker-text { font-size: 1.5rem !important; }
+
+            .p-8 { padding: 3rem !important; }
+            .p-6 { padding: 2rem !important; }
+            .p-4 { padding: 1.5rem !important; }
+
+            .space-y-3 > * + * { margin-top: 1rem !important; }
+        }
+
+        /* Pantallas ultra anchas (monitores ultrawide) */
+        @media (min-width: 1921px) {
+            :root {
+                --scale-factor: 1.5;
+                --header-height: 12rem;
+                --ticker-height: 6rem;
+            }
+
+            .text-5xl { font-size: 5rem !important; }
+            .text-4xl { font-size: 4rem !important; }
+            .text-3xl { font-size: 2.5rem !important; }
+            .text-2xl { font-size: 2rem !important; }
+            .text-xl { font-size: 1.5rem !important; }
+            .text-6xl { font-size: 6rem !important; }
+            .text-8xl { font-size: 10rem !important; }
+
+            .ticker-text { font-size: 2rem !important; }
+
+            .p-8 { padding: 4rem !important; }
+            .p-6 { padding: 3rem !important; }
+            .p-4 { padding: 2rem !important; }
+        }
+
+        /* Ajustes específicos para orientación landscape en móviles */
+        @media (max-height: 500px) and (orientation: landscape) {
+            :root {
+                --header-height: 4rem;
+                --ticker-height: 2rem;
+            }
+
+            .text-5xl { font-size: 1.5rem !important; }
+            .text-4xl { font-size: 1.25rem !important; }
+            .text-3xl { font-size: 1rem !important; }
+            .text-6xl { font-size: 2rem !important; }
+            .text-8xl { font-size: 2.5rem !important; }
+
+            .p-8 { padding: 0.5rem !important; }
+            .p-6 { padding: 0.5rem !important; }
+            .p-4 { padding: 0.25rem !important; }
+        }
+
+        /* Clases responsive dinámicas */
+        .responsive-header {
+            height: var(--header-height);
+        }
+
+        .responsive-ticker {
+            height: var(--ticker-height);
+        }
+
+        .responsive-main {
+            height: calc(100vh - var(--header-height));
+        }
+
+        /* Cuando el ticker está habilitado, ajustar la altura */
+        .ticker-enabled .responsive-main {
+            height: calc(100vh - var(--header-height) - var(--ticker-height));
+        }
+
+        /* Ajustes para el contenido multimedia */
+        @media (max-width: 768px) {
+            .multimedia-placeholder-icon { font-size: 3rem !important; }
+            .multimedia-placeholder-title { font-size: 1.25rem !important; }
+            .multimedia-placeholder-subtitle { font-size: 1rem !important; }
+
+            /* Ajustar cola de turnos para pantallas pequeñas */
+            .responsive-queue-section .space-y-3 > * + * { margin-top: 0.25rem !important; }
+            .responsive-queue-section .text-6xl { font-size: 1.5rem !important; }
+            .responsive-queue-section .text-3xl { font-size: 1rem !important; }
+            .responsive-queue-section .p-4 { padding: 0.5rem !important; }
+
+            /* Asegurar que se vean los 5 turnos */
+            .responsive-queue-section {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+            }
+
+            .responsive-queue-section .space-y-3 {
+                display: flex !important;
+                flex-direction: column !important;
+                height: 100% !important;
+                justify-content: space-between !important;
+            }
+        }
+
+        @media (min-width: 1441px) {
+            .multimedia-placeholder-icon { font-size: 8rem !important; }
+            .multimedia-placeholder-title { font-size: 2.5rem !important; }
+            .multimedia-placeholder-subtitle { font-size: 1.5rem !important; }
+
+            /* Mejorar espaciado en pantallas grandes */
+            .responsive-queue-section .space-y-3 > * + * { margin-top: 1.5rem !important; }
+            .responsive-queue-section .p-4 { padding: 2rem !important; }
+        }
+
+        /* Ajustes específicos para diferentes aspectos de pantalla */
+        @media (max-aspect-ratio: 4/3) {
+            /* Pantallas más altas que anchas (tablets en portrait) */
+            .responsive-main {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: 1fr auto !important;
+            }
+
+            .responsive-multimedia-section {
+                grid-column: 1 !important;
+                grid-row: 1 !important;
+            }
+
+            .responsive-queue-section {
+                grid-column: 1 !important;
+                grid-row: 2 !important;
+                max-height: 40vh !important;
+                overflow-y: auto !important;
+            }
+        }
+
+        @media (min-aspect-ratio: 21/9) {
+            /* Pantallas ultra anchas */
+            .responsive-main {
+                grid-template-columns: 2fr 1fr !important;
+            }
+
+            .responsive-multimedia-section {
+                grid-column: 1 !important;
+            }
+
+            .responsive-queue-section {
+                grid-column: 2 !important;
+            }
+        }
+
+        /* Mejoras para la legibilidad en diferentes tamaños */
+        .responsive-text-scale {
+            font-size: calc(1rem * var(--scale-factor));
+        }
+
+        /* Asegurar que el contenido siempre sea visible */
+        .responsive-container {
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* Optimización para la cola de turnos - asegurar que se vean los 5 turnos */
+        .responsive-queue-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .responsive-queue-section #patient-queue {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .responsive-queue-section #patient-queue > div {
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Ajustes específicos para diferentes resoluciones */
+        @media (max-height: 800px) {
+            .responsive-queue-section .text-6xl { font-size: 2.5rem !important; }
+            .responsive-queue-section .text-3xl { font-size: 1.25rem !important; }
+            .responsive-queue-section .p-4 { padding: 0.75rem !important; }
+        }
+
+        @media (max-height: 600px) {
+            .responsive-queue-section .text-6xl { font-size: 2rem !important; }
+            .responsive-queue-section .text-3xl { font-size: 1rem !important; }
+            .responsive-queue-section .p-4 { padding: 0.5rem !important; }
+        }
+
+        /* Ajustes para el logo del hospital */
+        @media (max-width: 768px) {
+            .responsive-header img {
+                height: 3rem !important;
+                max-height: 3rem !important;
+            }
+        }
+
+        @media (min-width: 1441px) {
+            .responsive-header img {
+                height: 6rem !important;
+                max-height: 6rem !important;
+            }
+        }
     </style>
 </head>
-<body class="w-full h-screen bg-white overflow-hidden">
+<body class="w-full h-screen bg-white overflow-hidden {{ $tvConfig->ticker_enabled ? 'ticker-enabled' : '' }}">
     <div class="w-full h-full bg-white">
         <!-- Header Section -->
-        <div class="grid grid-cols-6 h-32">
+        <div class="grid grid-cols-6 responsive-header responsive-container">
             <!-- Left Header - UBA y Hora -->
             <div class="bg-hospital-blue-light p-4 flex flex-col justify-center col-span-2">
                 <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-2">UBA</h1>
@@ -178,7 +483,7 @@
             <div class="bg-hospital-blue-light p-4 pl-32 pr-2 flex items-center space-x-4 justify-end col-span-2">
                 <!-- Logo del Hospital -->
                 <div class="flex-shrink-0">
-                    <img src="{{ asset('images/logoacreditacion.png') }}" alt="Logo Hospital Universitario del Valle" class="h-24 w-auto max-w-none" style="mix-blend-mode: multiply; filter: contrast(1.2);">
+                    <img src="{{ asset('images/logoacreditacion.png') }}" alt="Logo Hospital Universitario del Valle" class="h-24 w-auto max-w-none responsive-header" style="mix-blend-mode: multiply; filter: contrast(1.2);">
                 </div>
 
                 <!-- Información del Hospital -->
@@ -201,18 +506,18 @@
         </div>
 
         <!-- Main Content -->
-        <div class="grid grid-cols-6 h-[calc(100%-12rem)]">
+        <div class="grid grid-cols-6 responsive-main responsive-container">
             <!-- Left Side - Multimedia Content -->
-            <div class="bg-hospital-blue-light p-6 flex flex-col col-span-4">
+            <div class="bg-hospital-blue-light p-6 flex flex-col col-span-4 responsive-multimedia-section responsive-container">
                 <!-- Espacio para videos/fotos - Ahora ocupa todo el espacio disponible -->
                 <div class="flex-1 bg-white rounded-lg enhanced-border enhanced-shadow flex items-center justify-center relative overflow-hidden" id="multimedia-container">
                     <!-- Contenido multimedia dinámico -->
                     <div id="multimedia-content" class="w-full h-full flex items-center justify-center">
                         <!-- Placeholder content con mejor diseño -->
                         <div id="multimedia-placeholder" class="text-center text-gray-400 z-10">
-                            <div class="text-8xl mb-4 opacity-50">🏥</div>
-                            <p class="text-2xl font-semibold text-hospital-blue mb-2">Contenido Multimedia</p>
-                            <p class="text-lg text-gray-500">Videos e imágenes del hospital</p>
+                            <div class="text-8xl mb-4 opacity-50 multimedia-placeholder-icon">🏥</div>
+                            <p class="text-2xl font-semibold text-hospital-blue mb-2 multimedia-placeholder-title">Contenido Multimedia</p>
+                            <p class="text-lg text-gray-500 multimedia-placeholder-subtitle">Videos e imágenes del hospital</p>
                         </div>
 
                         <!-- Decorative background pattern -->
@@ -224,59 +529,59 @@
             </div>
 
             <!-- Right Side - Patient Queue -->
-            <div class="bg-hospital-blue-light p-8 col-span-2">
+            <div class="bg-hospital-blue-light p-8 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
                 <div class="space-y-3 overflow-hidden" id="patient-queue">
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in">
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold animate-pulse-number">U001</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA 1</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in" style="animation-delay: 0.2s;">
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.2s;">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold">U002</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA 2</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in" style="animation-delay: 0.4s;">
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.4s;">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold">U003</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA 3</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in" style="animation-delay: 0.6s;">
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.6s;">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold">U004</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA 4</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in" style="animation-delay: 0.8s;">
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in flex items-center" style="animation-delay: 0.8s;">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold">U005</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA 5</div>
                             </div>
                         </div>
@@ -296,36 +601,104 @@
             </div>
         </div>
 
-        <!-- Mensaje Ticker -->
-        <div class="ticker-container h-16 flex items-center border-t-2 border-hospital-blue" style="display: {{ $tvConfig->ticker_enabled ? 'flex' : 'none' }};">
+        <!-- Mensaje Ticker - En la parte inferior de la página -->
+        <div class="ticker-container responsive-ticker flex items-center border-t-2 border-hospital-blue" style="display: {{ $tvConfig->ticker_enabled ? 'flex' : 'none' }};">
             <div class="ticker-content">
                 <span class="ticker-text">
                     {{ $tvConfig->ticker_message }}
                 </span>
             </div>
         </div>
-
-        <!-- Footer -->
-        <div class="bg-white border-t-2 border-hospital-blue p-4 text-center relative">
-            <p class="text-gray-600">
-                <span class="font-bold text-hospital-blue">Turnero HUV - Innovación y desarrollo</span>
-            </p>
-            <!-- Indicador de actualización (oculto por defecto) -->
-            <div id="updateIndicator" class="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full opacity-0 transition-opacity duration-300"></div>
-
-            <!-- Indicador de estado de sincronización -->
-            <div id="syncIndicator" class="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs opacity-75">
-                🔄 Sincronizando...
-            </div>
-
-            <!-- Indicador de estado de audio en segundo plano -->
-            <div id="backgroundAudioIndicator" class="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75" style="display: none;">
-                🔊 Audio activo en segundo plano
-            </div>
-        </div>
     </div>
 
     <script>
+        // ===== SISTEMA RESPONSIVE DINÁMICO =====
+        function initializeResponsiveSystem() {
+            // Función para ajustar el escalado dinámico basado en la resolución
+            function updateScaleFactor() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                const aspectRatio = width / height;
+
+                let scaleFactor = 1;
+
+                // Calcular factor de escala basado en resolución
+                if (width <= 768) {
+                    scaleFactor = 0.6;
+                } else if (width <= 1024) {
+                    scaleFactor = 0.8;
+                } else if (width <= 1440) {
+                    scaleFactor = 1;
+                } else if (width <= 1920) {
+                    scaleFactor = 1.3;
+                } else {
+                    scaleFactor = 1.5;
+                }
+
+                // Ajustar por aspect ratio
+                if (aspectRatio < 1.2) { // Pantallas muy altas
+                    scaleFactor *= 0.8;
+                } else if (aspectRatio > 2.5) { // Pantallas ultra anchas
+                    scaleFactor *= 1.1;
+                }
+
+                // Aplicar el factor de escala
+                document.documentElement.style.setProperty('--scale-factor', scaleFactor);
+
+                console.log(`📱 Resolución: ${width}x${height}, Aspect: ${aspectRatio.toFixed(2)}, Scale: ${scaleFactor}`);
+            }
+
+            // Función para optimizar el layout según el tamaño de pantalla
+            function optimizeLayout() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                // SIEMPRE mostrar exactamente 5 turnos - este es el diseño requerido
+                const queueContainer = document.getElementById('patient-queue');
+                if (queueContainer) {
+                    const turnos = queueContainer.children;
+                    const maxVisible = 5; // FIJO: siempre 5 turnos
+
+                    // Mostrar exactamente 5 turnos, ocultar el resto
+                    for (let i = 0; i < turnos.length; i++) {
+                        if (i < maxVisible) {
+                            turnos[i].style.display = 'block';
+                        } else {
+                            turnos[i].style.display = 'none';
+                        }
+                    }
+
+                    // Asegurar que el contenedor use todo el espacio disponible
+                    queueContainer.style.height = '100%';
+                    queueContainer.style.display = 'flex';
+                    queueContainer.style.flexDirection = 'column';
+                    queueContainer.style.justifyContent = 'space-evenly';
+                }
+            }
+
+            // Ejecutar al cargar y al cambiar tamaño
+            updateScaleFactor();
+            optimizeLayout();
+
+            // Escuchar cambios de tamaño de ventana
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    updateScaleFactor();
+                    optimizeLayout();
+                }, 250);
+            });
+
+            // Escuchar cambios de orientación
+            window.addEventListener('orientationchange', function() {
+                setTimeout(function() {
+                    updateScaleFactor();
+                    optimizeLayout();
+                }, 500);
+            });
+        }
+
         // Variables globales
         let turnos = []; // Historial de turnos
         let turnosVistos = new Set(); // Conjunto para rastrear turnos ya mostrados
@@ -570,15 +943,7 @@
             const tickerContainer = document.querySelector('.ticker-container');
             const tickerContent = document.querySelector('.ticker-content');
             const tickerText = document.querySelector('.ticker-text');
-            const updateIndicator = document.getElementById('updateIndicator');
-
-            // Mostrar indicador de actualización
-            if (updateIndicator) {
-                updateIndicator.style.opacity = '1';
-                setTimeout(() => {
-                    updateIndicator.style.opacity = '0';
-                }, 2000);
-            }
+            // Indicador de actualización deshabilitado para mantener la vista del TV limpia
 
             if (config.ticker_enabled) {
                 // Mostrar ticker si está habilitado
@@ -593,11 +958,17 @@
                     // Reiniciar el ticker con la nueva velocidad
                     restartTicker(config.ticker_speed);
                 }
+
+                // Agregar clase al body para ajustar el layout
+                document.body.classList.add('ticker-enabled');
             } else {
                 // Ocultar ticker si está deshabilitado
                 if (tickerContainer) {
                     tickerContainer.style.display = 'none';
                 }
+
+                // Remover clase del body
+                document.body.classList.remove('ticker-enabled');
             }
         }
 
@@ -736,14 +1107,14 @@
             if (turnosLimitados.length === 0) {
                 for (let i = 0; i < 5; i++) {
                     const placeholderElement = document.createElement('div');
-                    placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50';
+                    placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50 flex items-center';
 
                     placeholderElement.innerHTML = `
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold">----</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA -</div>
                             </div>
                         </div>
@@ -766,7 +1137,7 @@
                 const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
 
                 // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
-                let clases = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg';
+                let clases = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg flex items-center';
 
                 // Animación solo para turnos nuevos llamados
                 if (i === 0 && !yaAnimado && !esAtendido) {
@@ -784,11 +1155,11 @@
                 turnoElement.innerHTML = `
                     <div class="relative">
                         ${estadoBadge}
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
+                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                            <div class="text-left flex items-center">
                                 <div class="text-6xl font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="text-3xl font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -801,14 +1172,14 @@
             // Si hay menos de 5 turnos, rellenar con placeholders
             for (let i = turnosLimitados.length; i < 5; i++) {
                 const placeholderElement = document.createElement('div');
-                placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50';
+                placeholderElement.className = 'gradient-hospital text-white p-4 enhanced-shadow rounded-lg opacity-50 flex items-center';
 
                 placeholderElement.innerHTML = `
-                    <div class="grid grid-cols-2 gap-4 items-center">
-                        <div class="text-center">
+                    <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="text-left flex items-center">
                             <div class="text-6xl font-bold">----</div>
                         </div>
-                        <div class="text-center">
+                        <div class="text-right flex items-center justify-end">
                             <div class="text-3xl font-semibold">CAJA -</div>
                         </div>
                     </div>
@@ -855,21 +1226,7 @@
 
             console.log('🔊 Secuencia de audio generada:', audioSequence.map(file => file.split('/').pop()));
 
-            // Mostrar indicador temporal si la página está oculta
-            const audioIndicator = document.getElementById('backgroundAudioIndicator');
-            if (document.hidden && audioIndicator) {
-                audioIndicator.style.display = 'block';
-                audioIndicator.innerHTML = `🔊 Reproduciendo: ${codigoCompleto}`;
-                audioIndicator.className = 'absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-xs opacity-90';
-
-                // Volver al estado normal después de 5 segundos
-                setTimeout(() => {
-                    if (document.hidden && audioIndicator) {
-                        audioIndicator.innerHTML = '🔊 Audio activo en segundo plano';
-                        audioIndicator.className = 'absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75';
-                    }
-                }, 5000);
-            }
+            // Indicador de audio deshabilitado para mantener la vista del TV limpia
 
             // Reproducir la secuencia 2 veces automáticamente
             console.log('🔊 Iniciando playAudioSequenceWithRepeat para:', codigoCompleto);
@@ -926,25 +1283,11 @@
 
 
 
-        // Función para actualizar indicador de sincronización
+        // Función para actualizar indicador de sincronización (deshabilitada para TV)
         function actualizarIndicadorSync(estado) {
-            const indicator = document.getElementById('syncIndicator');
-            if (!indicator) return;
-
-            switch(estado) {
-                case 'sincronizando':
-                    indicator.innerHTML = '🔄 Sincronizando...';
-                    indicator.className = 'absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs opacity-75';
-                    break;
-                case 'sincronizado':
-                    indicator.innerHTML = '✅ Sincronizado';
-                    indicator.className = 'absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75';
-                    break;
-                case 'error':
-                    indicator.innerHTML = '❌ Error';
-                    indicator.className = 'absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs opacity-75';
-                    break;
-            }
+            // Función deshabilitada para mantener la vista del TV limpia
+            // Solo se mantiene para compatibilidad con el código existente
+            return;
         }
 
         // Función para sincronización inicial
@@ -1281,27 +1624,14 @@
 
             // 2. Usar Page Visibility API para detectar cuando la página se oculta
             document.addEventListener('visibilitychange', function() {
-                const audioIndicator = document.getElementById('backgroundAudioIndicator');
-
                 if (document.hidden) {
                     console.log('📱 Página oculta - manteniendo activa para audio');
-                    // Mostrar indicador de que el audio está activo en segundo plano
-                    if (audioIndicator) {
-                        audioIndicator.style.display = 'block';
-                        audioIndicator.innerHTML = '🔊 Audio activo en segundo plano';
-                        audioIndicator.className = 'absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs opacity-75';
-                    }
-
                     // Forzar que el audio siga funcionando
                     if (audioContext && audioContext.state === 'suspended') {
                         audioContext.resume();
                     }
                 } else {
                     console.log('📱 Página visible nuevamente');
-                    // Ocultar indicador cuando la página vuelve a estar visible
-                    if (audioIndicator) {
-                        audioIndicator.style.display = 'none';
-                    }
                 }
             });
 
@@ -1694,6 +2024,9 @@
 
         // Inicializar cuando la página carga
         document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar sistema responsive PRIMERO
+            initializeResponsiveSystem();
+
             // Verificar si necesitamos interacción del usuario para el audio
             verificarNecesidadInteraccion();
 
