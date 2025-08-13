@@ -330,7 +330,7 @@
                             <div class="text-left pl-2">
                                 <div class="text-lg font-bold text-gray-300">----</div>
                             </div>
-                            <div class="text-right pr-2">
+                            <div class="text-right pr-4">
                                 <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                             </div>
                         </div>
@@ -340,7 +340,7 @@
                             <div class="text-left pl-2">
                                 <div class="text-lg font-bold text-gray-300">----</div>
                             </div>
-                            <div class="text-right pr-2">
+                            <div class="text-right pr-4">
                                 <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                             </div>
                         </div>
@@ -350,7 +350,7 @@
                             <div class="text-left pl-2">
                                 <div class="text-lg font-bold text-gray-300">----</div>
                             </div>
-                            <div class="text-right pr-2">
+                            <div class="text-right pr-4">
                                 <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                             </div>
                         </div>
@@ -360,7 +360,7 @@
                             <div class="text-left pl-2">
                                 <div class="text-lg font-bold text-gray-300">----</div>
                             </div>
-                            <div class="text-right pr-2">
+                            <div class="text-right pr-4">
                                 <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                             </div>
                         </div>
@@ -1274,7 +1274,7 @@
                             <div class="text-left pl-2">
                                 <div class="text-lg font-bold text-gray-300">----</div>
                             </div>
-                            <div class="text-right pr-2">
+                            <div class="text-right pr-4">
                                 <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                             </div>
                         </div>
@@ -1303,19 +1303,14 @@
 
                 turnoElement.className = clases;
 
-                // Badge de estado en la esquina superior derecha
-                const estadoBadge = esAtendido ?
-                    '<div class="absolute -top-2 right-1"><span class="bg-green-500 text-white px-1 py-0.5 rounded-full text-xs font-bold">✓</span></div>' :
-                    '';
-
                 turnoElement.innerHTML = `
                     <div class="relative w-full">
-                        ${estadoBadge}
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left pl-2">
                                 <div class="text-lg font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-right pr-2">
+                            <div class="text-right pr-4 relative">
+                                ${esAtendido ? '<div class="absolute right-0" style="top: -24px;"><span class="bg-green-500 text-white px-1.5 py-0.5 rounded-full text-xs font-bold shadow-lg">✓</span></div>' : ''}
                                 <div class="text-sm font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -1334,7 +1329,7 @@
                         <div class="text-left pl-2">
                             <div class="text-lg font-bold text-gray-300">----</div>
                         </div>
-                        <div class="text-right pr-2">
+                        <div class="text-right pr-4">
                             <div class="text-sm font-semibold text-gray-300">CAJA -</div>
                         </div>
                     </div>
