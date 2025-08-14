@@ -87,6 +87,17 @@
                                         </div>
 
                                         <div class="mt-4">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="ocultar_turno" name="ocultar_turno" value="1"
+                                                       class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
+                                                <label for="ocultar_turno" class="ml-2 block text-sm text-gray-700">
+                                                    Ocultar turno
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">Si está activado, los turnos de este servicio no se mostrarán en el TV ni se llamarán automáticamente.</p>
+                                        </div>
+
+                                        <div class="mt-4">
                                             <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                                             <textarea id="descripcion" name="descripcion" rows="3"
                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
@@ -295,7 +306,8 @@
                 servicio_padre_id: '',
                 estado: 'activo',
                 orden: '',
-                descripcion: ''
+                descripcion: '',
+                ocultar_turno: false
             },
             init() {
                 this.$watch('showEditModal', value => {
@@ -313,7 +325,8 @@
                     servicio_padre_id: '',
                     estado: 'activo',
                     orden: '',
-                    descripcion: ''
+                    descripcion: '',
+                    ocultar_turno: false
                 };
             }
          }"
@@ -405,6 +418,18 @@
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                             <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
                         </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="edit_ocultar_turno" name="ocultar_turno" value="1"
+                                   x-bind:checked="editingServicio.ocultar_turno"
+                                   class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
+                            <label for="edit_ocultar_turno" class="ml-2 block text-sm text-gray-700">
+                                Ocultar turno
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Si está activado, los turnos de este servicio no se mostrarán en el TV ni se llamarán automáticamente.</p>
                     </div>
 
                     <div class="mt-4">

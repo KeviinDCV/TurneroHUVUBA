@@ -431,9 +431,13 @@ class TvConfigController extends Controller
     {
         // Obtener turnos llamados y atendidos recientes (últimas 2 horas)
         // Limitado a 5 turnos para evitar desbordamiento visual en la pantalla TV
+        // Excluir turnos de servicios con ocultar_turno = true
         $turnos = \App\Models\Turno::whereIn('estado', ['llamado', 'atendido'])
             ->where('fecha_llamado', '>=', now()->subHours(2))
             ->with(['servicio', 'caja'])
+            ->whereHas('servicio', function($query) {
+                $query->where('ocultar_turno', false);
+            })
             ->orderBy('fecha_llamado', 'desc')
             ->take(5) // Limitado a 5 turnos para la visualización en TV
             ->get();

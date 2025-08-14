@@ -54,7 +54,8 @@ class ServicioController extends Controller
             'codigo' => 'nullable|string|max:50|unique:servicios',
             'estado' => 'required|in:activo,inactivo',
             'descripcion' => 'nullable|string|max:500',
-            'orden' => 'nullable|integer|min:0'
+            'orden' => 'nullable|integer|min:0',
+            'ocultar_turno' => 'boolean'
         ];
 
         // Si es subservicio, el servicio_padre_id es requerido
@@ -72,6 +73,7 @@ class ServicioController extends Controller
             'estado' => $request->estado,
             'descripcion' => $request->descripcion,
             'orden' => $request->orden,
+            'ocultar_turno' => $request->has('ocultar_turno'),
             'servicio_padre_id' => null, // Por defecto es servicio principal
         ];
 
@@ -115,7 +117,8 @@ class ServicioController extends Controller
             'nivel' => 'required|in:servicio,subservicio',
             'estado' => 'required|in:activo,inactivo',
             'codigo' => 'nullable|string|max:50|unique:servicios,codigo,' . $servicio->id,
-            'orden' => 'nullable|integer|min:0'
+            'orden' => 'nullable|integer|min:0',
+            'ocultar_turno' => 'boolean'
         ];
 
         // Si es subservicio, el servicio_padre_id es requerido
@@ -126,6 +129,9 @@ class ServicioController extends Controller
         $request->validate($rules);
 
         $data = $request->all();
+
+        // Manejar el checkbox ocultar_turno
+        $data['ocultar_turno'] = $request->has('ocultar_turno');
 
         // Si es servicio principal, asegurar que servicio_padre_id sea null
         if ($request->nivel === 'servicio') {

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('estado', ['activo', 'inactivo'])->default('activo'); // Estado del servicio
             $table->string('codigo')->unique()->nullable(); // Código único del servicio
             $table->integer('orden')->default(0); // Orden de visualización
+            $table->boolean('ocultar_turno')->default(false); // Si está activo, los turnos no se muestran en TV ni se llaman
             $table->timestamps();
 
             // Índices y relaciones

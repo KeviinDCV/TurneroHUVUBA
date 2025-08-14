@@ -357,20 +357,33 @@ class AsesorController extends Controller
             return response()->json(['success' => false, 'message' => 'Servicio no asignado'], 403);
         }
 
+        // Verificar si el servicio tiene ocultar_turno activado
+        if ($servicio->ocultar_turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este servicio tiene los turnos ocultos y no se pueden llamar automáticamente'
+            ]);
+        }
+
         // Determinar si es un servicio padre con subservicios
         $esServicioPadre = $servicio->subservicios->isNotEmpty();
 
         if ($esServicioPadre) {
             // Si es servicio padre, obtener todos los IDs de servicios hijos asignados al asesor
+            // Excluir servicios con ocultar_turno = true
             $serviciosHijosIds = $servicio->subservicios()
                 ->whereHas('usuarios', function($q) use ($user) {
                     $q->where('user_id', $user->id);
                 })
+                ->where('ocultar_turno', false)
                 ->pluck('id')
                 ->toArray();
 
-            // Añadir el ID del servicio padre a la lista
-            $serviciosIds = array_merge([$servicioId], $serviciosHijosIds);
+            // Añadir el ID del servicio padre a la lista solo si no tiene ocultar_turno activado
+            $serviciosIds = $serviciosHijosIds;
+            if (!$servicio->ocultar_turno) {
+                $serviciosIds = array_merge([$servicioId], $serviciosHijosIds);
+            }
 
             // Obtener todos los servicios que se van a consultar para priorizar por nombre
             $todosLosServicios = Servicio::whereIn('id', $serviciosIds)->get();

@@ -13,13 +13,15 @@ class Servicio extends Model
         'servicio_padre_id',
         'estado',
         'codigo',
-        'orden'
+        'orden',
+        'ocultar_turno'
     ];
 
     protected $casts = [
         'nivel' => 'string',
         'estado' => 'string',
         'orden' => 'integer',
+        'ocultar_turno' => 'boolean',
     ];
 
     // Relación: Un servicio puede tener muchos subservicios
