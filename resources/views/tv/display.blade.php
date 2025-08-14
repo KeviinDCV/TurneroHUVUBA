@@ -203,6 +203,74 @@
             }
         }
 
+        /* Tablets en portrait con mucha altura (768x1024, 800x1280, etc.) */
+        @media (min-width: 769px) and (max-width: 900px) and (min-height: 1000px) {
+            :root {
+                --scale-factor: 0.78;
+                --header-height: 7.2rem;
+                --ticker-height: 3.4rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.4rem, 3.8vw, 3rem) !important;
+                line-height: 1.08 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.95rem, 1.9vw, 1.4rem) !important;
+                line-height: 1.18 !important;
+            }
+
+            .responsive-queue-section > div > div {
+                height: calc(18.5% - 0.25rem) !important;
+                min-height: 55px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.2rem !important;
+            }
+
+            .responsive-queue-section .p-3 {
+                padding: 0.6rem !important;
+            }
+        }
+
+        /* Resoluciones muy pequeñas pero no móviles (netbooks, tablets pequeñas en landscape) */
+        @media (min-width: 769px) and (max-height: 650px) {
+            :root {
+                --scale-factor: 0.7;
+                --header-height: 6rem;
+                --ticker-height: 2.8rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.1rem, 3.2vw, 2.4rem) !important;
+                line-height: 1.02 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.8rem, 1.6vw, 1.2rem) !important;
+                line-height: 1.12 !important;
+            }
+
+            .responsive-queue-section > div > div {
+                height: calc(19.8% - 0.15rem) !important;
+                min-height: 42px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.1rem !important;
+            }
+
+            .responsive-queue-section .p-3 {
+                padding: 0.4rem !important;
+            }
+
+            .responsive-queue-section .p-4 {
+                padding: 0.6rem !important;
+            }
+        }
+
         /* Pantallas muy pequeñas (móviles en landscape, tablets pequeñas) */
         @media (max-width: 768px) {
             :root {
@@ -276,8 +344,8 @@
             }
         }
 
-        /* Pantallas medianas (tablets, laptops pequeños) */
-        @media (min-width: 769px) and (max-width: 1024px) {
+        /* Pantallas medianas (tablets grandes, laptops pequeños) */
+        @media (min-width: 901px) and (max-width: 1024px) {
             :root {
                 --scale-factor: 0.8;
                 --header-height: 7rem;
@@ -300,6 +368,38 @@
 
             .turno-caja {
                 font-size: clamp(1.125rem, 2vw, 1.5rem) !important;
+            }
+        }
+
+        /* Media query de seguridad para resoluciones intermedias no cubiertas */
+        @media (min-width: 769px) and (max-width: 1024px) and (max-height: 800px) {
+            :root {
+                --scale-factor: 0.76;
+                --header-height: 6.5rem;
+                --ticker-height: 3rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.2rem, 3.3vw, 2.6rem) !important;
+                line-height: 1.04 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.85rem, 1.7vw, 1.25rem) !important;
+                line-height: 1.14 !important;
+            }
+
+            .responsive-queue-section > div > div {
+                height: calc(19.3% - 0.18rem) !important;
+                min-height: 47px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.12rem !important;
+            }
+
+            .responsive-queue-section .p-3 {
+                padding: 0.45rem !important;
             }
         }
 
