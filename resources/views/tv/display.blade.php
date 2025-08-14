@@ -171,6 +171,38 @@
             --ticker-height: 4rem;
         }
 
+        /* Tablets en portrait y resoluciones similares (768x1024, 800x1280, etc.) */
+        @media (min-width: 769px) and (max-width: 900px) {
+            :root {
+                --scale-factor: 0.75;
+                --header-height: 6.8rem;
+                --ticker-height: 3.2rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.3rem, 3.5vw, 2.8rem) !important;
+                line-height: 1.05 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.9rem, 1.8vw, 1.3rem) !important;
+                line-height: 1.15 !important;
+            }
+
+            .responsive-queue-section > div > div {
+                height: calc(19% - 0.2rem) !important;
+                min-height: 50px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.15rem !important;
+            }
+
+            .responsive-queue-section .p-3 {
+                padding: 0.5rem !important;
+            }
+        }
+
         /* Pantallas muy pequeñas (móviles en landscape, tablets pequeñas) */
         @media (max-width: 768px) {
             :root {
@@ -271,12 +303,72 @@
             }
         }
 
-        /* Pantallas grandes (laptops, monitores estándar) */
+        /* Pantallas intermedias (1025px - 1440px) - Resoluciones como 1440x900 */
         @media (min-width: 1025px) and (max-width: 1440px) {
             :root {
-                --scale-factor: 1;
-                --header-height: 8rem;
-                --ticker-height: 4rem;
+                --scale-factor: 0.9;
+                --header-height: 7.5rem;
+                --ticker-height: 3.5rem;
+            }
+
+            /* Ajustes específicos para turnos en resoluciones intermedias */
+            .turno-numero {
+                font-size: clamp(1.5rem, 3.8vw, 3.2rem) !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(1rem, 2vw, 1.4rem) !important;
+            }
+
+            /* Reducir padding para aprovechar mejor el espacio */
+            .responsive-queue-section .p-3 {
+                padding: 0.6rem !important;
+            }
+
+            /* Ajustar altura de turnos para pantallas intermedias */
+            .responsive-queue-section > div > div {
+                height: calc(18% - 0.3rem) !important;
+                min-height: 55px !important;
+            }
+        }
+
+        /* Resoluciones específicas problemáticas (1366x768, 1280x720, etc.) */
+        @media (max-width: 1366px) and (max-height: 900px) {
+            :root {
+                --scale-factor: 0.85;
+                --header-height: 7rem;
+                --ticker-height: 3.2rem;
+            }
+
+            /* Ajustes más agresivos para turnos */
+            .turno-numero {
+                font-size: clamp(1.3rem, 3.5vw, 2.8rem) !important;
+                line-height: 1.1 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.9rem, 1.8vw, 1.2rem) !important;
+                line-height: 1.2 !important;
+            }
+
+            /* Reducir espaciado entre turnos */
+            .responsive-queue-section #patient-queue {
+                gap: 0.2rem !important;
+            }
+
+            /* Ajustar altura de turnos para pantallas pequeñas */
+            .responsive-queue-section > div > div {
+                height: calc(19% - 0.2rem) !important;
+                min-height: 50px !important;
+            }
+
+            /* Reducir padding general */
+            .responsive-queue-section .p-3 {
+                padding: 0.5rem !important;
+            }
+
+            .responsive-queue-section .p-4 {
+                padding: 0.75rem !important;
             }
         }
 
@@ -506,6 +598,9 @@
             max-height: 100%;
             overflow: hidden;
             white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: block;
         }
 
         .turno-caja {
@@ -514,20 +609,91 @@
             max-height: 100%;
             overflow: hidden;
             white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: block;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
-        @media (max-height: 800px) {
+        @media (max-height: 900px) {
             .turno-numero {
-                font-size: clamp(1.5rem, 3.5vw, 3rem) !important;
+                font-size: clamp(1.4rem, 3.2vw, 2.8rem) !important;
+                line-height: 1.1 !important;
             }
 
             .turno-caja {
-                font-size: clamp(1rem, 2vw, 1.5rem) !important;
+                font-size: clamp(0.9rem, 1.8vw, 1.3rem) !important;
+                line-height: 1.2 !important;
             }
 
             .responsive-queue-section .p-4 {
-                padding: 0.75rem !important;
+                padding: 0.6rem !important;
+            }
+
+            /* Ajustar altura de cada turno */
+            .responsive-queue-section > div > div {
+                height: calc(19% - 0.25rem) !important;
+                min-height: 48px !important;
+            }
+        }
+
+        @media (max-height: 800px) {
+            .turno-numero {
+                font-size: clamp(1.3rem, 3vw, 2.5rem) !important;
+                line-height: 1.05 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.85rem, 1.6vw, 1.2rem) !important;
+                line-height: 1.15 !important;
+            }
+
+            .responsive-queue-section .p-4 {
+                padding: 0.5rem !important;
+            }
+
+            /* Reducir gap entre turnos */
+            .responsive-queue-section #patient-queue {
+                gap: 0.15rem !important;
+            }
+
+            /* Ajustar altura de cada turno */
+            .responsive-queue-section > div > div {
+                height: calc(19.5% - 0.2rem) !important;
+                min-height: 45px !important;
+            }
+        }
+
+        /* Media query específico para 1440x900 y resoluciones similares */
+        @media (min-width: 1400px) and (max-width: 1500px) and (max-height: 950px) {
+            :root {
+                --scale-factor: 0.88;
+                --header-height: 7.2rem;
+                --ticker-height: 3.3rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.4rem, 3.3vw, 2.9rem) !important;
+                line-height: 1.08 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.9rem, 1.7vw, 1.25rem) !important;
+                line-height: 1.18 !important;
+            }
+
+            /* Optimizar espacio vertical */
+            .responsive-queue-section > div > div {
+                height: calc(18.8% - 0.22rem) !important;
+                min-height: 52px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.18rem !important;
+            }
+
+            .responsive-queue-section .p-3 {
+                padding: 0.55rem !important;
             }
         }
 
@@ -611,6 +777,86 @@
         .responsive-queue-section #patient-queue > div {
             max-height: calc(20vh - 1rem);
             overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Contenedores de texto dentro de cada turno */
+        .responsive-queue-section .turno-numero,
+        .responsive-queue-section .turno-caja {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            padding: 0 0.2rem;
+        }
+
+        /* Asegurar que los grids dentro de turnos no se desborden */
+        .responsive-queue-section .grid {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        /* Media queries específicos para resoluciones problemáticas comunes */
+
+        /* 1366x768 - Resolución muy común en laptops */
+        @media (min-width: 1300px) and (max-width: 1400px) and (max-height: 800px) {
+            :root {
+                --scale-factor: 0.82;
+                --header-height: 6.8rem;
+                --ticker-height: 3rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.2rem, 3.2vw, 2.6rem) !important;
+                line-height: 1.05 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.85rem, 1.6vw, 1.15rem) !important;
+                line-height: 1.15 !important;
+            }
+
+            .responsive-queue-section > div > div {
+                height: calc(19.2% - 0.18rem) !important;
+                min-height: 48px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.15rem !important;
+            }
+        }
+
+        /* 1280x720 - Otra resolución común */
+        @media (min-width: 1200px) and (max-width: 1320px) and (max-height: 750px) {
+            :root {
+                --scale-factor: 0.78;
+                --header-height: 6.5rem;
+                --ticker-height: 2.8rem;
+            }
+
+            .turno-numero {
+                font-size: clamp(1.1rem, 3vw, 2.4rem) !important;
+                line-height: 1.02 !important;
+            }
+
+            .turno-caja {
+                font-size: clamp(0.8rem, 1.5vw, 1.1rem) !important;
+                line-height: 1.12 !important;
+            }
+
+            .responsive-queue-section > div > div {
+                height: calc(19.5% - 0.15rem) !important;
+                min-height: 45px !important;
+            }
+
+            .responsive-queue-section #patient-queue {
+                gap: 0.12rem !important;
+            }
+
+            .responsive-queue-section .p-3 {
+                padding: 0.4rem !important;
+            }
         }
 
         /* Ajustes para el logo del hospital */

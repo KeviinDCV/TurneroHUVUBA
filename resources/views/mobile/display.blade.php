@@ -461,15 +461,6 @@
             const tickerContainer = document.querySelector('.ticker-container');
             const tickerContent = document.querySelector('.ticker-content');
             const tickerText = document.querySelector('.ticker-text');
-            const updateIndicator = document.getElementById('updateIndicator');
-
-            // Mostrar indicador de actualización
-            if (updateIndicator) {
-                updateIndicator.style.opacity = '1';
-                setTimeout(() => {
-                    updateIndicator.style.opacity = '0';
-                }, 2000);
-            }
 
             if (config.ticker_enabled) {
                 // Mostrar ticker si está habilitado
@@ -1344,9 +1335,12 @@
         function actualizarTurnoPersonal() {
             if (!turnoPersonalId) return;
 
-            fetch(`/api/turno-status/${turnoPersonalId}`)
+            console.log('📱 Actualizando turno personal:', turnoPersonalId);
+
+            fetch(`/api/turno-status/${turnoPersonalId}?t=${Date.now()}`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('📱 Respuesta turno personal:', data);
                     if (data.success && data.turno) {
                         const turno = data.turno;
                         const infoContainer = document.getElementById('turno-personal-container');
@@ -1410,7 +1404,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error actualizando turno personal:', error);
+                    console.error('❌ Error actualizando turno personal:', error);
                 });
         }
 
@@ -1662,9 +1656,34 @@
 
             // Actualizar turno personal si existe
             if (turnoPersonalId) {
-                setInterval(actualizarTurnoPersonal, 3000); // Cada 3 segundos
+                setInterval(actualizarTurnoPersonal, 2000); // Cada 2 segundos (más frecuente)
                 // Actualización inicial
                 setTimeout(actualizarTurnoPersonal, 1000);
+
+                // Eventos para Safari iOS - actualizar cuando la página vuelve a estar activa
+                document.addEventListener('visibilitychange', function() {
+                    if (!document.hidden) {
+                        console.log('📱 Página visible de nuevo, actualizando turno...');
+                        setTimeout(actualizarTurnoPersonal, 500);
+                        setTimeout(updateQueue, 1000);
+                    }
+                });
+
+                // Evento para cuando la ventana vuelve a tener foco
+                window.addEventListener('focus', function() {
+                    console.log('📱 Ventana con foco, actualizando turno...');
+                    setTimeout(actualizarTurnoPersonal, 500);
+                    setTimeout(updateQueue, 1000);
+                });
+
+                // Evento para iOS Safari cuando vuelve de segundo plano
+                window.addEventListener('pageshow', function(event) {
+                    if (event.persisted) {
+                        console.log('📱 Página restaurada desde caché, actualizando turno...');
+                        setTimeout(actualizarTurnoPersonal, 500);
+                        setTimeout(updateQueue, 1000);
+                    }
+                });
             }
 
             // Asegurar que el ticker esté funcionando si está habilitado
