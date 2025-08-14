@@ -13,6 +13,7 @@ use App\Http\Controllers\AsesorController;
 use App\Http\Controllers\GraficosController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\VoiceController;
+use App\Http\Controllers\SoporteController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -163,6 +164,10 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::get('/reportes', [ReportesController::class, 'index'])->name('admin.reportes');
     Route::post('/reportes/generar', [ReportesController::class, 'generarReporte'])->name('admin.reportes.generar');
     Route::post('/reportes/dashboard-historico', [ReportesController::class, 'exportarDashboardHistorico'])->name('admin.reportes.dashboard-historico');
+
+    // Rutas para soporte
+    Route::get('/soporte', [SoporteController::class, 'index'])->name('admin.soporte');
+    Route::post('/soporte', [SoporteController::class, 'store'])->name('admin.soporte.store');
 
     // Sistema de Voz
     Route::prefix('voice')->name('voice.')->group(function () {

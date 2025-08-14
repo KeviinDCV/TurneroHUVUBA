@@ -182,6 +182,17 @@
                 </svg>
                 <span class="text-sm font-medium">Horas</span>
             </button>
+
+            <!-- Soporte -->
+            <a href="{{ route('admin.soporte') }}" class="sidebar-item group w-full flex items-center justify-start {{ $currentRoute === 'admin.soporte' ? 'bg-white/20 text-white border-l-4 border-white shadow-md relative' : 'text-blue-200 hover:text-white hover:bg-white/10' }} p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
+                <svg class="mr-3 h-5 w-5 {{ $currentRoute === 'admin.soporte' ? '' : 'group-hover:text-white transition-colors' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="text-sm font-medium">Soporte</span>
+                @if($currentRoute === 'admin.soporte')
+                    <div class="absolute right-3 w-2 h-2 bg-white rounded-full active-indicator"></div>
+                @endif
+            </a>
         </nav>
     </div>
 
