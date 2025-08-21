@@ -24,19 +24,40 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
-# Configuración para archivos multimedia grandes
+# Configuración para archivos multimedia grandes (videos hasta 600MB)
 <IfModule mod_php.c>
     php_value upload_max_filesize 600M
     php_value post_max_size 600M
     php_value max_execution_time 600
     php_value max_input_time 600
     php_value memory_limit 512M
+    php_value max_file_uploads 20
 </IfModule>
 
-# Para PHP-FPM (si se usa)
+# Para PHP-FPM (si se usa en el hosting)
 <IfModule mod_fcgid.c>
     FcgidMaxRequestLen 629145600
 </IfModule>
 
 # Configuración de Apache para archivos grandes
 LimitRequestBody 629145600
+
+# Configuración de seguridad adicional
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Compresión GZIP para mejor rendimiento
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>

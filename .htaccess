@@ -1,13 +1,24 @@
-# Configuración para archivos multimedia grandes
+# .htaccess para la raíz del proyecto en cPanel
+# Este archivo redirige todo el tráfico a la carpeta public/
+
+# Redireccionar al directorio public
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>
+
+# Configuración para archivos multimedia grandes (videos hasta 600MB)
 <IfModule mod_php.c>
     php_value upload_max_filesize 600M
     php_value post_max_size 600M
     php_value max_execution_time 600
     php_value max_input_time 600
     php_value memory_limit 512M
+    php_value max_file_uploads 20
 </IfModule>
 
-# Para PHP-FPM (si se usa)
+# Para PHP-FPM (si se usa en el hosting)
 <IfModule mod_fcgid.c>
     FcgidMaxRequestLen 629145600
 </IfModule>
@@ -15,8 +26,39 @@
 # Configuración de Apache para archivos grandes
 LimitRequestBody 629145600
 
-# Redireccionar al directorio public
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteRule ^(.*)$ public/$1 [L]
+# Proteger archivos sensibles
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "composer.json">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "composer.lock">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Bloquear acceso a directorios sensibles
+RedirectMatch 403 ^/\.env$
+RedirectMatch 403 ^/\.git
+RedirectMatch 403 ^/storage/
+RedirectMatch 403 ^/vendor/
+RedirectMatch 403 ^/node_modules/
+RedirectMatch 403 ^/database/
+RedirectMatch 403 ^/config/
+RedirectMatch 403 ^/bootstrap/
+RedirectMatch 403 ^/app/
+RedirectMatch 403 ^/resources/
+RedirectMatch 403 ^/routes/
+RedirectMatch 403 ^/tests/
+
+# Configuración de seguridad
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
 </IfModule>

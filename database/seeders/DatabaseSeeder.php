@@ -15,10 +15,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UserSeeder::class,
-            CajaSeeder::class,
             ServicioSeeder::class,
             UserServicioSeeder::class,
-            TurnoSeeder::class,
+            // AsesoresSeeder::class, // Descomentado si necesitas más asesores
         ]);
     }
 }

@@ -16,7 +16,7 @@ use App\Http\Controllers\VoiceController;
 use App\Http\Controllers\SoporteController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 // Rutas de autenticación

@@ -1,0 +1,44 @@
+INSTRUCCIONES PARA SUBIR A CPANEL - TURNERO HUV
+================================================
+
+PASO 1: CREAR BASE DE DATOS EN CPANEL
+-------------------------------------
+1. Ve a cPanel > MySQL Databases
+2. Crea una nueva base de datos (ejemplo: miusuario_turnero)
+3. Crea un usuario MySQL y asígnalo a la base de datos
+4. Anota: nombre de BD, usuario y contraseña
+
+PASO 2: IMPORTAR BASE DE DATOS
+------------------------------
+1. Ve a cPanel > phpMyAdmin
+2. Selecciona tu base de datos
+3. Clic en "Importar"
+4. Sube el archivo: turnero_huv_final.sql
+5. Clic "Continuar"
+
+PASO 3: SUBIR ARCHIVOS
+----------------------
+1. Sube TODA la carpeta del proyecto a public_html
+2. Asegúrate de subir TODO incluyendo carpetas ocultas
+
+PASO 4: EDITAR .ENV
+-------------------
+Edita el archivo .env en el servidor y cambia estas 3 líneas:
+
+DB_DATABASE=tu_base_datos     <- Pon el nombre real de tu BD
+DB_USERNAME=tu_usuario        <- Pon tu usuario MySQL real  
+DB_PASSWORD=tu_contraseña     <- Pon tu contraseña MySQL real
+
+PASO 5: CONFIGURAR PERMISOS
+---------------------------
+En File Manager, da permisos 777 a:
+- Carpeta storage/ (marcar "recurse into subdirectories")
+- Carpeta bootstrap/cache/ (marcar "recurse into subdirectories")
+
+¡LISTO!
+-------
+Tu sitio debería funcionar en: https://tu-dominio.com
+
+USUARIOS POR DEFECTO:
+- Admin: usuario "admin", contraseña "admin123"
+- Asesor: usuario "asesor", contraseña "admin123"
