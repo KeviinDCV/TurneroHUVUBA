@@ -674,7 +674,7 @@
             height: calc(20% - 0.4rem);
             min-height: 80px;
             max-height: none;
-            overflow: visible;
+            overflow: hidden;
             box-sizing: border-box;
             margin-bottom: 0.5rem;
         }
@@ -693,27 +693,31 @@
 
         /* Texto de turnos con límites estrictos y mejor escalado */
         .turno-numero {
-            font-size: clamp(1.75rem, 4.5vw, 4rem);
+            font-size: clamp(1.2rem, 4.5vw, 4rem);
             line-height: 1;
             max-height: 100%;
-            overflow: visible;
-            white-space: normal;
+            overflow: hidden;
+            white-space: nowrap;
             max-width: 100%;
             display: block;
-            word-wrap: break-word;
-            hyphens: auto;
+            text-align: left;
+            /* Ajuste automático del tamaño de fuente */
+            font-size: clamp(1rem, 3.5vw, 3.5rem);
+            transform-origin: left center;
         }
 
         .turno-caja {
-            font-size: clamp(1.125rem, 2.25vw, 1.75rem);
+            font-size: clamp(0.9rem, 2.25vw, 1.75rem);
             line-height: 1.2;
             max-height: 100%;
-            overflow: visible;
-            white-space: normal;
+            overflow: hidden;
+            white-space: nowrap;
             max-width: 100%;
             display: block;
-            word-wrap: break-word;
-            hyphens: auto;
+            text-align: right;
+            /* Ajuste automático del tamaño de fuente */
+            font-size: clamp(0.8rem, 1.8vw, 1.5rem);
+            transform-origin: right center;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1040,7 +1044,7 @@
             <!-- Right Side - Patient Queue -->
             <div class="bg-hospital-blue-light p-8 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
-                <div class="space-y-3 overflow-visible" id="patient-queue">
+                <div class="space-y-3 overflow-hidden" id="patient-queue">
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
@@ -1600,6 +1604,23 @@
                 });
         }
 
+        // Función para ajustar el tamaño de fuente automáticamente
+        function ajustarTamanoFuente(elemento) {
+            const contenedor = elemento.parentElement;
+            const maxWidth = contenedor.offsetWidth - 20; // Margen de seguridad
+
+            // Empezar con el tamaño máximo y reducir hasta que quepa
+            let fontSize = parseFloat(window.getComputedStyle(elemento).fontSize);
+            const minFontSize = 12; // Tamaño mínimo en px
+
+            elemento.style.fontSize = fontSize + 'px';
+
+            while (elemento.scrollWidth > maxWidth && fontSize > minFontSize) {
+                fontSize -= 1;
+                elemento.style.fontSize = fontSize + 'px';
+            }
+        }
+
         // Renderizar los turnos en el contenedor
         function renderTurnos(turnosList) {
             const container = document.getElementById('patient-queue');
@@ -1676,6 +1697,14 @@
                 `;
 
                 container.appendChild(turnoElement);
+
+                // Ajustar tamaño de fuente después de agregar al DOM
+                setTimeout(() => {
+                    const numeroElement = turnoElement.querySelector('.turno-numero');
+                    const cajaElement = turnoElement.querySelector('.turno-caja');
+                    if (numeroElement) ajustarTamanoFuente(numeroElement);
+                    if (cajaElement) ajustarTamanoFuente(cajaElement);
+                }, 10);
             }
 
             // Si hay menos de 5 turnos, rellenar con placeholders
