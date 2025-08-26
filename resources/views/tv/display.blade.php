@@ -1620,15 +1620,19 @@
             );
             const minFontSize = 16; // Tamaño mínimo más grande para mejor legibilidad
 
-            // Aplicar el mismo tamaño a ambos elementos
+            // Aplicar el mismo tamaño a ambos elementos y preservar alineación
             numeroElement.style.fontSize = fontSize + 'px';
+            numeroElement.style.textAlign = 'left';
             cajaElement.style.fontSize = fontSize + 'px';
+            cajaElement.style.textAlign = 'right';
 
             // Reducir hasta que ambos quepan
             while ((numeroElement.scrollWidth > numeroMaxWidth || cajaElement.scrollWidth > cajaMaxWidth) && fontSize > minFontSize) {
                 fontSize -= 2; // Reducir de 2 en 2 para ser más eficiente
                 numeroElement.style.fontSize = fontSize + 'px';
+                numeroElement.style.textAlign = 'left';
                 cajaElement.style.fontSize = fontSize + 'px';
+                cajaElement.style.textAlign = 'right';
             }
         }
 
