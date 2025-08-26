@@ -672,9 +672,9 @@
         .responsive-queue-section #patient-queue > div {
             flex: 1;
             height: calc(20% - 0.4rem);
-            min-height: 60px;
+            min-height: 80px;
             max-height: none;
-            overflow: hidden;
+            overflow: visible;
             box-sizing: border-box;
             margin-bottom: 0.5rem;
         }
@@ -696,22 +696,24 @@
             font-size: clamp(1.75rem, 4.5vw, 4rem);
             line-height: 1;
             max-height: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+            overflow: visible;
+            white-space: normal;
             max-width: 100%;
             display: block;
+            word-wrap: break-word;
+            hyphens: auto;
         }
 
         .turno-caja {
             font-size: clamp(1.125rem, 2.25vw, 1.75rem);
             line-height: 1.2;
             max-height: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+            overflow: visible;
+            white-space: normal;
             max-width: 100%;
             display: block;
+            word-wrap: break-word;
+            hyphens: auto;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -876,7 +878,7 @@
         /* Asegurar que cada turno no exceda su espacio asignado */
         .responsive-queue-section #patient-queue > div {
             max-height: calc(20vh - 1rem);
-            overflow: hidden;
+            overflow: visible;
             width: 100%;
             box-sizing: border-box;
         }
@@ -1038,7 +1040,7 @@
             <!-- Right Side - Patient Queue -->
             <div class="bg-hospital-blue-light p-8 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
-                <div class="space-y-3 overflow-hidden" id="patient-queue">
+                <div class="space-y-3 overflow-visible" id="patient-queue">
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
                             <div class="text-left flex items-center">
