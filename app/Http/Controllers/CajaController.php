@@ -52,7 +52,7 @@ class CajaController extends Controller
             ]);
 
             $request->validate([
-                'nombre' => 'required|string|max:255|unique:cajas',
+                'nombre' => 'required|string|max:255',
                 'descripcion' => 'nullable|string|max:500',
                 'ubicacion' => 'nullable|string|max:255',
                 'numero_caja' => 'required|integer|unique:cajas|min:1',
@@ -127,7 +127,7 @@ class CajaController extends Controller
             ]);
 
             $request->validate([
-                'nombre' => 'required|string|max:255|unique:cajas,nombre,' . $id,
+                'nombre' => 'required|string|max:255',
                 'descripcion' => 'nullable|string|max:500',
                 'ubicacion' => 'nullable|string|max:255',
                 'numero_caja' => 'required|integer|unique:cajas,numero_caja,' . $id . '|min:1',
