@@ -693,7 +693,7 @@
 
         /* Texto de turnos con límites estrictos y mejor escalado */
         .turno-numero {
-            font-size: clamp(1.5rem, 3.5vw, 3.5rem);
+            font-size: clamp(1.2rem, 2.8vw, 2.8rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -705,7 +705,7 @@
         }
 
         .turno-caja {
-            font-size: clamp(1.5rem, 3.5vw, 3.5rem);
+            font-size: clamp(1.2rem, 2.8vw, 2.8rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -1605,25 +1605,20 @@
             const numeroElement = turnoElement.querySelector('.turno-numero');
             const cajaElement = turnoElement.querySelector('.turno-caja');
 
-            if (!numeroElement || !cajaElement) {
-                console.log('❌ No se encontraron elementos .turno-numero o .turno-caja');
-                return;
-            }
-
-            console.log('🔧 Ajustando fuente para:', numeroElement.textContent, cajaElement.textContent);
+            if (!numeroElement || !cajaElement) return;
 
             // Obtener el ancho disponible para cada columna
             const numeroContainer = numeroElement.parentElement;
             const cajaContainer = cajaElement.parentElement;
-            const numeroMaxWidth = numeroContainer.offsetWidth - 10;
-            const cajaMaxWidth = cajaContainer.offsetWidth - 10;
+            const numeroMaxWidth = numeroContainer.offsetWidth - 15; // Más margen para códigos largos
+            const cajaMaxWidth = cajaContainer.offsetWidth - 15;
 
             // Empezar con el tamaño base del CSS
             let fontSize = Math.min(
                 parseFloat(window.getComputedStyle(numeroElement).fontSize),
                 parseFloat(window.getComputedStyle(cajaElement).fontSize)
             );
-            const minFontSize = 16; // Tamaño mínimo más grande para mejor legibilidad
+            const minFontSize = 14; // Tamaño mínimo para asegurar que el texto completo se vea
 
             // Aplicar el mismo tamaño a ambos elementos y preservar alineación
             numeroElement.style.fontSize = fontSize + 'px';
@@ -1639,13 +1634,6 @@
                 cajaContainer.style.justifyContent = 'flex-end';
                 cajaContainer.style.textAlign = 'right';
             }
-
-            console.log('✅ Aplicando estilos:', {
-                fontSize: fontSize + 'px',
-                numeroAlign: 'left',
-                cajaAlign: 'right',
-                cajaContainer: cajaContainer ? 'found' : 'not found'
-            });
 
             // Reducir hasta que ambos quepan
             while ((numeroElement.scrollWidth > numeroMaxWidth || cajaElement.scrollWidth > cajaMaxWidth) && fontSize > minFontSize) {
@@ -1773,11 +1761,9 @@
 
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
-                console.log('🔄 Contenido cambió, ajustando fuentes...');
                 // Usar requestAnimationFrame para mejor rendimiento
                 requestAnimationFrame(() => {
                     const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
-                    console.log('📋 Elementos encontrados para ajustar:', turnoElements.length);
                     turnoElements.forEach(turnoElement => {
                         ajustarTamanoFuenteFila(turnoElement);
                     });
