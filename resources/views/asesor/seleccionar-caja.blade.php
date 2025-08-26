@@ -196,8 +196,8 @@
                                 @endif
                             </div>
 
-                            @if($cajas->count() > 0)
-                                <div class="flex justify-center space-x-3 pt-3">
+                            <div class="flex justify-center space-x-3 pt-3">
+                                @if($cajas->count() > 0)
                                     <button
                                         type="submit"
                                         class="px-4 py-2 text-white rounded-full shadow-md transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 text-sm"
@@ -207,13 +207,13 @@
                                     >
                                         Continuar
                                     </button>
-                                    <a href="{{ route('logout') }}"
-                                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
-                                       class="px-4 py-2 text-gray-600 border border-gray-300 rounded-full shadow-md transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 hover:bg-gray-50 text-sm">
-                                        Cerrar Sesión
-                                    </a>
-                                </div>
-                            @endif
+                                @endif
+                                <a href="{{ route('logout') }}"
+                                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
+                                   class="px-4 py-2 text-gray-600 border border-gray-300 rounded-full shadow-md transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 hover:bg-gray-50 text-sm">
+                                    Cerrar Sesión
+                                </a>
+                            </div>
                         </form>
 
                         <!-- Formulario oculto para logout -->
