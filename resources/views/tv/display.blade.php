@@ -1605,7 +1605,12 @@
             const numeroElement = turnoElement.querySelector('.turno-numero');
             const cajaElement = turnoElement.querySelector('.turno-caja');
 
-            if (!numeroElement || !cajaElement) return;
+            if (!numeroElement || !cajaElement) {
+                console.log('❌ No se encontraron elementos .turno-numero o .turno-caja');
+                return;
+            }
+
+            console.log('🔧 Ajustando fuente para:', numeroElement.textContent, cajaElement.textContent);
 
             // Obtener el ancho disponible para cada columna
             const numeroContainer = numeroElement.parentElement;
@@ -1623,16 +1628,43 @@
             // Aplicar el mismo tamaño a ambos elementos y preservar alineación
             numeroElement.style.fontSize = fontSize + 'px';
             numeroElement.style.textAlign = 'left';
+            numeroElement.style.justifyContent = 'flex-start';
+
             cajaElement.style.fontSize = fontSize + 'px';
             cajaElement.style.textAlign = 'right';
+            cajaElement.style.justifyContent = 'flex-end';
+
+            // También forzar en el contenedor padre
+            const cajaContainer = cajaElement.parentElement;
+            if (cajaContainer) {
+                cajaContainer.style.justifyContent = 'flex-end';
+                cajaContainer.style.textAlign = 'right';
+            }
+
+            console.log('✅ Aplicando estilos:', {
+                fontSize: fontSize + 'px',
+                numeroAlign: 'left',
+                cajaAlign: 'right',
+                cajaContainer: cajaContainer ? 'found' : 'not found'
+            });
 
             // Reducir hasta que ambos quepan
             while ((numeroElement.scrollWidth > numeroMaxWidth || cajaElement.scrollWidth > cajaMaxWidth) && fontSize > minFontSize) {
                 fontSize -= 2; // Reducir de 2 en 2 para ser más eficiente
                 numeroElement.style.fontSize = fontSize + 'px';
                 numeroElement.style.textAlign = 'left';
+                numeroElement.style.justifyContent = 'flex-start';
+
                 cajaElement.style.fontSize = fontSize + 'px';
                 cajaElement.style.textAlign = 'right';
+                cajaElement.style.justifyContent = 'flex-end';
+
+                // También forzar en el contenedor padre
+                const cajaContainer = cajaElement.parentElement;
+                if (cajaContainer) {
+                    cajaContainer.style.justifyContent = 'flex-end';
+                    cajaContainer.style.textAlign = 'right';
+                }
             }
         }
 
@@ -1743,9 +1775,11 @@
 
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
+                console.log('🔄 Contenido cambió, ajustando fuentes...');
                 // Usar requestAnimationFrame para mejor rendimiento
                 requestAnimationFrame(() => {
                     const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
+                    console.log('📋 Elementos encontrados para ajustar:', turnoElements.length);
                     turnoElements.forEach(turnoElement => {
                         ajustarTamanoFuenteFila(turnoElement);
                     });
