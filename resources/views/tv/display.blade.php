@@ -693,7 +693,7 @@
 
         /* Texto de turnos con límites estrictos y mejor escalado */
         .turno-numero {
-            font-size: clamp(1.2rem, 4.5vw, 4rem);
+            font-size: clamp(1.5rem, 3.5vw, 3.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -701,22 +701,18 @@
             max-width: 100%;
             display: block;
             text-align: left;
-            /* Ajuste automático del tamaño de fuente */
-            font-size: clamp(1rem, 3.5vw, 3.5rem);
             transform-origin: left center;
         }
 
         .turno-caja {
-            font-size: clamp(0.9rem, 2.25vw, 1.75rem);
-            line-height: 1.2;
+            font-size: clamp(1.5rem, 3.5vw, 3.5rem);
+            line-height: 1;
             max-height: 100%;
             overflow: hidden;
             white-space: nowrap;
             max-width: 100%;
             display: block;
             text-align: right;
-            /* Ajuste automático del tamaño de fuente */
-            font-size: clamp(0.8rem, 1.8vw, 1.5rem);
             transform-origin: right center;
         }
 
@@ -1604,26 +1600,49 @@
                 });
         }
 
-        // Función para ajustar el tamaño de fuente automáticamente
-        function ajustarTamanoFuente(elemento) {
-            const contenedor = elemento.parentElement;
-            const maxWidth = contenedor.offsetWidth - 20; // Margen de seguridad
+        // Función para ajustar el tamaño de fuente de toda la fila de turno
+        function ajustarTamanoFuenteFila(turnoElement) {
+            const numeroElement = turnoElement.querySelector('.turno-numero');
+            const cajaElement = turnoElement.querySelector('.turno-caja');
 
-            // Empezar con el tamaño máximo y reducir hasta que quepa
-            let fontSize = parseFloat(window.getComputedStyle(elemento).fontSize);
-            const minFontSize = 12; // Tamaño mínimo en px
+            if (!numeroElement || !cajaElement) return;
 
-            elemento.style.fontSize = fontSize + 'px';
+            // Obtener el ancho disponible para cada columna
+            const numeroContainer = numeroElement.parentElement;
+            const cajaContainer = cajaElement.parentElement;
+            const numeroMaxWidth = numeroContainer.offsetWidth - 10;
+            const cajaMaxWidth = cajaContainer.offsetWidth - 10;
 
-            while (elemento.scrollWidth > maxWidth && fontSize > minFontSize) {
-                fontSize -= 1;
-                elemento.style.fontSize = fontSize + 'px';
+            // Empezar con el tamaño base del CSS
+            let fontSize = Math.min(
+                parseFloat(window.getComputedStyle(numeroElement).fontSize),
+                parseFloat(window.getComputedStyle(cajaElement).fontSize)
+            );
+            const minFontSize = 16; // Tamaño mínimo más grande para mejor legibilidad
+
+            // Aplicar el mismo tamaño a ambos elementos
+            numeroElement.style.fontSize = fontSize + 'px';
+            cajaElement.style.fontSize = fontSize + 'px';
+
+            // Reducir hasta que ambos quepan
+            while ((numeroElement.scrollWidth > numeroMaxWidth || cajaElement.scrollWidth > cajaMaxWidth) && fontSize > minFontSize) {
+                fontSize -= 2; // Reducir de 2 en 2 para ser más eficiente
+                numeroElement.style.fontSize = fontSize + 'px';
+                cajaElement.style.fontSize = fontSize + 'px';
             }
         }
+
+        // Variable para evitar ajustes innecesarios
+        let ultimoContenidoTurnos = '';
 
         // Renderizar los turnos en el contenedor
         function renderTurnos(turnosList) {
             const container = document.getElementById('patient-queue');
+
+            // Crear un hash del contenido para detectar cambios reales
+            const contenidoActual = turnosList.map(t => `${t.codigo_completo}-${t.numero_caja}`).join('|');
+            const contenidoCambio = contenidoActual !== ultimoContenidoTurnos;
+            ultimoContenidoTurnos = contenidoActual;
 
             // Conservar el contenedor pero limpiar su contenido
             container.innerHTML = '';
@@ -1697,14 +1716,6 @@
                 `;
 
                 container.appendChild(turnoElement);
-
-                // Ajustar tamaño de fuente después de agregar al DOM
-                setTimeout(() => {
-                    const numeroElement = turnoElement.querySelector('.turno-numero');
-                    const cajaElement = turnoElement.querySelector('.turno-caja');
-                    if (numeroElement) ajustarTamanoFuente(numeroElement);
-                    if (cajaElement) ajustarTamanoFuente(cajaElement);
-                }, 10);
             }
 
             // Si hay menos de 5 turnos, rellenar con placeholders
@@ -1724,6 +1735,16 @@
                 `;
 
                 container.appendChild(placeholderElement);
+            }
+
+            // Ajustar tamaño de fuente solo si el contenido cambió
+            if (contenidoCambio) {
+                setTimeout(() => {
+                    const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
+                    turnoElements.forEach(turnoElement => {
+                        ajustarTamanoFuenteFila(turnoElement);
+                    });
+                }, 100); // Timeout más largo para asegurar que el DOM esté completamente renderizado
             }
         }
 
