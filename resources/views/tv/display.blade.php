@@ -1042,55 +1042,55 @@
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
                 <div class="space-y-3 overflow-hidden" id="patient-queue">
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold animate-pulse-number">U001</div>
                             </div>
-                            <div class="text-left flex items-center justify-start pl-2">
+                            <div class="text-left flex items-center justify-start">
                                 <div class="turno-caja font-semibold">CAJA 1</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.2s;">
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U002</div>
                             </div>
-                            <div class="text-left flex items-center justify-start pl-2">
+                            <div class="text-left flex items-center justify-start">
                                 <div class="turno-caja font-semibold">CAJA 2</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.4s;">
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U003</div>
                             </div>
-                            <div class="text-left flex items-center justify-start pl-2">
+                            <div class="text-left flex items-center justify-start">
                                 <div class="turno-caja font-semibold">CAJA 3</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.6s;">
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U004</div>
                             </div>
-                            <div class="text-left flex items-center justify-start pl-2">
+                            <div class="text-left flex items-center justify-start">
                                 <div class="turno-caja font-semibold">CAJA 4</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.8s;">
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U005</div>
                             </div>
-                            <div class="text-left flex items-center justify-start pl-2">
+                            <div class="text-left flex items-center justify-start">
                                 <div class="turno-caja font-semibold">CAJA 5</div>
                             </div>
                         </div>
@@ -1704,11 +1704,11 @@
                 turnoElement.innerHTML = `
                     <div class="relative">
                         ${estadoBadge}
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-left flex items-center justify-start pl-2">
+                            <div class="text-left flex items-center justify-start">
                                 <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -1724,11 +1724,11 @@
                 placeholderElement.className = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                 placeholderElement.innerHTML = `
-                    <div class="grid grid-cols-2 gap-4 items-center w-full">
+                    <div class="grid grid-cols-2 gap-1 items-center w-full">
                         <div class="text-left flex items-center">
                             <div class="turno-numero font-bold">----</div>
                         </div>
-                        <div class="text-left flex items-center justify-start pl-2">
+                        <div class="text-left flex items-center justify-start">
                             <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
