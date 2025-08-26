@@ -1041,56 +1041,56 @@
             <div class="bg-hospital-blue-light p-8 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
                 <div class="space-y-3 overflow-hidden" id="patient-queue">
-                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
                         <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold animate-pulse-number">U001</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA 1</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.2s;">
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.2s;">
                         <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U002</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA 2</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.4s;">
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.4s;">
                         <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U003</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA 3</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.6s;">
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.6s;">
                         <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U004</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA 4</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white p-3 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.8s;">
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.8s;">
                         <div class="grid grid-cols-2 gap-1 items-center w-full">
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U005</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA 5</div>
                             </div>
                         </div>
@@ -1656,7 +1656,7 @@
             if (turnosLimitados.length === 0) {
                 for (let i = 0; i < 5; i++) {
                     const placeholderElement = document.createElement('div');
-                    placeholderElement.className = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
+                    placeholderElement.className = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                     placeholderElement.innerHTML = `
                         <div class="grid grid-cols-2 gap-4 items-center w-full">
@@ -1686,7 +1686,7 @@
                 const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
 
                 // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
-                let clases = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg flex items-center h-full';
+                let clases = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg flex items-center h-full';
 
                 // Animación solo para turnos nuevos llamados
                 if (i === 0 && !yaAnimado && !esAtendido) {
@@ -1708,7 +1708,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -1721,14 +1721,14 @@
             // Si hay menos de 5 turnos, rellenar con placeholders
             for (let i = turnosLimitados.length; i < 5; i++) {
                 const placeholderElement = document.createElement('div');
-                placeholderElement.className = 'gradient-hospital text-white p-3 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
+                placeholderElement.className = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                 placeholderElement.innerHTML = `
                     <div class="grid grid-cols-2 gap-1 items-center w-full">
                         <div class="text-left flex items-center">
                             <div class="turno-numero font-bold">----</div>
                         </div>
-                        <div class="text-right flex items-center justify-end pr-2">
+                        <div class="text-right flex items-center justify-end">
                             <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
@@ -1739,12 +1739,13 @@
 
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
-                setTimeout(() => {
+                // Usar requestAnimationFrame para mejor rendimiento
+                requestAnimationFrame(() => {
                     const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
                     turnoElements.forEach(turnoElement => {
                         ajustarTamanoFuenteFila(turnoElement);
                     });
-                }, 100); // Timeout más largo para asegurar que el DOM esté completamente renderizado
+                });
             }
         }
 
@@ -2612,6 +2613,14 @@
             setInterval(updateTvConfig, 5000);
             setInterval(loadMultimedia, 5000);
             // La actualización de turnos ahora se maneja en setupRealTimeListeners con intervalo más frecuente
+
+            // Ajustar tamaño de fuente de elementos estáticos inmediatamente
+            setTimeout(() => {
+                const turnoElementsEstaticos = document.querySelectorAll('#patient-queue > div:not(.opacity-50)');
+                turnoElementsEstaticos.forEach(turnoElement => {
+                    ajustarTamanoFuenteFila(turnoElement);
+                });
+            }, 100);
         });
 
         // Limpiar recursos cuando la página se cierre
