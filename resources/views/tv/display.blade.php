@@ -1635,7 +1635,6 @@
             cajaElement.style.justifyContent = 'flex-end';
 
             // También forzar en el contenedor padre
-            const cajaContainer = cajaElement.parentElement;
             if (cajaContainer) {
                 cajaContainer.style.justifyContent = 'flex-end';
                 cajaContainer.style.textAlign = 'right';
@@ -1660,7 +1659,6 @@
                 cajaElement.style.justifyContent = 'flex-end';
 
                 // También forzar en el contenedor padre
-                const cajaContainer = cajaElement.parentElement;
                 if (cajaContainer) {
                     cajaContainer.style.justifyContent = 'flex-end';
                     cajaContainer.style.textAlign = 'right';
