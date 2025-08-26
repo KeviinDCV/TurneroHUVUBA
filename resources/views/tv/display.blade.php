@@ -712,8 +712,8 @@
             white-space: nowrap;
             max-width: 100%;
             display: block;
-            text-align: left;
-            transform-origin: left center;
+            text-align: right;
+            transform-origin: right center;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1046,7 +1046,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold animate-pulse-number">U001</div>
                             </div>
-                            <div class="text-left flex items-center justify-start">
+                            <div class="text-right flex items-center justify-end pr-2">
                                 <div class="turno-caja font-semibold">CAJA 1</div>
                             </div>
                         </div>
@@ -1057,7 +1057,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U002</div>
                             </div>
-                            <div class="text-left flex items-center justify-start">
+                            <div class="text-right flex items-center justify-end pr-2">
                                 <div class="turno-caja font-semibold">CAJA 2</div>
                             </div>
                         </div>
@@ -1068,7 +1068,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U003</div>
                             </div>
-                            <div class="text-left flex items-center justify-start">
+                            <div class="text-right flex items-center justify-end pr-2">
                                 <div class="turno-caja font-semibold">CAJA 3</div>
                             </div>
                         </div>
@@ -1079,7 +1079,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U004</div>
                             </div>
-                            <div class="text-left flex items-center justify-start">
+                            <div class="text-right flex items-center justify-end pr-2">
                                 <div class="turno-caja font-semibold">CAJA 4</div>
                             </div>
                         </div>
@@ -1090,7 +1090,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">U005</div>
                             </div>
-                            <div class="text-left flex items-center justify-start">
+                            <div class="text-right flex items-center justify-end pr-2">
                                 <div class="turno-caja font-semibold">CAJA 5</div>
                             </div>
                         </div>
@@ -1708,7 +1708,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-left flex items-center justify-start">
+                            <div class="text-right flex items-center justify-end pr-2">
                                 <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -1728,7 +1728,7 @@
                         <div class="text-left flex items-center">
                             <div class="turno-numero font-bold">----</div>
                         </div>
-                        <div class="text-left flex items-center justify-start">
+                        <div class="text-right flex items-center justify-end pr-2">
                             <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
