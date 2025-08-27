@@ -718,55 +718,12 @@
             margin-right: 0 !important;
         }
 
-        /* Forzar grid layout para alineación correcta */
-        .grid.grid-cols-2.gap-1.items-center.w-full {
-            display: grid !important;
-            grid-template-columns: 1fr auto !important;
-            gap: 0.25rem !important;
-            align-items: center !important;
-            width: 100% !important;
-        }
-
-        /* Columna izquierda - número de turno */
-        .grid.grid-cols-2 .text-left.flex.items-center {
-            justify-self: start !important;
+        /* CSS simple para flexbox inline */
+        div[style*="justify-content: space-between"] .turno-numero {
             text-align: left !important;
         }
 
-        /* Columna derecha - caja pegada completamente a la derecha */
-        .grid.grid-cols-2 .text-right.flex.items-center.justify-end {
-            justify-self: stretch !important;
-            text-align: right !important;
-            width: 100% !important;
-            display: flex !important;
-            justify-content: flex-end !important;
-            align-items: center !important;
-        }
-
-        .grid.grid-cols-2 .text-right.flex.items-center.justify-end .turno-caja {
-            text-align: right !important;
-            margin-left: auto !important;
-            margin-right: 0 !important;
-            padding-right: 0 !important;
-        }
-
-        /* CSS ultra específico para forzar alineación después de JavaScript */
-        #patient-queue .grid.grid-cols-2 .text-right.flex.items-center.justify-end {
-            justify-content: flex-end !important;
-            text-align: right !important;
-        }
-
-        #patient-queue .grid.grid-cols-2 .text-right.flex.items-center.justify-end .turno-caja {
-            margin-left: auto !important;
-            margin-right: 0 !important;
-            text-align: right !important;
-            display: inline-block !important;
-        }
-
-        /* Forzar después de cualquier cambio dinámico */
-        #patient-queue div[style*="font-size"] .turno-caja {
-            margin-left: auto !important;
-            margin-right: 0 !important;
+        div[style*="justify-content: space-between"] .turno-caja {
             text-align: right !important;
         }
 
@@ -1574,27 +1531,7 @@
                 });
         }
 
-        // Función para forzar alineación de cajas después de cambios dinámicos
-        function forzarAlineacionCajas() {
-            const cajaContainers = document.querySelectorAll('#patient-queue .text-right.flex.items-center.justify-end');
-            cajaContainers.forEach(container => {
-                // Forzar estilos del contenedor
-                container.style.display = 'flex';
-                container.style.justifyContent = 'flex-end';
-                container.style.alignItems = 'center';
-                container.style.textAlign = 'right';
-                container.style.width = '100%';
 
-                // Forzar estilos del elemento .turno-caja
-                const cajaElement = container.querySelector('.turno-caja');
-                if (cajaElement) {
-                    cajaElement.style.marginLeft = 'auto';
-                    cajaElement.style.marginRight = '0';
-                    cajaElement.style.textAlign = 'right';
-                    cajaElement.style.paddingRight = '0';
-                }
-            });
-        }
 
         // Función para actualizar la cola de turnos con sincronización completa
         function updateQueue() {
@@ -1788,11 +1725,11 @@
                 turnoElement.innerHTML = `
                     <div class="relative">
                         ${estadoBadge}
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0;">
+                            <div style="text-align: left;">
                                 <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
+                            <div style="text-align: right;">
                                 <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                             </div>
                         </div>
@@ -1802,10 +1739,7 @@
                 container.appendChild(turnoElement);
             }
 
-            // Forzar alineación después de agregar turnos reales
-            setTimeout(() => {
-                forzarAlineacionCajas();
-            }, 50);
+
 
             // Si hay menos de 5 turnos, rellenar con placeholders
             for (let i = turnosLimitados.length; i < 5; i++) {
@@ -1814,11 +1748,11 @@
 
                 placeholderElement.innerHTML = `
                     <div class="relative">
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0;">
+                            <div style="text-align: left;">
                                 <div class="turno-numero font-bold">----</div>
                             </div>
-                            <div class="text-right flex items-center justify-end">
+                            <div style="text-align: right;">
                                 <div class="turno-caja font-semibold">CAJA -</div>
                             </div>
                         </div>
@@ -1828,10 +1762,7 @@
                 container.appendChild(placeholderElement);
             }
 
-            // Forzar alineación final después de todos los elementos
-            setTimeout(() => {
-                forzarAlineacionCajas();
-            }, 100);
+
 
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
@@ -1842,8 +1773,7 @@
                         ajustarTamanoFuenteFila(turnoElement);
                     });
 
-                    // Forzar alineación después del ajuste de fuente
-                    forzarAlineacionCajas();
+
                 });
             }
         }
