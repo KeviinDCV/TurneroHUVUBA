@@ -1780,13 +1780,13 @@
 
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
-                // Usar requestAnimationFrame para mejor rendimiento
-                requestAnimationFrame(() => {
-                    const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
-                    turnoElements.forEach(turnoElement => {
-                        ajustarTamanoFuenteFila(turnoElement);
-                    });
-                });
+                // TEMPORALMENTE DESHABILITADO PARA DEBUG
+                // requestAnimationFrame(() => {
+                //     const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
+                //     turnoElements.forEach(turnoElement => {
+                //         ajustarTamanoFuenteFila(turnoElement);
+                //     });
+                // });
             }
         }
 
