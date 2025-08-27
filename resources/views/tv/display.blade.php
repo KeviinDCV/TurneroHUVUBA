@@ -718,15 +718,20 @@
             margin-right: 0 !important;
         }
 
-        /* Forzar alineación del contenedor de caja */
+        /* Forzar alineación del contenedor de caja con posición absoluta */
         .text-right.flex.items-center.justify-end {
             justify-content: flex-end !important;
             text-align: right !important;
+            position: relative !important;
         }
 
         .text-right.flex.items-center.justify-end .turno-caja {
             margin-left: auto !important;
             margin-right: 0 !important;
+            position: absolute !important;
+            right: 0 !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1633,43 +1638,23 @@
             );
             const minFontSize = 14; // Tamaño mínimo para asegurar que el texto completo se vea
 
-            // Aplicar el mismo tamaño a ambos elementos y preservar alineación
+            // SOLO aplicar tamaño de fuente - NO tocar posicionamiento
             numeroElement.style.fontSize = fontSize + 'px';
-            numeroElement.style.textAlign = 'left';
-            numeroElement.style.marginRight = 'auto';
-            numeroElement.style.marginLeft = '0';
-
             cajaElement.style.fontSize = fontSize + 'px';
-            cajaElement.style.textAlign = 'right';
-            cajaElement.style.marginLeft = 'auto';
-            cajaElement.style.marginRight = '0';
 
-            // También forzar en el contenedor padre con flexbox
-            if (cajaContainer) {
-                cajaContainer.style.display = 'flex';
-                cajaContainer.style.justifyContent = 'flex-end';
-                cajaContainer.style.alignItems = 'center';
-            }
+            // NO tocar margins, text-align, ni justify-content
+            // Dejar que el CSS se encargue de la posición
 
             // Reducir hasta que ambos quepan
             while ((numeroElement.scrollWidth > numeroMaxWidth || cajaElement.scrollWidth > cajaMaxWidth) && fontSize > minFontSize) {
                 fontSize -= 2; // Reducir de 2 en 2 para ser más eficiente
+
+                // SOLO cambiar tamaño de fuente - NO tocar posicionamiento
                 numeroElement.style.fontSize = fontSize + 'px';
-                numeroElement.style.textAlign = 'left';
-                numeroElement.style.marginRight = 'auto';
-                numeroElement.style.marginLeft = '0';
-
                 cajaElement.style.fontSize = fontSize + 'px';
-                cajaElement.style.textAlign = 'right';
-                cajaElement.style.marginLeft = 'auto';
-                cajaElement.style.marginRight = '0';
 
-                // También forzar en el contenedor padre con flexbox
-                if (cajaContainer) {
-                    cajaContainer.style.display = 'flex';
-                    cajaContainer.style.justifyContent = 'flex-end';
-                    cajaContainer.style.alignItems = 'center';
-                }
+                // NO tocar margins, text-align, ni justify-content
+                // Dejar que el CSS se encargue de la posición
             }
         }
 
@@ -1780,13 +1765,13 @@
 
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
-                // TEMPORALMENTE DESHABILITADO PARA DEBUG
-                // requestAnimationFrame(() => {
-                //     const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
-                //     turnoElements.forEach(turnoElement => {
-                //         ajustarTamanoFuenteFila(turnoElement);
-                //     });
-                // });
+                // Usar requestAnimationFrame para mejor rendimiento
+                requestAnimationFrame(() => {
+                    const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
+                    turnoElements.forEach(turnoElement => {
+                        ajustarTamanoFuenteFila(turnoElement);
+                    });
+                });
             }
         }
 
