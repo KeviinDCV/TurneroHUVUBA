@@ -750,6 +750,26 @@
             padding-right: 0 !important;
         }
 
+        /* CSS ultra específico para forzar alineación después de JavaScript */
+        #patient-queue .grid.grid-cols-2 .text-right.flex.items-center.justify-end {
+            justify-content: flex-end !important;
+            text-align: right !important;
+        }
+
+        #patient-queue .grid.grid-cols-2 .text-right.flex.items-center.justify-end .turno-caja {
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            text-align: right !important;
+            display: inline-block !important;
+        }
+
+        /* Forzar después de cualquier cambio dinámico */
+        #patient-queue div[style*="font-size"] .turno-caja {
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            text-align: right !important;
+        }
+
         /* Ajustes específicos para diferentes alturas de pantalla */
         @media (max-height: 900px) {
             .turno-numero {
@@ -1554,6 +1574,28 @@
                 });
         }
 
+        // Función para forzar alineación de cajas después de cambios dinámicos
+        function forzarAlineacionCajas() {
+            const cajaContainers = document.querySelectorAll('#patient-queue .text-right.flex.items-center.justify-end');
+            cajaContainers.forEach(container => {
+                // Forzar estilos del contenedor
+                container.style.display = 'flex';
+                container.style.justifyContent = 'flex-end';
+                container.style.alignItems = 'center';
+                container.style.textAlign = 'right';
+                container.style.width = '100%';
+
+                // Forzar estilos del elemento .turno-caja
+                const cajaElement = container.querySelector('.turno-caja');
+                if (cajaElement) {
+                    cajaElement.style.marginLeft = 'auto';
+                    cajaElement.style.marginRight = '0';
+                    cajaElement.style.textAlign = 'right';
+                    cajaElement.style.paddingRight = '0';
+                }
+            });
+        }
+
         // Función para actualizar la cola de turnos con sincronización completa
         function updateQueue() {
             if (!sincronizacionActiva) return;
@@ -1760,6 +1802,11 @@
                 container.appendChild(turnoElement);
             }
 
+            // Forzar alineación después de agregar turnos reales
+            setTimeout(() => {
+                forzarAlineacionCajas();
+            }, 50);
+
             // Si hay menos de 5 turnos, rellenar con placeholders
             for (let i = turnosLimitados.length; i < 5; i++) {
                 const placeholderElement = document.createElement('div');
@@ -1781,6 +1828,11 @@
                 container.appendChild(placeholderElement);
             }
 
+            // Forzar alineación final después de todos los elementos
+            setTimeout(() => {
+                forzarAlineacionCajas();
+            }, 100);
+
             // Ajustar tamaño de fuente solo si el contenido cambió
             if (contenidoCambio) {
                 // Usar requestAnimationFrame para mejor rendimiento
@@ -1789,6 +1841,9 @@
                     turnoElements.forEach(turnoElement => {
                         ajustarTamanoFuenteFila(turnoElement);
                     });
+
+                    // Forzar alineación después del ajuste de fuente
+                    forzarAlineacionCajas();
                 });
             }
         }
