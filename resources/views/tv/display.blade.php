@@ -721,7 +721,7 @@
         /* Forzar grid layout para alineación correcta */
         .grid.grid-cols-2.gap-1.items-center.w-full {
             display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
+            grid-template-columns: 1fr auto !important;
             gap: 0.25rem !important;
             align-items: center !important;
             width: 100% !important;
@@ -733,17 +733,21 @@
             text-align: left !important;
         }
 
-        /* Columna derecha - caja */
+        /* Columna derecha - caja pegada completamente a la derecha */
         .grid.grid-cols-2 .text-right.flex.items-center.justify-end {
-            justify-self: end !important;
+            justify-self: stretch !important;
             text-align: right !important;
             width: 100% !important;
             display: flex !important;
             justify-content: flex-end !important;
+            align-items: center !important;
         }
 
         .grid.grid-cols-2 .text-right.flex.items-center.justify-end .turno-caja {
             text-align: right !important;
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            padding-right: 0 !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
