@@ -718,13 +718,19 @@
             margin-right: 0 !important;
         }
 
-        /* CSS simple para flexbox inline */
-        div[style*="justify-content: space-between"] .turno-numero {
-            text-align: left !important;
+        /* CSS DE EMERGENCIA - FUERZA ABSOLUTA */
+        .turno-caja {
+            position: absolute !important;
+            right: 10px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            background: rgba(255,0,0,0.1) !important; /* Fondo rojo temporal para debug */
+            z-index: 999 !important;
         }
 
-        div[style*="justify-content: space-between"] .turno-caja {
-            text-align: right !important;
+        /* Asegurar que el contenedor tenga posición relativa */
+        div[style*="justify-content: space-between"] {
+            position: relative !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
