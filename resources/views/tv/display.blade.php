@@ -718,20 +718,32 @@
             margin-right: 0 !important;
         }
 
-        /* Forzar alineación del contenedor de caja con posición absoluta */
-        .text-right.flex.items-center.justify-end {
-            justify-content: flex-end !important;
-            text-align: right !important;
-            position: relative !important;
+        /* Forzar grid layout para alineación correcta */
+        .grid.grid-cols-2.gap-1.items-center.w-full {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.25rem !important;
+            align-items: center !important;
+            width: 100% !important;
         }
 
-        .text-right.flex.items-center.justify-end .turno-caja {
-            margin-left: auto !important;
-            margin-right: 0 !important;
-            position: absolute !important;
-            right: 0 !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
+        /* Columna izquierda - número de turno */
+        .grid.grid-cols-2 .text-left.flex.items-center {
+            justify-self: start !important;
+            text-align: left !important;
+        }
+
+        /* Columna derecha - caja */
+        .grid.grid-cols-2 .text-right.flex.items-center.justify-end {
+            justify-self: end !important;
+            text-align: right !important;
+            width: 100% !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+        }
+
+        .grid.grid-cols-2 .text-right.flex.items-center.justify-end .turno-caja {
+            text-align: right !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1750,12 +1762,14 @@
                 placeholderElement.className = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                 placeholderElement.innerHTML = `
-                    <div class="grid grid-cols-2 gap-1 items-center w-full">
-                        <div class="text-left flex items-center">
-                            <div class="turno-numero font-bold">----</div>
-                        </div>
-                        <div class="text-right flex items-center justify-end">
-                            <div class="turno-caja font-semibold">CAJA -</div>
+                    <div class="relative">
+                        <div class="grid grid-cols-2 gap-1 items-center w-full">
+                            <div class="text-left flex items-center">
+                                <div class="turno-numero font-bold">----</div>
+                            </div>
+                            <div class="text-right flex items-center justify-end">
+                                <div class="turno-caja font-semibold">CAJA -</div>
+                            </div>
                         </div>
                     </div>
                 `;
