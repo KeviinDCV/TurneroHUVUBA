@@ -718,19 +718,27 @@
             margin-right: 0 !important;
         }
 
-        /* CSS DE EMERGENCIA - FUERZA ABSOLUTA */
+        /* CSS FINAL - FLOAT A LA DERECHA */
         .turno-caja {
-            position: absolute !important;
-            right: 10px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            background: rgba(255,0,0,0.1) !important; /* Fondo rojo temporal para debug */
-            z-index: 999 !important;
+            float: right !important;
+            clear: right !important;
+            text-align: right !important;
+            margin-left: auto !important;
+            margin-right: 0 !important;
         }
 
-        /* Asegurar que el contenedor tenga posición relativa */
+        /* Asegurar que el contenedor permita float */
         div[style*="justify-content: space-between"] {
-            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        /* Número a la izquierda */
+        .turno-numero {
+            float: left !important;
+            clear: left !important;
+            text-align: left !important;
+            margin-left: 0 !important;
+            margin-right: auto !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
