@@ -712,8 +712,21 @@
             white-space: nowrap;
             max-width: 100%;
             display: block;
-            text-align: right;
+            text-align: right !important;
             transform-origin: right center;
+            margin-left: auto !important;
+            margin-right: 0 !important;
+        }
+
+        /* Forzar alineación del contenedor de caja */
+        .text-right.flex.items-center.justify-end {
+            justify-content: flex-end !important;
+            text-align: right !important;
+        }
+
+        .text-right.flex.items-center.justify-end .turno-caja {
+            margin-left: auto !important;
+            margin-right: 0 !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1623,16 +1636,19 @@
             // Aplicar el mismo tamaño a ambos elementos y preservar alineación
             numeroElement.style.fontSize = fontSize + 'px';
             numeroElement.style.textAlign = 'left';
-            numeroElement.style.justifyContent = 'flex-start';
+            numeroElement.style.marginRight = 'auto';
+            numeroElement.style.marginLeft = '0';
 
             cajaElement.style.fontSize = fontSize + 'px';
             cajaElement.style.textAlign = 'right';
-            cajaElement.style.justifyContent = 'flex-end';
+            cajaElement.style.marginLeft = 'auto';
+            cajaElement.style.marginRight = '0';
 
-            // También forzar en el contenedor padre
+            // También forzar en el contenedor padre con flexbox
             if (cajaContainer) {
+                cajaContainer.style.display = 'flex';
                 cajaContainer.style.justifyContent = 'flex-end';
-                cajaContainer.style.textAlign = 'right';
+                cajaContainer.style.alignItems = 'center';
             }
 
             // Reducir hasta que ambos quepan
@@ -1640,16 +1656,19 @@
                 fontSize -= 2; // Reducir de 2 en 2 para ser más eficiente
                 numeroElement.style.fontSize = fontSize + 'px';
                 numeroElement.style.textAlign = 'left';
-                numeroElement.style.justifyContent = 'flex-start';
+                numeroElement.style.marginRight = 'auto';
+                numeroElement.style.marginLeft = '0';
 
                 cajaElement.style.fontSize = fontSize + 'px';
                 cajaElement.style.textAlign = 'right';
-                cajaElement.style.justifyContent = 'flex-end';
+                cajaElement.style.marginLeft = 'auto';
+                cajaElement.style.marginRight = '0';
 
-                // También forzar en el contenedor padre
+                // También forzar en el contenedor padre con flexbox
                 if (cajaContainer) {
+                    cajaContainer.style.display = 'flex';
                     cajaContainer.style.justifyContent = 'flex-end';
-                    cajaContainer.style.textAlign = 'right';
+                    cajaContainer.style.alignItems = 'center';
                 }
             }
         }
@@ -1685,7 +1704,7 @@
                             <div class="text-left flex items-center">
                                 <div class="turno-numero font-bold">----</div>
                             </div>
-                            <div class="text-right flex items-center justify-end pr-2">
+                            <div class="text-right flex items-center justify-end">
                                 <div class="turno-caja font-semibold">CAJA -</div>
                             </div>
                         </div>
