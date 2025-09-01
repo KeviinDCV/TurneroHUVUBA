@@ -1736,18 +1736,18 @@
 
                 turnoElement.className = clases;
 
-                // Badge de estado en la esquina superior derecha - movido hacia arriba
+                // Badge de estado fuera del contenedor relativo para mejor control
                 const estadoBadge = esAtendido ?
-                    '<div class="absolute top-0 right-2"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
+                    '<div style="position: absolute; top: -8px; right: 8px; z-index: 10;"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
                     '';
 
                 turnoElement.innerHTML = `
-                    <div class="relative">
-                        ${estadoBadge}
+                    <div style="position: relative;">
                         <div class="turno-container">
                             <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                         </div>
+                        ${estadoBadge}
                     </div>
                 `;
 
