@@ -718,32 +718,32 @@
             margin-right: 0 !important;
         }
 
-        /* LAYOUT CORREGIDO - FORZAR CAJA AL EXTREMO DERECHO */
+        /* LAYOUT CORREGIDO - USAR FLEXBOX CON ESPACIADO AJUSTADO */
         .turno-container {
             display: flex !important;
-            justify-content: flex-start !important; /* Cambiar de space-between a flex-start */
+            justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
-            padding: 0 !important;
-            position: relative !important;
+            padding: 0 0 0 0.5rem !important; /* Eliminar padding derecho completamente */
         }
 
         /* Número ligeramente hacia la derecha */
         .turno-numero {
             text-align: left !important;
-            flex: 0 0 auto !important;
+            flex: 1 1 auto !important;
             margin-left: 0.5rem !important;
-            max-width: 50% !important;
+            max-width: 50% !important; /* Reducir más el ancho del turno */
             overflow: hidden !important;
             text-overflow: ellipsis !important;
         }
 
-        /* CAJA posicionada absolutamente en el extremo derecho */
+        /* CAJA empujada completamente a la derecha */
         .turno-caja {
-            position: absolute !important;
-            right: 0.5rem !important; /* Posición fija desde el borde derecho */
             text-align: right !important;
-            max-width: 40% !important;
+            flex: 0 0 auto !important;
+            max-width: 45% !important; /* Más espacio para CAJA */
+            margin-left: auto !important; /* Empujar completamente a la derecha */
+            padding-right: 0.5rem !important; /* Padding interno para separar del borde */
             overflow: visible !important;
             white-space: nowrap !important;
         }
