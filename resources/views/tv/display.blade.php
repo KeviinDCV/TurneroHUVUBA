@@ -1736,9 +1736,9 @@
 
                 turnoElement.className = clases;
 
-                // Badge de estado en la esquina superior derecha
+                // Badge de estado en la esquina superior derecha - movido más arriba
                 const estadoBadge = esAtendido ?
-                    '<div class="absolute -top-3 right-2"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
+                    '<div class="absolute -top-6 right-2"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
                     '';
 
                 turnoElement.innerHTML = `
