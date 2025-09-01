@@ -724,7 +724,7 @@
             justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
-            padding: 0 0.3rem 0 0.5rem !important; /* Reducir padding derecho para dar más espacio */
+            padding: 0 0 0 0.5rem !important; /* Eliminar padding derecho completamente */
         }
 
         /* Número ligeramente hacia la derecha */
@@ -732,18 +732,19 @@
             text-align: left !important;
             flex: 1 1 auto !important;
             margin-left: 0.5rem !important;
-            max-width: 55% !important; /* Reducir ancho del turno para dar más espacio a CAJA */
+            max-width: 50% !important; /* Reducir más el ancho del turno */
             overflow: hidden !important;
             text-overflow: ellipsis !important;
         }
 
-        /* CAJA controlada en la derecha con más espacio */
+        /* CAJA empujada completamente a la derecha */
         .turno-caja {
             text-align: right !important;
             flex: 0 0 auto !important;
-            max-width: 42% !important; /* Aumentar ancho disponible para CAJA */
-            margin-right: 0.2rem !important; /* Mover ligeramente más a la derecha */
-            overflow: visible !important; /* Permitir que se vea el texto completo */
+            max-width: 45% !important; /* Más espacio para CAJA */
+            margin-left: auto !important; /* Empujar completamente a la derecha */
+            padding-right: 0.5rem !important; /* Padding interno para separar del borde */
+            overflow: visible !important;
             white-space: nowrap !important;
         }
 
