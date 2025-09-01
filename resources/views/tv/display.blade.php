@@ -718,27 +718,33 @@
             margin-right: 0 !important;
         }
 
-        /* LAYOUT CORREGIDO - USAR FLEXBOX EN LUGAR DE FLOAT */
+        /* LAYOUT CORREGIDO - USAR FLEXBOX CON ESPACIADO AJUSTADO */
         .turno-container {
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
-            padding: 0 !important;
+            padding: 0 1rem 0 0.5rem !important; /* Padding interno para mejor espaciado */
         }
 
-        /* Número a la izquierda */
+        /* Número ligeramente hacia la derecha */
         .turno-numero {
             text-align: left !important;
-            flex: 0 0 auto !important;
-            margin-right: auto !important;
+            flex: 1 1 auto !important;
+            margin-left: 0.5rem !important;
+            max-width: 60% !important; /* Limitar ancho para evitar desbordamiento */
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
 
-        /* CAJA a la derecha */
+        /* CAJA controlada en la derecha */
         .turno-caja {
             text-align: right !important;
             flex: 0 0 auto !important;
-            margin-left: auto !important;
+            max-width: 35% !important; /* Limitar ancho para evitar desbordamiento */
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
