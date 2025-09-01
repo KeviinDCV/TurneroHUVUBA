@@ -724,7 +724,7 @@
             justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
-            padding: 0 1rem 0 0.5rem !important; /* Padding interno para mejor espaciado */
+            padding: 0 0.3rem 0 0.5rem !important; /* Reducir padding derecho para dar más espacio */
         }
 
         /* Número ligeramente hacia la derecha */
@@ -732,18 +732,18 @@
             text-align: left !important;
             flex: 1 1 auto !important;
             margin-left: 0.5rem !important;
-            max-width: 60% !important; /* Limitar ancho para evitar desbordamiento */
+            max-width: 55% !important; /* Reducir ancho del turno para dar más espacio a CAJA */
             overflow: hidden !important;
             text-overflow: ellipsis !important;
         }
 
-        /* CAJA controlada en la derecha */
+        /* CAJA controlada en la derecha con más espacio */
         .turno-caja {
             text-align: right !important;
             flex: 0 0 auto !important;
-            max-width: 35% !important; /* Limitar ancho para evitar desbordamiento */
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            max-width: 42% !important; /* Aumentar ancho disponible para CAJA */
+            margin-right: 0.2rem !important; /* Mover ligeramente más a la derecha */
+            overflow: visible !important; /* Permitir que se vea el texto completo */
             white-space: nowrap !important;
         }
 
