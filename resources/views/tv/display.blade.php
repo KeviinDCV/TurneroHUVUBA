@@ -718,35 +718,36 @@
             margin-right: 0 !important;
         }
 
-        /* LAYOUT COMO LOS TÍTULOS - EXTREMOS IZQUIERDO Y DERECHO */
+        /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
         .turno-container {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
+            display: table !important;
             width: 100% !important;
-            padding: 0 !important; /* Sin padding para usar todo el ancho */
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
         }
 
-        /* Turno en el extremo izquierdo como "TURNOS" */
+        /* Columna izquierda - Código del turno */
         .turno-numero {
+            display: table-cell !important;
+            width: 50% !important;
             text-align: left !important;
-            flex: 0 0 auto !important;
-            margin: 0 !important;
-            padding-left: 0.75rem !important; /* Padding igual al del título TURNOS */
+            padding-left: 0.75rem !important;
+            vertical-align: middle !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-            max-width: 50% !important;
+            white-space: nowrap !important;
         }
 
-        /* CAJA en el extremo derecho como "MODULOS" */
+        /* Columna derecha - CAJA */
         .turno-caja {
+            display: table-cell !important;
+            width: 50% !important;
             text-align: right !important;
-            flex: 0 0 auto !important;
-            margin: 0 !important;
-            padding-right: 0.75rem !important; /* Padding igual al del título MODULOS */
-            overflow: visible !important;
+            padding-right: 0.75rem !important;
+            vertical-align: middle !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
             white-space: nowrap !important;
-            max-width: 50% !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
