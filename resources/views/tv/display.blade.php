@@ -718,27 +718,27 @@
             margin-right: 0 !important;
         }
 
-        /* CSS FINAL - FLOAT A LA DERECHA */
-        .turno-caja {
-            float: right !important;
-            clear: right !important;
-            text-align: right !important;
-            margin-left: auto !important;
-            margin-right: 0 !important;
-        }
-
-        /* Asegurar que el contenedor permita float */
-        div[style*="justify-content: space-between"] {
-            overflow: hidden !important;
+        /* LAYOUT CORREGIDO - USAR FLEXBOX EN LUGAR DE FLOAT */
+        .turno-container {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            padding: 0 !important;
         }
 
         /* Número a la izquierda */
         .turno-numero {
-            float: left !important;
-            clear: left !important;
             text-align: left !important;
-            margin-left: 0 !important;
+            flex: 0 0 auto !important;
             margin-right: auto !important;
+        }
+
+        /* CAJA a la derecha */
+        .turno-caja {
+            text-align: right !important;
+            flex: 0 0 auto !important;
+            margin-left: auto !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1694,15 +1694,11 @@
                     placeholderElement.className = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
 
                     placeholderElement.innerHTML = `
-                        <div class="grid grid-cols-2 gap-4 items-center w-full">
-                            <div class="text-left flex items-center">
-                                <div class="turno-numero font-bold">----</div>
-                            </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="turno-caja font-semibold">CAJA -</div>
-                            </div>
-                        </div>
-                    `;
+                    <div class="turno-container">
+                        <div class="turno-numero font-bold">----</div>
+                        <div class="turno-caja font-semibold">CAJA -</div>
+                    </div>
+                `;
 
                     container.appendChild(placeholderElement);
                 }
@@ -1739,13 +1735,9 @@
                 turnoElement.innerHTML = `
                     <div class="relative">
                         ${estadoBadge}
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0;">
-                            <div style="text-align: left;">
-                                <div class="turno-numero font-bold">${turno.codigo_completo}</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
-                            </div>
+                        <div class="turno-container">
+                            <div class="turno-numero font-bold">${turno.codigo_completo}</div>
+                            <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                         </div>
                     </div>
                 `;
@@ -1762,13 +1754,9 @@
 
                 placeholderElement.innerHTML = `
                     <div class="relative">
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0;">
-                            <div style="text-align: left;">
-                                <div class="turno-numero font-bold">----</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div class="turno-caja font-semibold">CAJA -</div>
-                            </div>
+                        <div class="turno-container">
+                            <div class="turno-numero font-bold">----</div>
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
                 `;
