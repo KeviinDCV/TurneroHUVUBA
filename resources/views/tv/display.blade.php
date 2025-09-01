@@ -1738,7 +1738,7 @@
 
                 // Badge de estado fuera del contenedor relativo para mejor control
                 const estadoBadge = esAtendido ?
-                    '<div style="position: absolute; top: -8px; right: 8px; z-index: 10;"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
+                    '<div style="position: absolute; top: -16px; right: 8px; z-index: 10;"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
                     '';
 
                 turnoElement.innerHTML = `
