@@ -74,7 +74,7 @@
             <div class="absolute top-1/3 right-1/4 w-1 h-1 rounded-full opacity-20 animate-ping" style="background-color: #064b9e; animation-delay: 3s;"></div>
         </div>
 
-        <div class="relative bg-white rounded-3xl shadow-lg max-w-4xl w-full overflow-hidden transform transition-all duration-700 hover:shadow-xl hover:scale-[1.02] animate-fade-in" style="border: 2px solid rgba(6, 75, 158, 0.1);">
+        <div class="relative bg-white rounded-3xl shadow-lg max-w-4xl w-full overflow-hidden animate-fade-in" style="border: 2px solid rgba(6, 75, 158, 0.1);">
             <!-- Borde decorativo superior -->
             <div class="absolute top-0 left-1/4 right-1/4 h-1 rounded-b-full opacity-60" style="background: linear-gradient(90deg, transparent, #064b9e, transparent);"></div>
             <!-- Borde decorativo inferior -->

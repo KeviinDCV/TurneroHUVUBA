@@ -26,12 +26,18 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
                 box-shadow: none;
                 border: none;
                 font-size: 12px;
+                position: relative;
             }
             .logo-print {
                 height: 40px !important;
             }
             .turno-number {
                 font-size: 28px !important;
+            }
+            .qr-small {
+                position: absolute !important;
+                top: 5mm !important;
+                right: 5mm !important;
             }
         }
 
@@ -71,21 +77,11 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <!-- Ticket Container -->
-    <div class="ticket bg-white shadow-2xl p-6 text-center fade-in mx-auto">
+    <div class="ticket bg-white shadow-2xl p-6 text-center fade-in mx-auto relative">
         <!-- Logo -->
-        <div class="mb-3">
+        <div class="mb-4">
             <img src="{{ asset('images/logo.png') }}" alt="Logo Hospital" class="mx-auto h-12 w-auto logo-print">
         </div>
-
-        <!-- Hospital Info -->
-        <div class="mb-3 text-xs leading-tight">
-            <div class="font-bold text-gray-900">HOSPITAL UNIVERSITARIO</div>
-            <div class="font-bold text-gray-900">DEL VALLE</div>
-            <div class="text-gray-700 font-medium">"Evaristo García" E.S.E</div>
-        </div>
-
-        <!-- Separator -->
-        <div class="border-t border-dashed border-gray-500 my-3"></div>
 
         <!-- Turno Number -->
         <div class="mb-4">
@@ -119,35 +115,14 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
             <div>HORA: {{ $turno->fecha_creacion->format('H:i:s') }}</div>
         </div>
 
-        <!-- Separator -->
-        <div class="border-t border-dashed border-gray-500 my-3"></div>
 
-        <!-- Instructions -->
-        <div class="text-xs text-gray-700 mb-3 leading-tight">
-            <div class="font-bold mb-1">INSTRUCCIONES:</div>
-            <div>• Espere a ser llamado</div>
-            <div>• Mantenga este ticket</div>
-            <div>• Diríjase a la caja indicada</div>
+
+        <!-- QR Code - Small and Simple -->
+        <div class="absolute top-2 right-2 qr-small">
+            {!! QrCode::size(40)->generate(route('mobile.display', ['turno' => $turno->id])) !!}
         </div>
 
-        <!-- QR Code Section -->
-        <div class="mb-3">
-            <div class="border-t border-dashed border-gray-500 my-3"></div>
-            <div class="text-xs text-gray-600 mb-2 font-bold">SEGUIMIENTO EN TIEMPO REAL</div>
-            <div class="flex justify-center mb-2">
-                {!! QrCode::size(80)->generate(route('mobile.display', ['turno' => $turno->id])) !!}
-            </div>
-            <div class="text-xs text-gray-700 leading-tight">
-                <div class="font-medium">Escanee el código QR para</div>
-                <div>seguir su turno desde el móvil</div>
-            </div>
-        </div>
 
-        <!-- Footer -->
-        <div class="text-xs text-gray-600 border-t border-dashed border-gray-400 pt-2">
-            <div class="font-bold">TURNERO HUV</div>
-            <div>Sistema de Gestión de Turnos</div>
-        </div>
     </div>
 
     <!-- Action Buttons -->
