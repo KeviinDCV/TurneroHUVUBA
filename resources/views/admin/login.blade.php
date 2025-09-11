@@ -140,16 +140,30 @@
                                     required
                                 />
 
-                                <input
-                                    type="password"
-                                    name="password"
-                                    placeholder="Contraseña"
-                                    class="w-full h-12 rounded-full border-gray-300 px-4 shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 hover:shadow-md transform hover:scale-[1.02]"
-                                    style="--tw-ring-color: #064b9e; border-color: #d1d5db;"
-                                    onfocus="this.style.borderColor='#064b9e'; this.style.transform='scale(1.02)'"
-                                    onblur="this.style.borderColor='#d1d5db'; this.style.transform='scale(1)'"
-                                    required
-                                />
+                                <div class="relative">
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        id="password"
+                                        placeholder="Contraseña"
+                                        class="w-full h-12 rounded-full border-gray-300 px-4 pr-12 shadow-sm focus:outline-none focus:ring-2 transition-all duration-300 hover:shadow-md transform hover:scale-[1.02]"
+                                        style="--tw-ring-color: #064b9e; border-color: #d1d5db;"
+                                        onfocus="this.style.borderColor='#064b9e'; this.style.transform='scale(1.02)'"
+                                        onblur="this.style.borderColor='#d1d5db'; this.style.transform='scale(1)'"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        id="togglePassword"
+                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200 focus:outline-none"
+                                        onclick="togglePasswordVisibility()"
+                                    >
+                                        <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="flex justify-center">
@@ -185,6 +199,29 @@
             // Remover el event listener de AJAX y permitir envío normal del formulario
             // El formulario se enviará de manera tradicional sin interceptar con JavaScript
         });
+
+        // Función para mostrar/ocultar contraseña
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                // Cambiar icono a ojo tachado
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18"></path>
+                `;
+            } else {
+                passwordInput.type = 'password';
+                // Cambiar icono a ojo normal
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                `;
+            }
+        }
 
         // La verificación de autenticación se maneja en el servidor (AuthController::showLogin)
 
