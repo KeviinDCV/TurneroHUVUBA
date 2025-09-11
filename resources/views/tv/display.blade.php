@@ -1154,7 +1154,148 @@
         </div>
     </div>
 
+    <!-- Modal de Notificación de Nuevo Turno -->
+    <div id="turnoNotificationModal" class="fixed inset-0 hidden" style="z-index: 9999;">
+        <!-- Overlay con efecto de desenfoque -->
+        <div class="absolute inset-0 bg-black bg-opacity-80"></div>
+        
+        <!-- Contenido del Modal -->
+        <div class="relative flex items-center justify-center h-full p-8" style="z-index: 10000;">
+            <div class="hospital-building text-white rounded-lg enhanced-shadow p-16 max-w-4xl w-full mx-auto opacity-0 transform scale-90 transition-all duration-300" id="modalContent">
+                <!-- Información del Turno - Solo turno y caja -->
+                <div class="text-center">
+                    <div class="mb-8">
+                        <div class="text-8xl font-bold tracking-wider mb-4" id="modalTurnoNumero">A001</div>
+                    </div>
+                    <div class="border-t border-white border-opacity-30 pt-8">
+                        <div class="text-5xl font-bold" id="modalTurnoCaja">CAJA 1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // ===== SISTEMA DE MODAL DE NOTIFICACIÓN CON COLA =====
+        let modalVisible = false;
+        let modalTimeout = null;
+        let colaModales = []; // Cola de turnos pendientes de mostrar
+        let procesandoCola = false;
+
+        function mostrarModalTurno(turno) {
+            // Agregar turno a la cola
+            colaModales.push(turno);
+            console.log('🎯 Turno agregado a cola de modales:', turno.codigo_completo, '- Cola:', colaModales.length);
+            
+            // Procesar cola si no se está procesando ya
+            if (!procesandoCola) {
+                procesarColaModales();
+            }
+        }
+
+        function procesarColaModales() {
+            if (procesandoCola) {
+                console.log('🎯 Cola de modales ocupada, esperando...');
+                return;
+            }
+            if (colaModales.length === 0) {
+                console.log('🎯 Cola de modales vacía');
+                return;
+            }
+            
+            procesandoCola = true;
+            const turno = colaModales.shift(); // Tomar el primer turno de la cola
+            
+            console.log('🎯 Procesando modal para turno:', turno.codigo_completo, '- Quedan en cola:', colaModales.length);
+            console.log('🎯 Estado de la cola:', {procesandoCola, colaLength: colaModales.length, modalVisible});
+            
+            mostrarModalDirecto(turno);
+        }
+
+        function mostrarModalDirecto(turno) {
+            if (modalVisible) {
+                console.warn('🚨 Modal ya visible, reintentando...');
+                setTimeout(() => mostrarModalDirecto(turno), 100);
+                return;
+            }
+            
+            const modal = document.getElementById('turnoNotificationModal');
+            const modalContent = document.getElementById('modalContent');
+            const turnoNumero = document.getElementById('modalTurnoNumero');
+            const turnoCaja = document.getElementById('modalTurnoCaja');
+            
+            if (!modal || !modalContent || !turnoNumero || !turnoCaja) {
+                console.error('🚨 Elementos del modal no encontrados');
+                return;
+            }
+            
+            // Actualizar información del turno
+            turnoNumero.textContent = turno.codigo_completo;
+            turnoCaja.textContent = `CAJA ${turno.numero_caja}`;
+            
+            // Mostrar modal
+            modalVisible = true;
+            modal.classList.remove('hidden');
+            
+            // Animar entrada - usar requestAnimationFrame para mejor compatibilidad
+            requestAnimationFrame(() => {
+                modalContent.style.opacity = '1';
+                modalContent.style.transform = 'scale(1)';
+            });
+            
+            // Auto-cerrar después de 8 segundos - solo para captar atención
+            modalTimeout = setTimeout(() => {
+                cerrarModalTurno();
+            }, 8000);
+            
+            console.log('🎯 Modal de turno mostrado:', turno.codigo_completo);
+        }
+
+        function cerrarModalTurno() {
+            if (!modalVisible) return;
+            
+            const modal = document.getElementById('turnoNotificationModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            if (!modal || !modalContent) {
+                console.error('🚨 Elementos del modal no encontrados para cerrar');
+                procesandoCola = false; // Liberar la cola en caso de error
+                return;
+            }
+            
+            // Animar salida
+            modalContent.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.9)';
+            
+            // Ocultar modal después de la animación
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modalVisible = false;
+                // Resetear estilos para próxima vez
+                modalContent.style.opacity = '0';
+                modalContent.style.transform = 'scale(0.9)';
+                
+                // Marcar que terminamos de procesar este modal
+                procesandoCola = false;
+                
+                // Procesar siguiente modal en la cola si existe
+                if (colaModales.length > 0) {
+                    console.log('🎯 Continuando con siguiente modal en cola...');
+                    setTimeout(() => {
+                        procesarColaModales();
+                    }, 2000); // Pausa más larga entre modales para mejor separación visual
+                }
+            }, 300);
+            
+            // Limpiar timeout si existe
+            if (modalTimeout) {
+                clearTimeout(modalTimeout);
+                modalTimeout = null;
+            }
+            
+            console.log('🎯 Modal de turno cerrado');
+        }
+
         // ===== SISTEMA RESPONSIVE DINÁMICO =====
         function initializeResponsiveSystem() {
             // Función para ajustar el escalado dinámico basado en la resolución
@@ -1343,6 +1484,10 @@
 
             console.log('🔊 Iniciando reproducción de audio:', siguienteTurno.codigo_completo, '(Turnos restantes en cola:', colaAudio.length, ') 🛡️ Cola protegida');
 
+            // 🎯 MOSTRAR MODAL CUANDO COMIENZA EL LLAMADO REAL DEL TURNO
+            console.log('🎯 Mostrando modal al iniciar llamado de:', siguienteTurno.codigo_completo);
+            mostrarModalTurno(siguienteTurno);
+
             // Marcar como reproducido antes de empezar (solo para turnos reales, no repeticiones)
             if (!siguienteTurno.id.toString().startsWith('repetir_')) {
                 marcarTurnoReproducido(siguienteTurno.id);
@@ -1350,6 +1495,8 @@
 
             // Reproducir audio con callback al terminar
             playVoiceMessage(siguienteTurno, () => {
+                console.log('🎯 [DEBUG] Callback de procesarColaAudio ejecutado para:', siguienteTurno.codigo_completo);
+                
                 reproduciendoAudio = false;
                 window.ultimoInicioReproduccion = null; // Limpiar timestamp
 
@@ -1361,11 +1508,11 @@
                     console.log('✅ Audio completado:', siguienteTurno.codigo_completo, '(Turnos restantes en cola:', colaAudio.length, ') - Manteniendo protección');
                 }
 
-                // Procesar siguiente en la cola después de una pausa
+                // Procesar siguiente audio en la cola después de una pausa
                 setTimeout(() => {
                     console.log('⏰ Timeout completado, procesando siguiente turno...');
                     procesarColaAudio();
-                }, 1000); // Pausa de 1 segundo entre turnos
+                }, 1000); // Pausa de 1 segundo entre turnos de audio
             });
         }
 
@@ -1606,6 +1753,8 @@
                             if (!yaEnCola) {
                                 colaAudio.push(turno);
                                 console.log('🎵 Turno agregado a cola de audio:', turno.codigo_completo, '(Cola actual:', colaAudio.length, 'turnos)');
+                                
+                                // El modal se mostrará cuando comience el llamado real, no al entrar a la cola
                             } else {
                                 console.log('⚠️ Turno ya está en cola de audio:', turno.codigo_completo);
                             }
@@ -1732,6 +1881,9 @@
                 if (i === 0 && !yaAnimado && !esAtendido) {
                     clases += ' new-turn';
                     sessionStorage.setItem('turno_animado_' + turno.id, 'true');
+                    
+                    // NOTA: El modal ahora se muestra después de completar el audio del turno
+                    // Ver función playVoiceMessage para la implementación
                 }
 
                 turnoElement.className = clases;
@@ -1799,6 +1951,7 @@
             // Almacenar como último turno llamado para repetición manual
             ultimoTurnoLlamado = turno;
 
+            console.log('🔊 [DEBUG] playVoiceMessage iniciada para:', codigoCompleto);
             console.log('🔊 Procesando turno:', turno);
 
             // Separar el código del servicio y el número del turno
@@ -1830,8 +1983,11 @@
 
             // Reproducir la secuencia 2 veces automáticamente
             console.log('🔊 Iniciando playAudioSequenceWithRepeat para:', codigoCompleto);
-            playAudioSequenceWithRepeat(audioSequence, 2, () => {
+            playAudioSequenceWithRepeat(audioSequence, 2, turno, () => {
                 console.log('🔊 playVoiceMessage completado para:', codigoCompleto);
+                
+                // El modal se muestra entre repeticiones en playAudioSequenceWithRepeat
+                
                 if (onComplete) {
                     onComplete();
                 }
@@ -2263,7 +2419,7 @@
         }
 
         // Función para reproducir secuencia de audio con repeticiones automáticas
-        function playAudioSequenceWithRepeat(audioSequence, repeticiones = 2, onComplete = null) {
+        function playAudioSequenceWithRepeat(audioSequence, repeticiones = 2, turnoData = null, onComplete = null) {
             let repeticionActual = 0;
             let timeoutId = null;
             const turnoId = audioSequence.length > 0 ? audioSequence[0].split('/').pop() : 'desconocido';
@@ -2291,10 +2447,13 @@
                     }
 
                     console.log(`✅ Repetición ${repeticionActual} completada para ${turnoId}`);
-
+                    
                     if (repeticionActual < repeticiones) {
                         // Pausa de 1 segundo entre repeticiones
                         console.log(`⏰ Pausa de 1 segundo antes de repetición ${repeticionActual + 1} para ${turnoId}`);
+                        
+                        // Ya no manejamos el modal aquí - se maneja al detectar el turno
+                        
                         setTimeout(() => {
                             reproducirConRepeticion();
                         }, 1000);
