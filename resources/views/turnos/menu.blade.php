@@ -27,7 +27,7 @@
         }
 
         .animate-slide-in {
-            animation: slide-in 0.6s ease-out;
+            animation: slide-in 0.3s ease-out;
         }
 
         .animate-float {
@@ -37,7 +37,7 @@
         .btn-service {
             background: linear-gradient(135deg, #064b9e 0%, #0a5fb4 100%);
             border: 2px solid #053a7a;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
         }
 
         .btn-service:hover {
@@ -80,7 +80,7 @@
             @else
                 onclick="window.location.href='{{ route('turnos.inicio') }}'"
             @endif
-            class="btn-volver text-white px-6 py-2 rounded-md font-medium flex items-center transition-all duration-300"
+            class="btn-volver text-white px-6 py-2 rounded-md font-medium flex items-center transition-all duration-150"
         >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -98,7 +98,7 @@
     <!-- Main navigation buttons -->
     <div class="flex flex-col items-center justify-center space-y-6 max-w-2xl mx-auto mt-16">
         <!-- Título del menú -->
-        <div class="text-center mb-8 animate-slide-in" style="animation-delay: 0.2s; animation-fill-mode: both;">
+        <div class="text-center mb-8 animate-slide-in" style="animation-delay: 0.05s; animation-fill-mode: both;">
             @if(isset($mostrandoSubservicios) && $mostrandoSubservicios)
                 <h1 class="text-3xl font-bold mb-2" style="color: #064b9e;">{{ $servicioSeleccionado->nombre }}</h1>
                 <p class="text-lg text-gray-600 mb-4">Seleccione el subservicio</p>
@@ -114,29 +114,26 @@
             @forelse($subservicios as $index => $subservicio)
                 <button
                     class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
-                    style="animation-delay: {{ 0.4 + ($index * 0.2) }}s; animation-fill-mode: both;"
+                    style="animation-delay: {{ 0.1 + ($index * 0.05) }}s; animation-fill-mode: both;"
                     onclick="seleccionarSubservicio({{ $subservicio->id }}, '{{ addslashes($subservicio->nombre) }}')"
                 >
                     {{ strtoupper($subservicio->nombre) }}
                 </button>
             @empty
-                <div class="text-center text-gray-600 py-8">
-                    <p class="text-lg">Este servicio no tiene subservicios disponibles</p>
-                    <button
-                        class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in mt-4"
-                        style="animation-delay: 0.4s; animation-fill-mode: both;"
-                        onclick="seleccionarServicio({{ $servicioSeleccionado->id }}, '{{ addslashes($servicioSeleccionado->nombre) }}')"
-                    >
-                        SOLICITAR TURNO PARA {{ strtoupper($servicioSeleccionado->nombre) }}
-                    </button>
-                </div>
+                <button
+                    class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
+                    style="animation-delay: 0.1s; animation-fill-mode: both;"
+                    onclick="seleccionarServicio({{ $servicioSeleccionado->id }}, '{{ addslashes($servicioSeleccionado->nombre) }}')"
+                >
+                    {{ strtoupper($servicioSeleccionado->nombre) }}
+                </button>
             @endforelse
         @else
             <!-- Mostrar servicios principales -->
             @forelse($servicios as $index => $servicio)
                 <button
                     class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
-                    style="animation-delay: {{ 0.4 + ($index * 0.2) }}s; animation-fill-mode: both;"
+                    style="animation-delay: {{ 0.1 + ($index * 0.05) }}s; animation-fill-mode: both;"
                     onclick="navegarASubservicios({{ $servicio->id }})"
                 >
                     {{ strtoupper($servicio->nombre) }}
@@ -150,7 +147,7 @@
     </div>
 
     <!-- Instrucciones -->
-    <div class="absolute bottom-16 left-0 right-0 text-center animate-slide-in" style="animation-delay: 1.2s; animation-fill-mode: both;">
+    <div class="absolute bottom-16 left-0 right-0 text-center animate-slide-in" style="animation-delay: 0.3s; animation-fill-mode: both;">
         <p class="text-lg text-gray-600">
             Toque el servicio que necesita
         </p>
