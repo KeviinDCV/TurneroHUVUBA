@@ -14,6 +14,7 @@ class Servicio extends Model
         'estado',
         'codigo',
         'orden',
+        'prioridad',
         'ocultar_turno'
     ];
 
@@ -21,6 +22,7 @@ class Servicio extends Model
         'nivel' => 'string',
         'estado' => 'string',
         'orden' => 'integer',
+        'prioridad' => 'integer',
         'ocultar_turno' => 'boolean',
     ];
 

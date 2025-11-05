@@ -84,6 +84,19 @@
                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                                 <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
                                             </div>
+
+                                            <div>
+                                                <label for="prioridad" class="block text-sm font-medium text-gray-700 mb-1">Prioridad *</label>
+                                                <select id="prioridad" name="prioridad" required
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                    <option value="1">1 - Muy Baja</option>
+                                                    <option value="2">2 - Baja</option>
+                                                    <option value="3" selected>3 - Media</option>
+                                                    <option value="4">4 - Alta</option>
+                                                    <option value="5">5 - Muy Alta</option>
+                                                </select>
+                                                <p class="text-xs text-gray-500 mt-1">Nivel de prioridad para el llamado de turnos (1=menor, 5=mayor).</p>
+                                            </div>
                                         </div>
 
                                         <div class="mt-4">
@@ -306,6 +319,7 @@
                 servicio_padre_id: '',
                 estado: 'activo',
                 orden: '',
+                prioridad: 3,
                 descripcion: '',
                 ocultar_turno: false
             },
@@ -325,6 +339,7 @@
                     servicio_padre_id: '',
                     estado: 'activo',
                     orden: '',
+                    prioridad: 3,
                     descripcion: '',
                     ocultar_turno: false
                 };
@@ -417,6 +432,19 @@
                                    x-model="editingServicio.orden"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                             <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
+                        </div>
+
+                        <div>
+                            <label for="edit_prioridad" class="block text-sm font-medium text-gray-700 mb-1">Prioridad *</label>
+                            <select id="edit_prioridad" name="prioridad" required x-model="editingServicio.prioridad"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                <option value="1">1 - Muy Baja</option>
+                                <option value="2">2 - Baja</option>
+                                <option value="3">3 - Media</option>
+                                <option value="4">4 - Alta</option>
+                                <option value="5">5 - Muy Alta</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Nivel de prioridad para el llamado de turnos (1=menor, 5=mayor).</p>
                         </div>
                     </div>
 

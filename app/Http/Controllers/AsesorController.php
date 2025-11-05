@@ -368,6 +368,7 @@ class AsesorController extends Controller
         // Determinar si es un servicio padre con subservicios
         $esServicioPadre = $servicio->subservicios->isNotEmpty();
 
+        // Obtener IDs de servicios a consultar
         if ($esServicioPadre) {
             // Si es servicio padre, obtener todos los IDs de servicios hijos asignados al asesor
             // Excluir servicios con ocultar_turno = true
@@ -384,53 +385,13 @@ class AsesorController extends Controller
             if (!$servicio->ocultar_turno) {
                 $serviciosIds = array_merge([$servicioId], $serviciosHijosIds);
             }
-
-            // Obtener todos los servicios que se van a consultar para priorizar por nombre
-            $todosLosServicios = Servicio::whereIn('id', $serviciosIds)->get();
-
-            // 1. Primero intentar obtener turnos de "Citas Funcionarios"
-            $funcionariosIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'funcionario') !== false;
-            })->pluck('id')->toArray();
-
-            if (!empty($funcionariosIds)) {
-                $turno = $this->buscarTurnoEnServicios($funcionariosIds);
-                if ($turno) {
-                    return $this->responderConTurno($turno, $cajaId, $user->id);
-                }
-            }
-
-            // 2. Luego intentar obtener turnos de "Citas prioritarias"
-            $prioritariasIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'prioritaria') !== false;
-            })->pluck('id')->toArray();
-
-            if (!empty($prioritariasIds)) {
-                $turno = $this->buscarTurnoEnServicios($prioritariasIds);
-                if ($turno) {
-                    return $this->responderConTurno($turno, $cajaId, $user->id);
-                }
-            }
-
-            // 3. Finalmente intentar con el resto de servicios
-            $otrosIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'funcionario') === false &&
-                       stripos($s->nombre, 'prioritaria') === false;
-            })->pluck('id')->toArray();
-
-            if (!empty($otrosIds)) {
-                $turno = $this->buscarTurnoEnServicios($otrosIds);
-                if ($turno) {
-                    return $this->responderConTurno($turno, $cajaId, $user->id);
-                }
-            }
-
-            // Si hemos llegado aquí, buscar en cualquier servicio (incluso en los que no coinciden con los filtros)
-            $turno = $this->buscarTurnoEnServicios($serviciosIds);
         } else {
-            // Si es un servicio regular, buscar turnos en ese servicio
-            $turno = $this->buscarTurnoEnServicios([$servicioId]);
+            // Si es un servicio regular, solo buscar en ese servicio
+            $serviciosIds = [$servicioId];
         }
+
+        // Buscar turno usando lógica de ratio fijo por prioridad
+        $turno = $this->buscarTurnoConRatioFijo($serviciosIds, $user->id);
 
         if (!$turno) {
             return response()->json([
@@ -443,39 +404,104 @@ class AsesorController extends Controller
     }
 
     /**
-     * Método auxiliar para buscar un turno en servicios específicos
-     * con priorización (primero prioritaria, luego normal)
+     * Método para buscar turno con lógica de ratio fijo por prioridad
+     * Ratio: Por cada 3 turnos de una prioridad, 1 de la prioridad inmediata inferior
      *
      * @param array $serviciosIds IDs de servicios donde buscar
+     * @param int $asesorId ID del asesor
      * @return Turno|null El turno encontrado o null
      */
-    private function buscarTurnoEnServicios($serviciosIds)
+    private function buscarTurnoConRatioFijo($serviciosIds, $asesorId)
     {
         if (empty($serviciosIds)) {
             return null;
         }
 
-        // Primero intentar encontrar turnos prioritarios
-        $turno = Turno::whereIn('servicio_id', $serviciosIds)
-            ->whereIn('estado', ['pendiente', 'aplazado'])
-            ->where('prioridad', 'prioritaria')
-            ->delDia()
-            ->orderBy('estado', 'asc') // Pendientes primero (orden alfabético: aplazado < pendiente)
-            ->orderBy('numero', 'asc')
-            ->first();
+        // Obtener contadores de sesión para este asesor
+        $sessionKey = 'prioridad_contador_' . $asesorId;
+        $contadores = session($sessionKey, [
+            5 => 0, // Contador de turnos llamados de prioridad 5
+            4 => 0,
+            3 => 0,
+            2 => 0,
+            1 => 0
+        ]);
 
-        // Si no hay prioritarios, buscar normales
+        // Determinar qué prioridad buscar según el ratio 3:1
+        $prioridadBuscada = $this->determinarPrioridadSegunRatio($contadores);
+
+        // Buscar turno de la prioridad determinada
+        $turno = $this->buscarTurnoPorPrioridad($serviciosIds, $prioridadBuscada);
+
+        // Si no hay turno de esa prioridad, buscar de la más alta disponible
         if (!$turno) {
-            $turno = Turno::whereIn('servicio_id', $serviciosIds)
-                ->whereIn('estado', ['pendiente', 'aplazado'])
-                ->where('prioridad', 'normal')
-                ->delDia()
-                ->orderBy('estado', 'asc')
-                ->orderBy('numero', 'asc')
-                ->first();
+            for ($prioridad = 5; $prioridad >= 1; $prioridad--) {
+                $turno = $this->buscarTurnoPorPrioridad($serviciosIds, $prioridad);
+                if ($turno) {
+                    $prioridadBuscada = $prioridad;
+                    break;
+                }
+            }
+        }
+
+        // Si encontramos turno, actualizar contadores
+        if ($turno) {
+            $contadores[$prioridadBuscada]++;
+            session([$sessionKey => $contadores]);
         }
 
         return $turno;
+    }
+
+    /**
+     * Determinar qué prioridad buscar según los contadores y el ratio 3:1
+     *
+     * @param array $contadores Contadores actuales
+     * @return int Prioridad a buscar (1-5)
+     */
+    private function determinarPrioridadSegunRatio($contadores)
+    {
+        // Lógica de ratio 3:1 descendente
+        // Si se han llamado 3 turnos de prioridad 5, buscar 1 de prioridad 4
+        if ($contadores[5] >= 3 && $contadores[5] % 4 == 3) {
+            return 4;
+        }
+
+        // Si se han llamado 3 turnos de prioridad 4, buscar 1 de prioridad 3
+        if ($contadores[4] >= 3 && $contadores[4] % 4 == 3) {
+            return 3;
+        }
+
+        // Si se han llamado 3 turnos de prioridad 3, buscar 1 de prioridad 2
+        if ($contadores[3] >= 3 && $contadores[3] % 4 == 3) {
+            return 2;
+        }
+
+        // Si se han llamado 3 turnos de prioridad 2, buscar 1 de prioridad 1
+        if ($contadores[2] >= 3 && $contadores[2] % 4 == 3) {
+            return 1;
+        }
+
+        // Por defecto, buscar de la prioridad más alta (5)
+        return 5;
+    }
+
+    /**
+     * Buscar un turno de una prioridad específica
+     *
+     * @param array $serviciosIds IDs de servicios donde buscar
+     * @param int $prioridad Prioridad a buscar (1-5)
+     * @return Turno|null El turno encontrado o null
+     */
+    private function buscarTurnoPorPrioridad($serviciosIds, $prioridad)
+    {
+        return Turno::whereIn('servicio_id', $serviciosIds)
+            ->whereIn('estado', ['pendiente', 'aplazado'])
+            ->where('prioridad', $prioridad)
+            ->delDia()
+            ->orderBy('estado', 'asc') // Pendientes primero
+            ->orderBy('numero', 'asc')
+            ->first();
     }
 
     /**
