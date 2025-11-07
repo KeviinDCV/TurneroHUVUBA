@@ -1017,7 +1017,7 @@
         <div class="grid grid-cols-6 responsive-header responsive-container">
             <!-- Left Header - Apoyo Diagnostico y Hora -->
             <div class="bg-hospital-blue-light p-4 flex flex-col justify-center col-span-2">
-                <h1 class="text-4xl font-bold text-hospital-blue leading-tight mb-2">Apoyo Diagnóstico</h1>
+                <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-2">UBA</h1>
                 <!-- Hora de Colombia (UTC-5) -->
                 <p class="text-2xl text-hospital-blue font-semibold" id="current-time">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
             </div>

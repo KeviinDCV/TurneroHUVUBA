@@ -55,7 +55,7 @@ class Turno extends Model
         'fecha_llamado' => 'datetime',
         'fecha_atencion' => 'datetime',
         'estado' => 'string',
-        'prioridad' => 'integer',
+        'prioridad' => 'string',
     ];
 
     // Relaciones
@@ -100,9 +100,14 @@ class Turno extends Model
         return $query->where('estado', 'aplazado');
     }
 
-    public function scopePorPrioridad($query, $prioridad)
+    public function scopePrioritarios($query)
     {
-        return $query->where('prioridad', $prioridad);
+        return $query->where('prioridad', 'prioritaria');
+    }
+
+    public function scopeNormales($query)
+    {
+        return $query->where('prioridad', 'normal');
     }
 
     public function scopeDelDia($query, $fecha = null)
@@ -149,7 +154,7 @@ class Turno extends Model
 
     public function esPrioritario()
     {
-        return $this->prioridad >= 4; // Prioridad 4 o 5 se considera alta
+        return $this->prioridad === 'prioritaria';
     }
 
     public function marcarComoLlamado($cajaId = null, $asesorId = null)
@@ -270,7 +275,7 @@ class Turno extends Model
     }
 
     // Método estático para crear un nuevo turno
-    public static function crear($servicioId, $prioridad = null)
+    public static function crear($servicioId, $prioridad = 'normal')
     {
         $servicio = Servicio::find($servicioId);
         if (!$servicio) {
@@ -278,11 +283,6 @@ class Turno extends Model
         }
 
         $numero = static::siguienteNumero($servicioId);
-
-        // Heredar prioridad del servicio si no se especifica
-        if ($prioridad === null) {
-            $prioridad = $servicio->prioridad ?? 3;
-        }
 
         return static::create([
             'codigo' => $servicio->codigo,
