@@ -45,8 +45,13 @@ class MultimediaController extends Controller
             // Generar nombre único para el archivo
             $nombreArchivo = Str::uuid() . '.' . $extension;
 
-            // Guardar archivo en storage/app/public/multimedia
-            $rutaArchivo = $archivo->storeAs('multimedia', $nombreArchivo, 'public');
+            // Guardar archivo directamente en public/storage/multimedia
+            $destinoPath = public_path('storage/multimedia');
+            if (!file_exists($destinoPath)) {
+                mkdir($destinoPath, 0755, true);
+            }
+            $archivo->move($destinoPath, $nombreArchivo);
+            $rutaArchivo = 'multimedia/' . $nombreArchivo;
 
             // Crear registro en base de datos
             $multimedia = Multimedia::create([

@@ -368,9 +368,10 @@ class TvConfigController extends Controller
         try {
             $multimedia = Multimedia::findOrFail($id);
 
-            // Eliminar archivo del storage
-            if (Storage::disk('public')->exists($multimedia->archivo)) {
-                Storage::disk('public')->delete($multimedia->archivo);
+            // Eliminar archivo físico de public/storage
+            $rutaArchivo = public_path('storage/' . $multimedia->archivo);
+            if (file_exists($rutaArchivo)) {
+                unlink($rutaArchivo);
             }
 
             // Eliminar registro de la base de datos
