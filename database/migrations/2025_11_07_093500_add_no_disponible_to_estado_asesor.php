@@ -12,8 +12,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Modificar el ENUM para agregar 'no_disponible'
-        DB::statement("ALTER TABLE users MODIFY COLUMN estado_asesor ENUM('disponible', 'ocupado', 'descanso', 'no_disponible') DEFAULT 'disponible'");
+        // Verificar si la columna ya tiene el valor 'no_disponible'
+        $result = DB::select("SHOW COLUMNS FROM users LIKE 'estado_asesor'");
+        
+        if (!empty($result)) {
+            $type = $result[0]->Type;
+            
+            // Solo modificar si no incluye 'no_disponible'
+            if (strpos($type, 'no_disponible') === false) {
+                DB::statement("ALTER TABLE users MODIFY COLUMN estado_asesor ENUM('disponible', 'ocupado', 'descanso', 'no_disponible') DEFAULT 'disponible'");
+            }
+        }
     }
 
     /**
