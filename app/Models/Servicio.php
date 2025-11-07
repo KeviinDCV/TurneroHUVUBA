@@ -14,7 +14,8 @@ class Servicio extends Model
         'estado',
         'codigo',
         'orden',
-        'ocultar_turno'
+        'ocultar_turno',
+        'requiere_priorizacion'
     ];
 
     protected $casts = [
@@ -22,6 +23,7 @@ class Servicio extends Model
         'estado' => 'string',
         'orden' => 'integer',
         'ocultar_turno' => 'boolean',
+        'requiere_priorizacion' => 'boolean',
     ];
 
     // Relación: Un servicio puede tener muchos subservicios

@@ -159,6 +159,11 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::get('/api/graficos/historial/estadisticas-generales', [GraficosController::class, 'historialEstadisticasGenerales'])->name('api.graficos.historial.estadisticas-generales');
     Route::get('/api/graficos/historial/patrones-dia-semana', [GraficosController::class, 'historialPatronesDiaSemana'])->name('api.graficos.historial.patrones-dia-semana');
     Route::get('/api/graficos/historial/eficiencia-servicios', [GraficosController::class, 'historialEficienciaServicios'])->name('api.graficos.historial.eficiencia-servicios');
+    
+    // APIs para canales no presenciales
+    Route::get('/api/graficos/canales-no-presenciales/tiempo-por-asesor', [GraficosController::class, 'tiempoCanalesNoPresenciales'])->name('api.graficos.canales.tiempo-por-asesor');
+    Route::get('/api/graficos/canales-no-presenciales/distribucion', [GraficosController::class, 'distribucionActividadesCanales'])->name('api.graficos.canales.distribucion');
+    Route::get('/api/graficos/canales-no-presenciales/estadisticas', [GraficosController::class, 'estadisticasCanalesNoPresenciales'])->name('api.graficos.canales.estadisticas');
 
     // Rutas para reportes
     Route::get('/reportes', [ReportesController::class, 'index'])->name('admin.reportes');
@@ -200,6 +205,10 @@ Route::middleware(['auth', 'asesor.role', 'update.user.activity', 'clean.expired
 
     // API para obtener estadísticas de servicios para el asesor (actualización en tiempo real)
     Route::get('/api/asesor/servicios-estadisticas', [AsesorController::class, 'getServiciosEstadisticas'])->name('api.asesor.servicios-estadisticas');
+    
+    // Rutas para canal no presencial
+    Route::post('/asesor/iniciar-canal-no-presencial', [AsesorController::class, 'iniciarCanalNoPresencial'])->name('asesor.iniciar-canal-no-presencial');
+    Route::post('/asesor/finalizar-canal-no-presencial', [AsesorController::class, 'finalizarCanalNoPresencial'])->name('asesor.finalizar-canal-no-presencial');
 });
 
 // Ruta de prueba para verificar autenticación
@@ -218,6 +227,7 @@ Route::get('/test-auth', function () {
 Route::get('/turnos', [TurnoController::class, 'inicio'])->name('turnos.inicio');
 Route::get('/turnos/menu', [TurnoController::class, 'menu'])->name('turnos.menu');
 Route::post('/turnos/seleccionar', [TurnoController::class, 'seleccionarServicio'])->name('turnos.seleccionar');
+Route::post('/turnos/crear-con-prioridad', [TurnoController::class, 'crearTurnoConPrioridad'])->name('turnos.crear-con-prioridad');
 Route::get('/turnos/ticket/{turno}', [TurnoController::class, 'mostrarTicket'])->name('turnos.ticket');
 
 // Ruta para el televisor - visualizador de turnos

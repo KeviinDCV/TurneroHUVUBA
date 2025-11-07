@@ -470,4 +470,93 @@ class GraficosController extends Controller
             'eficiencia' => $datos->pluck('eficiencia')
         ]);
     }
+
+    /**
+     * API: Tiempo en canales no presenciales por asesor
+     */
+    public function tiempoCanalesNoPresenciales(Request $request)
+    {
+        $fechaInicio = $request->get('fecha_inicio', Carbon::now()->subDays(7)->format('Y-m-d'));
+        $fechaFin = $request->get('fecha_fin', Carbon::now()->format('Y-m-d'));
+
+        $datos = \App\Models\CanalNoPresencialHistorial::select(
+                'users.nombre_completo as asesor',
+                DB::raw('SUM(duracion_minutos) as total_minutos'),
+                DB::raw('COUNT(*) as total_actividades')
+            )
+            ->join('users', 'canal_no_presencial_historial.user_id', '=', 'users.id')
+            ->whereBetween('canal_no_presencial_historial.inicio', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->groupBy('users.id', 'users.nombre_completo')
+            ->orderByDesc('total_minutos')
+            ->get();
+
+        return response()->json([
+            'labels' => $datos->pluck('asesor'),
+            'data' => $datos->pluck('total_minutos'),
+            'actividades' => $datos->pluck('total_actividades')
+        ]);
+    }
+
+    /**
+     * API: Distribución de actividades en canales no presenciales
+     */
+    public function distribucionActividadesCanales(Request $request)
+    {
+        $fechaInicio = $request->get('fecha_inicio', Carbon::now()->subDays(7)->format('Y-m-d'));
+        $fechaFin = $request->get('fecha_fin', Carbon::now()->format('Y-m-d'));
+
+        $datos = \App\Models\CanalNoPresencialHistorial::select(
+                DB::raw('DATE(inicio) as fecha'),
+                DB::raw('SUM(duracion_minutos) as total_minutos'),
+                DB::raw('COUNT(*) as cantidad')
+            )
+            ->whereBetween('inicio', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->groupBy('fecha')
+            ->orderBy('fecha')
+            ->get();
+
+        return response()->json([
+            'labels' => $datos->pluck('fecha')->map(function($fecha) {
+                return Carbon::parse($fecha)->format('d/m/Y');
+            }),
+            'data' => $datos->pluck('total_minutos'),
+            'cantidad' => $datos->pluck('cantidad')
+        ]);
+    }
+
+    /**
+     * API: Estadísticas generales de canales no presenciales
+     */
+    public function estadisticasCanalesNoPresenciales(Request $request)
+    {
+        $fechaInicio = $request->get('fecha_inicio', Carbon::now()->subDays(7)->format('Y-m-d'));
+        $fechaFin = $request->get('fecha_fin', Carbon::now()->format('Y-m-d'));
+
+        $totalActividades = \App\Models\CanalNoPresencialHistorial::whereBetween('inicio', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->count();
+
+        $totalMinutos = \App\Models\CanalNoPresencialHistorial::whereBetween('inicio', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->sum('duracion_minutos');
+
+        $promedioMinutos = $totalActividades > 0 ? round($totalMinutos / $totalActividades, 2) : 0;
+
+        $asesoresMasActivos = \App\Models\CanalNoPresencialHistorial::select(
+                'users.nombre_completo',
+                DB::raw('COUNT(*) as actividades'),
+                DB::raw('SUM(duracion_minutos) as minutos')
+            )
+            ->join('users', 'canal_no_presencial_historial.user_id', '=', 'users.id')
+            ->whereBetween('canal_no_presencial_historial.inicio', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->groupBy('users.id', 'users.nombre_completo')
+            ->orderByDesc('minutos')
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'total_actividades' => $totalActividades,
+            'total_horas' => round($totalMinutos / 60, 2),
+            'promedio_minutos' => $promedioMinutos,
+            'asesores_mas_activos' => $asesoresMasActivos
+        ]);
+    }
 }

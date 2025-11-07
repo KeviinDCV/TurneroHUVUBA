@@ -98,6 +98,17 @@
                                         </div>
 
                                         <div class="mt-4">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="requiere_priorizacion" name="requiere_priorizacion" value="1"
+                                                       class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
+                                                <label for="requiere_priorizacion" class="ml-2 block text-sm text-gray-700">
+                                                    Requiere priorización
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">Si está activado, se solicitará seleccionar prioridad (A-E) al generar turnos. Solo disponible para servicios sin subservicios.</p>
+                                        </div>
+
+                                        <div class="mt-4">
                                             <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                                             <textarea id="descripcion" name="descripcion" rows="3"
                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
@@ -307,7 +318,9 @@
                 estado: 'activo',
                 orden: '',
                 descripcion: '',
-                ocultar_turno: false
+                ocultar_turno: false,
+                requiere_priorizacion: false,
+                tiene_subservicios: false
             },
             init() {
                 this.$watch('showEditModal', value => {
@@ -326,7 +339,9 @@
                     estado: 'activo',
                     orden: '',
                     descripcion: '',
-                    ocultar_turno: false
+                    ocultar_turno: false,
+                    requiere_priorizacion: false,
+                    tiene_subservicios: false
                 };
             }
          }"
@@ -430,6 +445,31 @@
                             </label>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">Si está activado, los turnos de este servicio no se mostrarán en el TV ni se llamarán automáticamente.</p>
+                    </div>
+
+                    <div class="mt-4" x-show="!editingServicio.tiene_subservicios">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="edit_requiere_priorizacion" name="requiere_priorizacion" value="1"
+                                   x-bind:checked="editingServicio.requiere_priorizacion"
+                                   class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
+                            <label for="edit_requiere_priorizacion" class="ml-2 block text-sm text-gray-700">
+                                Requiere priorización
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Si está activado, se solicitará seleccionar prioridad (A-E) al generar turnos.</p>
+                    </div>
+
+                    <div class="mt-4" x-show="editingServicio.tiene_subservicios">
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <div class="flex">
+                                <svg class="h-5 w-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                <p class="text-xs text-yellow-800">
+                                    Este servicio tiene subservicios asociados. Solo los servicios sin subservicios pueden tener priorización. Configure la priorización en los subservicios individuales.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-4">

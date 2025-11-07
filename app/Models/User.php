@@ -30,6 +30,8 @@ class User extends Authenticatable
         'last_activity',
         'last_ip',
         'estado_asesor',
+        'actividad_canal_no_presencial',
+        'inicio_canal_no_presencial',
     ];
 
     /**
@@ -54,6 +56,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'last_activity' => 'datetime',
             'session_start' => 'datetime',
+            'inicio_canal_no_presencial' => 'datetime',
         ];
     }
 
@@ -298,5 +301,56 @@ class User extends Authenticatable
         } else {
             return $diferencia->i . 'm';
         }
+    }
+
+    /**
+     * Iniciar actividad en canal no presencial
+     */
+    public function iniciarCanalNoPresencial($actividad)
+    {
+        $this->update([
+            'actividad_canal_no_presencial' => $actividad,
+            'inicio_canal_no_presencial' => now(),
+            'estado_asesor' => 'no_disponible'
+        ]);
+    }
+
+    /**
+     * Finalizar actividad en canal no presencial
+     */
+    public function finalizarCanalNoPresencial()
+    {
+        $this->update([
+            'actividad_canal_no_presencial' => null,
+            'inicio_canal_no_presencial' => null,
+            'estado_asesor' => 'disponible'
+        ]);
+    }
+
+    /**
+     * Verificar si está en canal no presencial
+     */
+    public function estaEnCanalNoPresencial()
+    {
+        return !empty($this->actividad_canal_no_presencial);
+    }
+
+    /**
+     * Obtener estado formateado actualizado
+     */
+    public function getEstadoFormateadoActualizado()
+    {
+        if ($this->estaEnCanalNoPresencial()) {
+            return 'No disponible';
+        }
+
+        $estados = [
+            'disponible' => 'Disponible',
+            'ocupado' => 'Ocupado',
+            'descanso' => 'En Descanso',
+            'no_disponible' => 'No disponible'
+        ];
+
+        return $estados[$this->estado_asesor] ?? 'Disponible';
     }
 }

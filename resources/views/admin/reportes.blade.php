@@ -398,6 +398,16 @@ document.getElementById('reporteForm').addEventListener('submit', function(e) {
         return;
     }
 
+    // VALIDAR que al menos un usuario O servicio esté seleccionado
+    const usuariosSeleccionados = this.querySelectorAll('input[name="usuarios[]"]:checked').length;
+    const serviciosSeleccionados = this.querySelectorAll('input[name="servicios[]"]:checked').length;
+
+    if (usuariosSeleccionados === 0 && serviciosSeleccionados === 0) {
+        e.preventDefault();
+        mostrarNotificacion('Debe seleccionar al menos un usuario o un servicio para generar el reporte', 'error');
+        return;
+    }
+
     // Mostrar estado de carga
     submitBtn.innerHTML = `
         <svg class="animate-spin w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

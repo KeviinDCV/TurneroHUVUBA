@@ -19,6 +19,12 @@ class CheckAsesorRole
     {
         // Verificar que el usuario esté autenticado
         if (!Auth::check()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autenticado'
+                ], 401);
+            }
             return redirect()->route('admin.login')
                 ->with('error', 'Debes iniciar sesión para acceder a esta página.');
         }
@@ -27,6 +33,13 @@ class CheckAsesorRole
 
         // Verificar que el usuario sea asesor
         if (!$user->esAsesor()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para acceder a esta función'
+                ], 403);
+            }
+            
             // Si es administrador, redirigir a su dashboard
             if ($user->esAdministrador()) {
                 return redirect()->route('admin.dashboard')

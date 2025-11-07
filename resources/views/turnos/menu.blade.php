@@ -61,6 +61,48 @@
             transform: translateY(-1px);
             box-shadow: 0 5px 15px rgba(6, 75, 158, 0.3);
         }
+
+        /* Estilos para botones de prioridad */
+        .btn-prioridad-a {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .btn-prioridad-a:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .btn-prioridad-b {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        .btn-prioridad-b:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        }
+
+        .btn-prioridad-c {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .btn-prioridad-c:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        }
+
+        .btn-prioridad-d {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        }
+        .btn-prioridad-d:hover {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+        }
+
+        .btn-prioridad-e {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .btn-prioridad-e:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        /* Estilos para modal overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4">
@@ -131,10 +173,17 @@
         @else
             <!-- Mostrar servicios principales -->
             @forelse($servicios as $index => $servicio)
+                @php
+                    $tieneSubservicios = $servicio->subservicios()->where('estado', 'activo')->count() > 0;
+                @endphp
                 <button
                     class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
                     style="animation-delay: {{ 0.1 + ($index * 0.05) }}s; animation-fill-mode: both;"
-                    onclick="navegarASubservicios({{ $servicio->id }})"
+                    @if($tieneSubservicios)
+                        onclick="navegarASubservicios({{ $servicio->id }})"
+                    @else
+                        onclick="seleccionarServicio({{ $servicio->id }}, '{{ addslashes($servicio->nombre) }}')"
+                    @endif
                 >
                     {{ strtoupper($servicio->nombre) }}
                 </button>
@@ -160,9 +209,56 @@
         </p>
     </div>
 
+    <!-- Modal de selección de prioridad -->
+    <div id="prioridadModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh] animate-slide-in">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Seleccione la Prioridad</h3>
+                    <button onclick="cerrarPrioridadModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <p id="prioridadServicioNombre" class="text-sm text-gray-600 mb-6 text-center"></p>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                    <button onclick="seleccionarPrioridad('A')" class="btn-prioridad btn-prioridad-a h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <div class="text-4xl mb-1">A</div>
+                        <div class="text-xs font-normal">Baja</div>
+                    </button>
+                    <button onclick="seleccionarPrioridad('B')" class="btn-prioridad btn-prioridad-b h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <div class="text-4xl mb-1">B</div>
+                        <div class="text-xs font-normal">Normal</div>
+                    </button>
+                    <button onclick="seleccionarPrioridad('C')" class="btn-prioridad btn-prioridad-c h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <div class="text-4xl mb-1">C</div>
+                        <div class="text-xs font-normal">Media</div>
+                    </button>
+                    <button onclick="seleccionarPrioridad('D')" class="btn-prioridad btn-prioridad-d h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <div class="text-4xl mb-1">D</div>
+                        <div class="text-xs font-normal">Alta</div>
+                    </button>
+                    <button onclick="seleccionarPrioridad('E')" class="btn-prioridad btn-prioridad-e h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <div class="text-4xl mb-1">E</div>
+                        <div class="text-xs font-normal">Urgente</div>
+                    </button>
+                </div>
+                
+                <div class="flex justify-center mt-4">
+                    <button onclick="cerrarPrioridadModal()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de confirmación personalizado -->
-    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
-        <div class="bg-white rounded-lg p-6 max-w-md mx-4 animate-slide-in">
+    <div id="confirmModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 animate-slide-in">
             <div class="text-center">
                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
                     <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +267,7 @@
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Turno Solicitado</h3>
                 <p id="confirmMessage" class="text-sm text-gray-500 mb-4"></p>
-                <button onclick="cerrarModal()" class="btn-service px-4 py-2 text-white rounded-md">
+                <button onclick="cerrarModal()" class="btn-service px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity">
                     Aceptar
                 </button>
             </div>
@@ -181,6 +277,10 @@
     <script>
         // Configurar CSRF token para peticiones AJAX
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Variables para almacenar datos del servicio seleccionado
+        let servicioSeleccionadoId = null;
+        let servicioSeleccionadoNombre = '';
 
         // Función para navegar a subservicios
         function navegarASubservicios(servicioId) {
@@ -205,14 +305,21 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Redirigir al ticket del turno
-                    if (data.redirect_url) {
-                        window.location.href = data.redirect_url;
+                    // Verificar si requiere priorización
+                    if (data.requiere_priorizacion) {
+                        servicioSeleccionadoId = data.servicio_id;
+                        servicioSeleccionadoNombre = data.servicio_nombre;
+                        mostrarPrioridadModal(data.servicio_nombre);
                     } else {
-                        mostrarModal(data.message);
+                        // Redirigir al ticket del turno
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        } else {
+                            mostrarModal(data.message);
+                        }
                     }
                 } else {
-                    mostrarModal('Error al procesar la solicitud');
+                    mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
             })
             .catch(error => {
@@ -238,6 +345,67 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // Verificar si requiere priorización
+                    if (data.requiere_priorizacion) {
+                        servicioSeleccionadoId = data.servicio_id;
+                        servicioSeleccionadoNombre = data.servicio_nombre;
+                        mostrarPrioridadModal(data.servicio_nombre);
+                    } else {
+                        // Redirigir al ticket del turno
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        } else {
+                            mostrarModal(data.message);
+                        }
+                    }
+                } else {
+                    mostrarModal(data.message || 'Error al procesar la solicitud');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarModal('Error de conexión');
+            });
+        }
+
+        // Mostrar modal de selección de prioridad
+        function mostrarPrioridadModal(nombreServicio) {
+            document.getElementById('prioridadServicioNombre').textContent = `Servicio: ${nombreServicio}`;
+            document.getElementById('prioridadModal').style.display = 'flex';
+        }
+
+        // Cerrar modal de prioridad
+        function cerrarPrioridadModal() {
+            document.getElementById('prioridadModal').style.display = 'none';
+            servicioSeleccionadoId = null;
+            servicioSeleccionadoNombre = '';
+        }
+
+        // Seleccionar prioridad y crear turno
+        function seleccionarPrioridad(prioridad) {
+            if (navigator.vibrate) navigator.vibrate(30);
+            
+            if (!servicioSeleccionadoId) {
+                mostrarModal('Error: No hay servicio seleccionado');
+                return;
+            }
+
+            fetch('{{ route('turnos.crear-con-prioridad') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    servicio_id: servicioSeleccionadoId,
+                    prioridad: prioridad
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                cerrarPrioridadModal();
+                
+                if (data.success) {
                     // Redirigir al ticket del turno
                     if (data.redirect_url) {
                         window.location.href = data.redirect_url;
@@ -245,11 +413,12 @@
                         mostrarModal(data.message);
                     }
                 } else {
-                    mostrarModal('Error al procesar la solicitud');
+                    mostrarModal(data.message || 'Error al generar el turno');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                cerrarPrioridadModal();
                 mostrarModal('Error de conexión');
             });
         }

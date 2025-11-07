@@ -67,21 +67,32 @@ class TurnoController extends Controller
         $subservicioId = $request->get('subservicio_id');
 
         try {
-            // Determinar qué servicio usar para generar el turno
+            // Determinar qué servicio usar
             $servicioParaTurno = $subservicioId ? $subservicioId : $servicioId;
+            $servicio = Servicio::find($servicioParaTurno);
 
-            // Crear el turno
-            $turno = Turno::crear($servicioParaTurno);
-
-            // Obtener información del servicio para el mensaje
-            if ($subservicioId) {
-                $subservicio = Servicio::find($subservicioId);
-                $nombreServicio = $subservicio->nombre_completo;
-            } else {
-                $servicio = Servicio::find($servicioId);
-                $nombreServicio = $servicio->nombre;
+            if (!$servicio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Servicio no encontrado'
+                ]);
             }
 
+            // Verificar si el servicio requiere priorización
+            if ($servicio->requiere_priorizacion) {
+                // Retornar indicación de que debe mostrar selector de prioridad
+                return response()->json([
+                    'success' => true,
+                    'requiere_priorizacion' => true,
+                    'servicio_id' => $servicioParaTurno,
+                    'servicio_nombre' => $servicio->nombre_completo
+                ]);
+            }
+
+            // Si no requiere priorización, crear turno con prioridad por defecto
+            $turno = Turno::crear($servicioParaTurno, 3); // Prioridad C por defecto
+
+            $nombreServicio = $servicio->nombre_completo;
             $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio}";
 
             return response()->json([
@@ -92,6 +103,53 @@ class TurnoController extends Controller
                     'codigo_completo' => $turno->codigo_completo,
                     'servicio' => $nombreServicio,
                     'numero' => $turno->numero
+                ],
+                'redirect_url' => route('turnos.ticket', $turno->id)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar el turno: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Crear turno con prioridad seleccionada
+     */
+    public function crearTurnoConPrioridad(Request $request)
+    {
+        $request->validate([
+            'servicio_id' => 'required|exists:servicios,id',
+            'prioridad' => 'required|in:A,B,C,D,E'
+        ]);
+
+        try {
+            $servicioId = $request->servicio_id;
+            $prioridadLetra = $request->prioridad;
+
+            // Convertir letra a número
+            $prioridad = Turno::letraAPrioridad($prioridadLetra);
+
+            // Crear el turno
+            $turno = Turno::crear($servicioId, $prioridad);
+
+            // Obtener información del servicio para el mensaje
+            $servicio = Servicio::find($servicioId);
+            $nombreServicio = $servicio->nombre_completo;
+
+            $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio} - Prioridad {$prioridadLetra}";
+
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'turno' => [
+                    'id' => $turno->id,
+                    'codigo_completo' => $turno->codigo_completo,
+                    'servicio' => $nombreServicio,
+                    'numero' => $turno->numero,
+                    'prioridad' => $prioridadLetra
                 ],
                 'redirect_url' => route('turnos.ticket', $turno->id)
             ]);

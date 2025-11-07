@@ -54,6 +54,14 @@ class ReportesController extends Controller
         $usuarios = $request->usuarios ?? [];
         $servicios = $request->servicios ?? [];
 
+        // VALIDACIÓN: Debe haber al menos usuarios O servicios seleccionados
+        if (empty($usuarios) && empty($servicios)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos un usuario o un servicio para generar el reporte'
+            ], 422);
+        }
+
         // Construir consulta base
         $query = Turno::with(['servicio', 'asesor', 'caja'])
             ->whereBetween('fecha_creacion', [$fechaInicio, $fechaFin]);
@@ -97,16 +105,79 @@ class ReportesController extends Controller
                 'atendidos' => $grupo->where('estado', 'atendido')->count(),
                 'pendientes' => $grupo->whereIn('estado', ['pendiente', 'aplazado'])->count(),
                 'cancelados' => $grupo->where('estado', 'cancelado')->count(),
-                'tiempo_promedio' => $grupo->where('estado', 'atendido')->avg('duracion_atencion')
+                'tiempo_promedio' => round($grupo->where('estado', 'atendido')->avg('duracion_atencion'), 2),
+                'tiempo_total' => round($grupo->where('estado', 'atendido')->sum('duracion_atencion'), 2)
             ];
         });
 
-        // Estadísticas por asesor
-        $porAsesor = $turnos->whereNotNull('asesor_id')->groupBy('asesor.nombre_usuario')->map(function ($grupo) {
+        // Estadísticas DETALLADAS por asesor
+        $porAsesor = $turnos->whereNotNull('asesor_id')->groupBy('asesor_id')->map(function ($grupo) use ($fechaInicio, $fechaFin) {
+            $asesor = $grupo->first()->asesor;
+            $turnosAtendidos = $grupo->where('estado', 'atendido');
+            
+            // Obtener canales no presenciales del asesor
+            $canalesNoPresenciales = \App\Models\CanalNoPresencialHistorial::where('user_id', $asesor->id)
+                ->whereBetween('inicio', [$fechaInicio, $fechaFin])
+                ->orderBy('inicio')
+                ->get();
+            
+            $totalMinutosCanal = $canalesNoPresenciales->sum('duracion_minutos');
+            
+            // Calcular tiempo entre turnos
+            $turnosOrdenados = $grupo->where('estado', 'atendido')
+                ->sortBy('fecha_atencion')
+                ->values();
+            
+            $tiemposEntreTurnos = [];
+            for ($i = 1; $i < $turnosOrdenados->count(); $i++) {
+                $anterior = $turnosOrdenados[$i - 1];
+                $actual = $turnosOrdenados[$i];
+                
+                if ($anterior->fecha_finalizacion && $actual->fecha_llamado) {
+                    $minutos = Carbon::parse($anterior->fecha_finalizacion)
+                        ->diffInMinutes(Carbon::parse($actual->fecha_llamado));
+                    $tiemposEntreTurnos[] = $minutos;
+                }
+            }
+            
+            $tiempoPromedioEntreTurnos = count($tiemposEntreTurnos) > 0 
+                ? round(array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos), 2) 
+                : 0;
+
             return [
+                'nombre_completo' => $asesor->nombre_completo,
+                'nombre_usuario' => $asesor->nombre_usuario,
                 'total' => $grupo->count(),
-                'atendidos' => $grupo->where('estado', 'atendido')->count(),
-                'tiempo_promedio' => $grupo->where('estado', 'atendido')->avg('duracion_atencion')
+                'atendidos' => $turnosAtendidos->count(),
+                'pendientes' => $grupo->whereIn('estado', ['pendiente', 'aplazado'])->count(),
+                'aplazados' => $grupo->where('estado', 'aplazado')->count(),
+                'tiempo_promedio_atencion' => round($turnosAtendidos->avg('duracion_atencion'), 2),
+                'tiempo_total_atencion' => round($turnosAtendidos->sum('duracion_atencion'), 2),
+                'tiempo_promedio_entre_turnos' => $tiempoPromedioEntreTurnos,
+                // Canales no presenciales
+                'cantidad_actividades_canal' => $canalesNoPresenciales->count(),
+                'tiempo_total_canal_minutos' => $totalMinutosCanal,
+                'tiempo_total_canal_horas' => round($totalMinutosCanal / 60, 2),
+                'actividades_canal' => $canalesNoPresenciales->map(function($actividad) {
+                    return [
+                        'inicio' => $actividad->inicio->format('d/m/Y H:i:s'),
+                        'fin' => $actividad->fin ? $actividad->fin->format('d/m/Y H:i:s') : 'N/A',
+                        'duracion_minutos' => $actividad->duracion_minutos,
+                        'actividad' => $actividad->actividad
+                    ];
+                })->toArray(),
+                // Detalle de turnos
+                'turnos_detalle' => $turnosAtendidos->map(function($turno) {
+                    return [
+                        'codigo' => $turno->codigo_completo,
+                        'servicio' => $turno->servicio->nombre ?? 'N/A',
+                        'fecha_llamado' => $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A',
+                        'fecha_atencion' => $turno->fecha_atencion ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') : 'N/A',
+                        'fecha_finalizacion' => $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A',
+                        'duracion_atencion' => round($turno->duracion_atencion, 2),
+                        'caja' => $turno->caja->nombre ?? 'N/A'
+                    ];
+                })->toArray()
             ];
         });
 
@@ -128,7 +199,8 @@ class ReportesController extends Controller
                 'turnos_pendientes' => $turnosPendientes,
                 'turnos_cancelados' => $turnosCancelados,
                 'porcentaje_atencion' => $totalTurnos > 0 ? round(($turnosAtendidos / $totalTurnos) * 100, 2) : 0,
-                'tiempo_promedio_atencion' => $turnos->where('estado', 'atendido')->avg('duracion_atencion')
+                'tiempo_promedio_atencion' => round($turnos->where('estado', 'atendido')->avg('duracion_atencion'), 2),
+                'tiempo_total_atencion' => round($turnos->where('estado', 'atendido')->sum('duracion_atencion'), 2)
             ],
             'por_servicio' => $porServicio,
             'por_asesor' => $porAsesor,
@@ -154,6 +226,17 @@ class ReportesController extends Controller
 
         // Hoja 4: Estadísticas por asesor
         $this->crearHojaAsesores($spreadsheet, $estadisticas['por_asesor']);
+
+        // Hojas 5+: Detalle por cada asesor (turnos y canales no presenciales)
+        foreach ($estadisticas['por_asesor'] as $asesorId => $datosAsesor) {
+            // Hoja de turnos detallados
+            $this->crearHojaDetalleTurnosAsesor($spreadsheet, $datosAsesor);
+            
+            // Hoja de canales no presenciales (solo si tiene actividades)
+            if ($datosAsesor['cantidad_actividades_canal'] > 0) {
+                $this->crearHojaCanalesAsesor($spreadsheet, $datosAsesor);
+            }
+        }
 
         $filename = 'reporte_turnos_' . $fechaInicio->format('Y-m-d') . '_' . $fechaFin->format('Y-m-d') . '.xlsx';
 
@@ -737,20 +820,20 @@ class ReportesController extends Controller
         $sheet = $spreadsheet->createSheet();
         $sheet->setTitle('Por Asesor');
 
-        // Encabezados
-        $headers = [
-            'A1' => 'Asesor',
-            'B1' => 'Total Turnos',
-            'C1' => 'Turnos Atendidos',
-            'D1' => 'Tiempo Promedio (min)'
-        ];
-
-        foreach ($headers as $cell => $header) {
-            $sheet->setCellValue($cell, $header);
-        }
+        // Encabezados ampliados
+        $sheet->setCellValue('A1', 'Asesor');
+        $sheet->setCellValue('B1', 'Usuario');
+        $sheet->setCellValue('C1', 'Total Turnos');
+        $sheet->setCellValue('D1', 'Atendidos');
+        $sheet->setCellValue('E1', 'Aplazados');
+        $sheet->setCellValue('F1', 'Tiempo Prom. Atención (min)');
+        $sheet->setCellValue('G1', 'Tiempo Total Atención (min)');
+        $sheet->setCellValue('H1', 'Tiempo Entre Turnos (min)');
+        $sheet->setCellValue('I1', 'Actividades Canal');
+        $sheet->setCellValue('J1', 'Tiempo Canal (hrs)');
 
         // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:D1')->applyFromArray([
+        $sheet->getStyle('A1:J1')->applyFromArray([
             'font' => ['bold' => true],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
@@ -766,17 +849,23 @@ class ReportesController extends Controller
 
         // Datos
         $row = 2;
-        foreach ($porAsesor as $asesor => $datos) {
-            $sheet->setCellValue('A' . $row, $asesor);
-            $sheet->setCellValue('B' . $row, $datos['total']);
-            $sheet->setCellValue('C' . $row, $datos['atendidos']);
-            $sheet->setCellValue('D' . $row, $datos['tiempo_promedio'] ? round($datos['tiempo_promedio'] / 60, 2) : 'N/A');
+        foreach ($porAsesor as $asesorId => $datos) {
+            $sheet->setCellValue('A' . $row, $datos['nombre_completo']);
+            $sheet->setCellValue('B' . $row, $datos['nombre_usuario']);
+            $sheet->setCellValue('C' . $row, $datos['total']);
+            $sheet->setCellValue('D' . $row, $datos['atendidos']);
+            $sheet->setCellValue('E' . $row, $datos['aplazados']);
+            $sheet->setCellValue('F' . $row, $datos['tiempo_promedio_atencion']);
+            $sheet->setCellValue('G' . $row, $datos['tiempo_total_atencion']);
+            $sheet->setCellValue('H' . $row, $datos['tiempo_promedio_entre_turnos']);
+            $sheet->setCellValue('I' . $row, $datos['cantidad_actividades_canal']);
+            $sheet->setCellValue('J' . $row, $datos['tiempo_total_canal_horas']);
             $row++;
         }
 
         // Aplicar bordes
         if ($row > 2) {
-            $sheet->getStyle('A1:D' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:J' . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -786,8 +875,90 @@ class ReportesController extends Controller
         }
 
         // Ajustar ancho de columnas
-        foreach (range('A', 'D') as $column) {
+        foreach (range('A', 'J') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+    }
+
+    /**
+     * Crear hoja de detalle de turnos por asesor
+     */
+    private function crearHojaDetalleTurnosAsesor($spreadsheet, $datosAsesor)
+    {
+        $sheet = $spreadsheet->createSheet();
+        $nombreHoja = substr('Turnos_' . $datosAsesor['nombre_usuario'], 0, 31);
+        $sheet->setTitle($nombreHoja);
+
+        // Encabezados
+        $sheet->setCellValue('A1', 'Código');
+        $sheet->setCellValue('B1', 'Servicio');
+        $sheet->setCellValue('C1', 'Hora Llamado');
+        $sheet->setCellValue('D1', 'Hora Atención');
+        $sheet->setCellValue('E1', 'Hora Finalización');
+        $sheet->setCellValue('F1', 'Duración (min)');
+        $sheet->setCellValue('G1', 'Caja');
+
+        // Estilo encabezado
+        $sheet->getStyle('A1:G1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '064b9e']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        ]);
+
+        // Datos
+        $row = 2;
+        foreach ($datosAsesor['turnos_detalle'] as $turno) {
+            $sheet->setCellValue('A' . $row, $turno['codigo']);
+            $sheet->setCellValue('B' . $row, $turno['servicio']);
+            $sheet->setCellValue('C' . $row, $turno['fecha_llamado']);
+            $sheet->setCellValue('D' . $row, $turno['fecha_atencion']);
+            $sheet->setCellValue('E' . $row, $turno['fecha_finalizacion']);
+            $sheet->setCellValue('F' . $row, $turno['duracion_atencion']);
+            $sheet->setCellValue('G' . $row, $turno['caja']);
+            $row++;
+        }
+
+        // Ajustar columnas
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+    }
+
+    /**
+     * Crear hoja de canales no presenciales por asesor
+     */
+    private function crearHojaCanalesAsesor($spreadsheet, $datosAsesor)
+    {
+        $sheet = $spreadsheet->createSheet();
+        $nombreHoja = substr('Canal_' . $datosAsesor['nombre_usuario'], 0, 31);
+        $sheet->setTitle($nombreHoja);
+
+        // Encabezados
+        $sheet->setCellValue('A1', 'Inicio');
+        $sheet->setCellValue('B1', 'Fin');
+        $sheet->setCellValue('C1', 'Duración (min)');
+        $sheet->setCellValue('D1', 'Actividad Realizada');
+
+        // Estilo encabezado
+        $sheet->getStyle('A1:D1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'f59e0b']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        ]);
+
+        // Datos
+        $row = 2;
+        foreach ($datosAsesor['actividades_canal'] as $actividad) {
+            $sheet->setCellValue('A' . $row, $actividad['inicio']);
+            $sheet->setCellValue('B' . $row, $actividad['fin']);
+            $sheet->setCellValue('C' . $row, $actividad['duracion_minutos']);
+            $sheet->setCellValue('D' . $row, $actividad['actividad']);
+            $row++;
+        }
+
+        // Ajustar columnas
+        foreach (range('A', 'D') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
         }
     }
 }

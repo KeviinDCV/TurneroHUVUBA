@@ -30,16 +30,30 @@ class CleanExpiredBoxes
             $user->limpiarSession();
         }
 
-        // Limpiar cajas con sesiones expiradas (más de 15 minutos de inactividad)
-        Caja::whereNotNull('asesor_activo_id')
+        // Limpiar cajas asignadas a usuarios que están REALMENTE inactivos
+        // Verificamos la última actividad del usuario, no la fecha de asignación de la caja
+        $cajasAsignadas = Caja::whereNotNull('asesor_activo_id')
             ->whereNotNull('session_id')
-            ->where('fecha_asignacion', '<', now()->subMinutes(15))
-            ->update([
-                'asesor_activo_id' => null,
-                'session_id' => null,
-                'fecha_asignacion' => null,
-                'ip_asesor' => null
-            ]);
+            ->get();
+
+        foreach ($cajasAsignadas as $caja) {
+            $usuario = User::find($caja->asesor_activo_id);
+            
+            // Si el usuario no existe o su última actividad fue hace más de 30 minutos, liberar la caja
+            if (!$usuario || ($usuario->last_activity && $usuario->last_activity->lt(now()->subMinutes(30)))) {
+                $caja->update([
+                    'asesor_activo_id' => null,
+                    'session_id' => null,
+                    'fecha_asignacion' => null,
+                    'ip_asesor' => null
+                ]);
+                
+                // También limpiar la sesión del usuario si existe
+                if ($usuario) {
+                    $usuario->limpiarSession();
+                }
+            }
+        }
 
         return $next($request);
     }

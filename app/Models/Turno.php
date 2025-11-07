@@ -55,7 +55,7 @@ class Turno extends Model
         'fecha_llamado' => 'datetime',
         'fecha_atencion' => 'datetime',
         'estado' => 'string',
-        'prioridad' => 'string',
+        'prioridad' => 'integer',
     ];
 
     // Relaciones
@@ -100,14 +100,19 @@ class Turno extends Model
         return $query->where('estado', 'aplazado');
     }
 
-    public function scopePrioritarios($query)
+    public function scopePorPrioridad($query, $prioridad)
     {
-        return $query->where('prioridad', 'prioritaria');
+        return $query->where('prioridad', $prioridad);
     }
 
-    public function scopeNormales($query)
+    public function scopePrioridadAlta($query)
     {
-        return $query->where('prioridad', 'normal');
+        return $query->where('prioridad', '>=', 4); // D y E
+    }
+
+    public function scopePrioridadBaja($query)
+    {
+        return $query->where('prioridad', '<=', 2); // A y B
     }
 
     public function scopeDelDia($query, $fecha = null)
@@ -152,9 +157,29 @@ class Turno extends Model
         return $this->estado === 'aplazado';
     }
 
-    public function esPrioritario()
+    public function getPrioridadLetraAttribute()
     {
-        return $this->prioridad === 'prioritaria';
+        // Convertir número a letra (1=A, 2=B, 3=C, 4=D, 5=E)
+        $letras = ['', 'A', 'B', 'C', 'D', 'E'];
+        return $letras[$this->prioridad] ?? 'C';
+    }
+
+    public function getPrioridadColorAttribute()
+    {
+        // Colores para cada nivel de prioridad
+        $colores = [
+            1 => '#10b981', // A - Verde (baja)
+            2 => '#3b82f6', // B - Azul
+            3 => '#f59e0b', // C - Amarillo (media)
+            4 => '#f97316', // D - Naranja
+            5 => '#ef4444', // E - Rojo (alta)
+        ];
+        return $colores[$this->prioridad] ?? $colores[3];
+    }
+
+    public function esPrioridadAlta()
+    {
+        return $this->prioridad >= 4; // D o E
     }
 
     public function marcarComoLlamado($cajaId = null, $asesorId = null)
@@ -275,11 +300,16 @@ class Turno extends Model
     }
 
     // Método estático para crear un nuevo turno
-    public static function crear($servicioId, $prioridad = 'normal')
+    public static function crear($servicioId, $prioridad = 3)
     {
         $servicio = Servicio::find($servicioId);
         if (!$servicio) {
             throw new \Exception('Servicio no encontrado');
+        }
+
+        // Validar que la prioridad esté entre 1 y 5
+        if ($prioridad < 1 || $prioridad > 5) {
+            $prioridad = 3; // Por defecto C (media)
         }
 
         $numero = static::siguienteNumero($servicioId);
@@ -292,5 +322,18 @@ class Turno extends Model
             'fecha_creacion' => now(),
             'estado' => 'pendiente'
         ]);
+    }
+
+    // Método estático para convertir letra a número
+    public static function letraAPrioridad($letra)
+    {
+        $mapa = [
+            'A' => 1,
+            'B' => 2,
+            'C' => 3,
+            'D' => 4,
+            'E' => 5,
+        ];
+        return $mapa[strtoupper($letra)] ?? 3;
     }
 }

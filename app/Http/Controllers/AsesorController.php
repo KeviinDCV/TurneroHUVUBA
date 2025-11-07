@@ -321,6 +321,14 @@ class AsesorController extends Controller
             return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
         }
 
+        // Verificar que el asesor no esté en canal no presencial
+        if ($user->estaEnCanalNoPresencial()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No puede llamar turnos mientras está en canal no presencial'
+            ], 403);
+        }
+
         // VALIDACIÓN CRÍTICA: Verificar si el asesor ya tiene un turno en proceso
         $turnoEnProceso = Turno::where('asesor_id', $user->id)
             ->where('caja_id', $cajaId)
@@ -385,51 +393,11 @@ class AsesorController extends Controller
                 $serviciosIds = array_merge([$servicioId], $serviciosHijosIds);
             }
 
-            // Obtener todos los servicios que se van a consultar para priorizar por nombre
-            $todosLosServicios = Servicio::whereIn('id', $serviciosIds)->get();
-
-            // 1. Primero intentar obtener turnos de "Citas Funcionarios"
-            $funcionariosIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'funcionario') !== false;
-            })->pluck('id')->toArray();
-
-            if (!empty($funcionariosIds)) {
-                $turno = $this->buscarTurnoEnServicios($funcionariosIds);
-                if ($turno) {
-                    return $this->responderConTurno($turno, $cajaId, $user->id);
-                }
-            }
-
-            // 2. Luego intentar obtener turnos de "Citas prioritarias"
-            $prioritariasIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'prioritaria') !== false;
-            })->pluck('id')->toArray();
-
-            if (!empty($prioritariasIds)) {
-                $turno = $this->buscarTurnoEnServicios($prioritariasIds);
-                if ($turno) {
-                    return $this->responderConTurno($turno, $cajaId, $user->id);
-                }
-            }
-
-            // 3. Finalmente intentar con el resto de servicios
-            $otrosIds = $todosLosServicios->filter(function($s) {
-                return stripos($s->nombre, 'funcionario') === false &&
-                       stripos($s->nombre, 'prioritaria') === false;
-            })->pluck('id')->toArray();
-
-            if (!empty($otrosIds)) {
-                $turno = $this->buscarTurnoEnServicios($otrosIds);
-                if ($turno) {
-                    return $this->responderConTurno($turno, $cajaId, $user->id);
-                }
-            }
-
-            // Si hemos llegado aquí, buscar en cualquier servicio (incluso en los que no coinciden con los filtros)
-            $turno = $this->buscarTurnoEnServicios($serviciosIds);
+            // Buscar turno usando algoritmo de peso proporcional
+            $turno = $this->buscarTurnoConPesoProporcional($serviciosIds);
         } else {
             // Si es un servicio regular, buscar turnos en ese servicio
-            $turno = $this->buscarTurnoEnServicios([$servicioId]);
+            $turno = $this->buscarTurnoConPesoProporcional([$servicioId]);
         }
 
         if (!$turno) {
@@ -443,39 +411,199 @@ class AsesorController extends Controller
     }
 
     /**
-     * Método auxiliar para buscar un turno en servicios específicos
-     * con priorización (primero prioritaria, luego normal)
+     * Método auxiliar para buscar un turno usando algoritmo de peso proporcional
+     * 
+     * Pesos por prioridad:
+     * - Prioridad 5 (E): 40%
+     * - Prioridad 4 (D): 30%
+     * - Prioridad 3 (C): 20%
+     * - Prioridad 2 (B): 7%
+     * - Prioridad 1 (A): 3%
      *
      * @param array $serviciosIds IDs de servicios donde buscar
      * @return Turno|null El turno encontrado o null
      */
-    private function buscarTurnoEnServicios($serviciosIds)
+    private function buscarTurnoConPesoProporcional($serviciosIds)
     {
         if (empty($serviciosIds)) {
             return null;
         }
 
-        // Primero intentar encontrar turnos prioritarios
-        $turno = Turno::whereIn('servicio_id', $serviciosIds)
+        // Obtener todos los turnos pendientes/aplazados del día para los servicios especificados
+        $turnos = Turno::whereIn('servicio_id', $serviciosIds)
             ->whereIn('estado', ['pendiente', 'aplazado'])
-            ->where('prioridad', 'prioritaria')
             ->delDia()
-            ->orderBy('estado', 'asc') // Pendientes primero (orden alfabético: aplazado < pendiente)
+            ->orderBy('estado', 'asc') // Pendientes primero
             ->orderBy('numero', 'asc')
-            ->first();
+            ->get();
 
-        // Si no hay prioritarios, buscar normales
-        if (!$turno) {
-            $turno = Turno::whereIn('servicio_id', $serviciosIds)
-                ->whereIn('estado', ['pendiente', 'aplazado'])
-                ->where('prioridad', 'normal')
-                ->delDia()
-                ->orderBy('estado', 'asc')
-                ->orderBy('numero', 'asc')
-                ->first();
+        if ($turnos->isEmpty()) {
+            return null;
         }
 
-        return $turno;
+        // Agrupar turnos por prioridad
+        $turnosPorPrioridad = $turnos->groupBy('prioridad');
+
+        // Definir pesos para cada nivel de prioridad (en porcentajes)
+        $pesos = [
+            5 => 40, // E - Prioridad más alta
+            4 => 30, // D
+            3 => 20, // C - Media
+            2 => 7,  // B
+            1 => 3,  // A - Prioridad más baja
+        ];
+
+        // Crear array de prioridades disponibles con sus pesos
+        $prioridadesDisponibles = [];
+        foreach ($pesos as $prioridad => $peso) {
+            if ($turnosPorPrioridad->has($prioridad)) {
+                $prioridadesDisponibles[$prioridad] = $peso;
+            }
+        }
+
+        if (empty($prioridadesDisponibles)) {
+            // Si no hay turnos con las prioridades esperadas, tomar el primero disponible
+            return $turnos->first();
+        }
+
+        // Seleccionar prioridad basada en peso proporcional
+        $prioridadSeleccionada = $this->seleccionarPrioridadPonderada($prioridadesDisponibles);
+
+        // Retornar el primer turno de la prioridad seleccionada
+        // Ya están ordenados por estado (pendiente primero) y número
+        return $turnosPorPrioridad[$prioridadSeleccionada]->first();
+    }
+
+    /**
+     * Seleccionar una prioridad basándose en pesos ponderados
+     *
+     * @param array $pesos Array con prioridades como key y pesos como value
+     * @return int La prioridad seleccionada
+     */
+    private function seleccionarPrioridadPonderada($pesos)
+    {
+        $totalPeso = array_sum($pesos);
+        $random = rand(1, $totalPeso);
+        
+        $acumulado = 0;
+        foreach ($pesos as $prioridad => $peso) {
+            $acumulado += $peso;
+            if ($random <= $acumulado) {
+                return $prioridad;
+            }
+        }
+        
+        // Fallback: retornar la prioridad más alta disponible
+        return max(array_keys($pesos));
+    }
+
+    /**
+     * Iniciar actividad en canal no presencial
+     */
+    public function iniciarCanalNoPresencial(Request $request)
+    {
+        \Log::info('🟠 Iniciando canal no presencial', [
+            'user_id' => Auth::id(),
+            'actividad' => $request->actividad
+        ]);
+
+        try {
+            $request->validate([
+                'actividad' => 'required|string|max:500'
+            ]);
+
+            $user = Auth::user();
+
+            if (!$user->esAsesor()) {
+                \Log::warning('⚠️ Usuario no es asesor', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado'
+                ], 403);
+            }
+
+            $user->iniciarCanalNoPresencial($request->actividad);
+
+            \Log::info('✅ Canal no presencial iniciado correctamente', ['user_id' => $user->id]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Actividad de canal no presencial iniciada correctamente'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('❌ Error de validación en canal no presencial', [
+                'errors' => $e->errors()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('❌ Error al iniciar canal no presencial', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al iniciar actividad: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Finalizar actividad en canal no presencial
+     */
+    public function finalizarCanalNoPresencial()
+    {
+        $user = Auth::user();
+
+        if (!$user->esAsesor()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
+        if (!$user->estaEnCanalNoPresencial()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No está en canal no presencial actualmente'
+            ], 400);
+        }
+
+        try {
+            // Guardar en el historial antes de finalizar
+            $inicio = $user->inicio_canal_no_presencial;
+            $fin = now();
+            $duracionMinutos = $inicio ? $inicio->diffInMinutes($fin) : 0;
+
+            \App\Models\CanalNoPresencialHistorial::create([
+                'user_id' => $user->id,
+                'actividad' => $user->actividad_canal_no_presencial,
+                'inicio' => $inicio,
+                'fin' => $fin,
+                'duracion_minutos' => $duracionMinutos,
+            ]);
+
+            $user->finalizarCanalNoPresencial();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Actividad de canal no presencial finalizada correctamente',
+                'duracion_minutos' => $duracionMinutos
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al finalizar canal no presencial', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al finalizar actividad: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -513,10 +641,23 @@ class AsesorController extends Controller
     public function llamarTurnoEspecifico(Request $request)
     {
         $user = Auth::user();
-        $cajaId = session('caja_seleccionada');
+        $cajaId = $request->input('caja_id');
+        $codigo = $request->input('codigo');
+        $numero = $request->input('numero');
 
-        if (!$user->esAsesor() || !$cajaId) {
-            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        \Log::info('🎯 Intento de llamar turno específico', [
+            'user_id' => $user->id,
+            'caja_id' => $cajaId,
+            'codigo' => $codigo,
+            'numero' => $numero
+        ]);
+
+        // Verificar que el asesor no esté en canal no presencial
+        if ($user->estaEnCanalNoPresencial()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No puede llamar turnos mientras está en canal no presencial'
+            ], 403);
         }
 
         // VALIDACIÓN CRÍTICA: Verificar si el asesor ya tiene un turno en proceso

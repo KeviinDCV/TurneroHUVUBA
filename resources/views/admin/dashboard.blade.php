@@ -45,6 +45,7 @@
                                     <th class="py-3 px-4 text-left font-semibold">ROL</th>
                                     <th class="py-3 px-4 text-left font-semibold">DISPONIBILIDAD</th>
                                     <th class="py-3 px-4 text-left font-semibold">ESTADO</th>
+                                    <th class="py-3 px-4 text-left font-semibold">ACTIVIDAD</th>
                                 </tr>
                             </thead>
                             <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white">
@@ -75,11 +76,21 @@
                                                     {{ $usuario['status'] }}
                                                 </span>
                                             </td>
+                                            <td class="py-3 px-4 text-sm text-gray-900">
+                                                @if($usuario['en_canal_no_presencial'])
+                                                    <div class="flex flex-col">
+                                                        <span class="text-xs font-medium text-orange-600">Canal no presencial:</span>
+                                                        <span class="text-xs text-gray-700">{{ $usuario['actividad_canal'] }}</span>
+                                                    </div>
+                                                @else
+                                                    <span class="text-gray-400">—</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="4" class="py-12 text-center text-gray-500">
+                                        <td colspan="5" class="py-12 text-center text-gray-500">
                                             <div class="flex flex-col items-center">
                                                 <i class="dashboard-icon fas fa-users text-4xl mb-4 text-gray-300"></i>
                                                 <p class="text-lg font-medium">No hay usuarios activos en este momento</p>
@@ -787,6 +798,19 @@ function actualizarUsuariosActivos() {
 
                     let rolClass = usuario.rol === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
 
+                    // Generar contenido de la columna actividad
+                    let actividadHtml = '';
+                    if (usuario.en_canal_no_presencial && usuario.actividad_canal) {
+                        actividadHtml = `
+                            <div class="flex flex-col">
+                                <span class="text-xs font-medium text-orange-600">Canal no presencial:</span>
+                                <span class="text-xs text-gray-700">${usuario.actividad_canal}</span>
+                            </div>
+                        `;
+                    } else {
+                        actividadHtml = '<span class="text-gray-400">—</span>';
+                    }
+
                     html += `
                         <tr class="hover:bg-gray-50">
                             <td class="py-3 px-4 whitespace-nowrap">
@@ -808,13 +832,16 @@ function actualizarUsuariosActivos() {
                                     ${usuario.status}
                                 </span>
                             </td>
+                            <td class="py-3 px-4 text-sm text-gray-900">
+                                ${actividadHtml}
+                            </td>
                         </tr>
                     `;
                 });
             } else {
                 html = `
                     <tr>
-                        <td colspan="4" class="py-12 text-center text-gray-500">
+                        <td colspan="5" class="py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center">
                                 <i class="dashboard-icon fas fa-users text-4xl mb-4 text-gray-300"></i>
                                 <p class="text-lg font-medium">No hay usuarios activos en este momento</p>

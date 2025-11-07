@@ -55,7 +55,8 @@ class ServicioController extends Controller
             'estado' => 'required|in:activo,inactivo',
             'descripcion' => 'nullable|string|max:500',
             'orden' => 'nullable|integer|min:0',
-            'ocultar_turno' => 'boolean'
+            'ocultar_turno' => 'boolean',
+            'requiere_priorizacion' => 'boolean'
         ];
 
         // Si es subservicio, el servicio_padre_id es requerido
@@ -74,6 +75,8 @@ class ServicioController extends Controller
             'descripcion' => $request->descripcion,
             'orden' => $request->orden,
             'ocultar_turno' => $request->has('ocultar_turno'),
+            // Solo se permite priorización si no va a tener subservicios (será validado después)
+            'requiere_priorizacion' => $request->has('requiere_priorizacion'),
             'servicio_padre_id' => null, // Por defecto es servicio principal
         ];
 
@@ -92,7 +95,15 @@ class ServicioController extends Controller
             $data['orden'] = ($maxOrden ?? 0) + 1;
         }
 
-        Servicio::create($data);
+        $nuevoServicio = Servicio::create($data);
+
+        // Si es un subservicio, desactivar la priorización del servicio padre
+        if ($nuevoServicio->nivel === 'subservicio' && $nuevoServicio->servicio_padre_id) {
+            $servicioPadre = Servicio::find($nuevoServicio->servicio_padre_id);
+            if ($servicioPadre && $servicioPadre->requiere_priorizacion) {
+                $servicioPadre->update(['requiere_priorizacion' => false]);
+            }
+        }
 
         // Si es una petición AJAX, devolver JSON
         if ($request->ajax() || $request->wantsJson()) {
@@ -118,7 +129,8 @@ class ServicioController extends Controller
             'estado' => 'required|in:activo,inactivo',
             'codigo' => 'nullable|string|max:50|unique:servicios,codigo,' . $servicio->id,
             'orden' => 'nullable|integer|min:0',
-            'ocultar_turno' => 'boolean'
+            'ocultar_turno' => 'boolean',
+            'requiere_priorizacion' => 'boolean'
         ];
 
         // Si es subservicio, el servicio_padre_id es requerido
@@ -130,8 +142,14 @@ class ServicioController extends Controller
 
         $data = $request->all();
 
-        // Manejar el checkbox ocultar_turno
+        // Manejar checkboxes
         $data['ocultar_turno'] = $request->has('ocultar_turno');
+        
+        // Verificar si el servicio tiene subservicios activos
+        $tieneSubservicios = $servicio->subservicios()->where('estado', 'activo')->count() > 0;
+        
+        // Solo permitir priorización si NO tiene subservicios
+        $data['requiere_priorizacion'] = !$tieneSubservicios ? $request->has('requiere_priorizacion') : false;
 
         // Si es servicio principal, asegurar que servicio_padre_id sea null
         if ($request->nivel === 'servicio') {
@@ -204,6 +222,10 @@ class ServicioController extends Controller
     public function show(Servicio $servicio)
     {
         $servicio->load('servicioPadre', 'subservicios');
+        
+        // Agregar campo calculado para verificar si tiene subservicios
+        $servicio->tiene_subservicios = $servicio->subservicios()->where('estado', 'activo')->count() > 0;
+        
         return response()->json($servicio);
     }
 }

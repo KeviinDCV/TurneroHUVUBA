@@ -634,7 +634,7 @@ class AdminController extends Controller
     private function getUsuariosActivosData()
     {
         $usuarios = User::activos()
-            ->select('id', 'nombre_completo', 'nombre_usuario', 'rol', 'estado_asesor', 'last_activity', 'session_id', 'session_start')
+            ->select('id', 'nombre_completo', 'nombre_usuario', 'rol', 'estado_asesor', 'last_activity', 'session_id', 'session_start', 'actividad_canal_no_presencial', 'inicio_canal_no_presencial')
             ->get();
 
         return $usuarios->map(function($usuario) {
@@ -655,17 +655,24 @@ class AdminController extends Controller
                 $disponibilidad = 'ADMINISTRADOR';
             }
 
+            // Determinar estado (usar método actualizado si está en canal no presencial)
+            $estado = $usuario->estaEnCanalNoPresencial() 
+                ? strtoupper($usuario->getEstadoFormateadoActualizado())
+                : strtoupper($usuario->getEstadoFormateado());
+
             return [
                 'id' => $usuario->id,
                 'name' => $usuario->nombre_completo,
                 'nombre_usuario' => $usuario->nombre_usuario,
                 'rol' => $usuario->rol,
                 'availability' => $disponibilidad,
-                'status' => strtoupper($usuario->getEstadoFormateado()),
+                'status' => $estado,
                 'last_activity' => $usuario->last_activity->diffForHumans(),
                 'tiempo_sesion' => $usuario->getTiempoSesionActiva(),
                 'caja' => $caja,
-                'is_online' => true
+                'is_online' => true,
+                'actividad_canal' => $usuario->actividad_canal_no_presencial,
+                'en_canal_no_presencial' => $usuario->estaEnCanalNoPresencial()
             ];
         });
     }
