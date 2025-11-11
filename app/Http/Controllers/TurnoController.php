@@ -63,6 +63,15 @@ class TurnoController extends Controller
      */
     public function seleccionarServicio(Request $request)
     {
+        // LOG FORZADO para diagnóstico
+        \Log::info('🎯 CONTROLADOR - seleccionarServicio() ejecutándose', [
+            'url' => $request->url(),
+            'method' => $request->method(),
+            'ip' => $request->ip(),
+            'servicio_id' => $request->get('servicio_id'),
+            'subservicio_id' => $request->get('subservicio_id'),
+        ]);
+
         $servicioId = $request->get('servicio_id');
         $subservicioId = $request->get('subservicio_id');
 
@@ -108,6 +117,11 @@ class TurnoController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('❌ ERROR en seleccionarServicio()', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Error al generar el turno: ' . $e->getMessage()
