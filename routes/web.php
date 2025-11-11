@@ -236,6 +236,31 @@ Route::get('/tv', [TvConfigController::class, 'show'])->name('tv.display');
 // Ruta para la visualización móvil
 Route::get('/movil', [TvConfigController::class, 'showMobile'])->name('mobile.display');
 
+// Ruta pública para servir archivos multimedia (cuando el symlink no funciona)
+// Necesario para cPanel donde el symlink puede no funcionar correctamente
+Route::get('/multimedia/serve/{encodedPath}', function ($encodedPath) {
+    try {
+        $filePath = base64_decode($encodedPath);
+        $fullPath = storage_path('app/public/' . $filePath);
+        
+        // Validar que el archivo existe y está dentro del directorio permitido
+        if (!file_exists($fullPath) || !str_starts_with(realpath($fullPath), realpath(storage_path('app/public')))) {
+            abort(404);
+        }
+        
+        // Determinar el tipo MIME
+        $mimeType = mime_content_type($fullPath);
+        
+        // Devolver el archivo con caché para mejorar rendimiento
+        return response()->file($fullPath, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=31536000', // Cache por 1 año
+        ]);
+    } catch (\Exception $e) {
+        abort(404);
+    }
+})->name('multimedia.serve');
+
 // APIs públicas sin creación automática de sesiones
 Route::middleware(['no.session.api'])->group(function () {
     // API para obtener configuración del TV

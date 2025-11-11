@@ -40,10 +40,32 @@ class Multimedia extends Model
 
     /**
      * Obtener URL completa del archivo
+     * 
+     * Genera la URL del archivo de forma robusta para que funcione tanto en local
+     * como en cPanel (donde el symlink puede no funcionar correctamente)
      */
     public function getUrlAttribute()
     {
-        return asset('storage/' . $this->archivo);
+        // Verificar si el archivo existe en public/storage (symlink funcionando)
+        $publicPath = public_path('storage/' . $this->archivo);
+        
+        if (file_exists($publicPath)) {
+            // El symlink funciona correctamente (típico en local)
+            return asset('storage/' . $this->archivo);
+        }
+        
+        // Si no existe vía symlink, intentar acceso directo
+        // Esto es necesario en algunos servidores cPanel donde el symlink no funciona
+        $storagePath = storage_path('app/public/' . $this->archivo);
+        
+        if (file_exists($storagePath)) {
+            // Generar URL directa al script de servir archivos
+            // Usamos una ruta especial que sirve archivos desde storage
+            return url('multimedia/serve/' . base64_encode($this->archivo));
+        }
+        
+        // Fallback: intentar con Storage::url()
+        return Storage::url($this->archivo);
     }
 
     /**
