@@ -29,17 +29,15 @@ class VerifyCsrfToken extends Middleware
      */
     public function handle($request, \Closure $next)
     {
-        // Logging solo en desarrollo local
-        if (config('app.env') === 'local' && config('app.debug')) {
-            \Log::info('CSRF middleware - session info', [
-                'session_id' => $request->session()->getId(),
-                'session_started' => $request->session()->isStarted(),
-                'host' => $request->getHost(),
-                'url' => $request->url(),
-                'method' => $request->method(),
-                'path' => $request->path(),
-            ]);
-        }
+        // LOG SIEMPRE para diagnóstico
+        \Log::info('🔒 CSRF Middleware - Petición entrante', [
+            'url' => $request->url(),
+            'path' => $request->path(),
+            'method' => $request->method(),
+            'ip' => $request->ip(),
+            'excepted_uris' => $this->except,
+            'is_excepted' => $this->inExceptArray($request),
+        ]);
 
         // IMPORTANTE: Llamar al parent para que procese las exclusiones del array $except
         return parent::handle($request, $next);
@@ -54,13 +52,17 @@ class VerifyCsrfToken extends Middleware
      */
     protected function handleTokenMismatch($request, $exception)
     {
-        // Logging en caso de error
-        \Log::warning('CSRF Token mismatch', [
+        // LOG DETALLADO del error 419
+        \Log::error('❌ ERROR 419 - CSRF Token mismatch', [
             'url' => $request->url(),
             'method' => $request->method(),
             'path' => $request->path(),
             'ip' => $request->ip(),
-            'referer' => $request->header('referer')
+            'referer' => $request->header('referer'),
+            'excepted_uris' => $this->except,
+            'is_excepted' => $this->inExceptArray($request),
+            'has_csrf_token' => $request->hasHeader('X-CSRF-TOKEN'),
+            'expects_json' => $request->expectsJson(),
         ]);
 
         // Si la petición espera JSON, retornar JSON en lugar de HTML
