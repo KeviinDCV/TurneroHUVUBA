@@ -16,9 +16,8 @@ class VerifyCsrfToken extends Middleware
         'admin',
         'login',
         'api/*',
-        // Excluir rutas públicas de turnos (no requieren autenticación)
-        'turnos/seleccionar',
-        'turnos/crear-con-prioridad',
+        // Excluir TODAS las rutas públicas de turnos (no requieren autenticación)
+        'turnos/*',
     ];
 
     /**

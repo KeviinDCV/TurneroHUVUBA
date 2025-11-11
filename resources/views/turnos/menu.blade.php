@@ -275,83 +275,9 @@
     </div>
 
     <script>
-        // Configurar CSRF token para peticiones AJAX
-        let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
         // Variables para almacenar datos del servicio seleccionado
         let servicioSeleccionadoId = null;
         let servicioSeleccionadoNombre = '';
-        
-        // Función para refrescar el token CSRF
-        async function refreshCsrfToken() {
-            try {
-                const response = await fetch('{{ route('refresh-csrf') }}');
-                const data = await response.json();
-                csrfToken = data.csrf_token;
-                // Actualizar también el meta tag
-                document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', csrfToken);
-                console.log('✅ Token CSRF refrescado exitosamente');
-                return true;
-            } catch (error) {
-                console.error('❌ Error al refrescar token CSRF:', error);
-                return false;
-            }
-        }
-        
-        // Función auxiliar para hacer fetch con reintento automático en caso de error 419
-        async function fetchWithCsrfRetry(url, options, maxRetries = 1) {
-            let attempt = 0;
-            
-            while (attempt <= maxRetries) {
-                try {
-                    const response = await fetch(url, options);
-                    
-                    // Si es error 419 (token expirado), refrescar y reintentar
-                    if (response.status === 419 && attempt < maxRetries) {
-                        console.warn('⚠️ Token CSRF expirado (419). Refrescando token...');
-                        const refreshed = await refreshCsrfToken();
-                        
-                        if (refreshed) {
-                            // Actualizar el token en los headers para el reintento
-                            options.headers['X-CSRF-TOKEN'] = csrfToken;
-                            attempt++;
-                            console.log('🔄 Reintentando petición con nuevo token...');
-                            continue; // Reintentar
-                        } else {
-                            throw new Error('No se pudo refrescar el token CSRF');
-                        }
-                    }
-                    
-                    // Si sigue siendo 419 después del reintento, la sesión ha expirado completamente
-                    if (response.status === 419 && attempt >= maxRetries) {
-                        console.error('❌ La sesión ha expirado completamente. Recargando página...');
-                        mostrarModal('La sesión ha expirado. Recargando...');
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                        return response; // Retornar para evitar más procesamiento
-                    }
-                    
-                    // Verificar que la respuesta sea JSON antes de continuar
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && !contentType.includes('application/json')) {
-                        console.error('❌ Respuesta no es JSON (probablemente HTML de error). Recargando página...');
-                        mostrarModal('Error de sesión. Recargando...');
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                        throw new Error('Respuesta no es JSON, sesión expirada');
-                    }
-                    
-                    return response;
-                } catch (error) {
-                    if (attempt >= maxRetries) {
-                        throw error;
-                    }
-                    attempt++;
-                }
-            }
-        }
 
         // Función para navegar a subservicios
         function navegarASubservicios(servicioId) {
@@ -364,11 +290,10 @@
             if (navigator.vibrate) navigator.vibrate(30);
 
             try {
-                const response = await fetchWithCsrfRetry('{{ route('turnos.seleccionar') }}', {
+                const response = await fetch('{{ route('turnos.seleccionar') }}', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         servicio_id: servicioId
@@ -404,11 +329,10 @@
             if (navigator.vibrate) navigator.vibrate(30);
 
             try {
-                const response = await fetchWithCsrfRetry('{{ route('turnos.seleccionar') }}', {
+                const response = await fetch('{{ route('turnos.seleccionar') }}', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         subservicio_id: subservicioId
@@ -462,11 +386,10 @@
             }
 
             try {
-                const response = await fetchWithCsrfRetry('{{ route('turnos.crear-con-prioridad') }}', {
+                const response = await fetch('{{ route('turnos.crear-con-prioridad') }}', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         servicio_id: servicioSeleccionadoId,
