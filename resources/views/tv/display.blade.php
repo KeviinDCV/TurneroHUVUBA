@@ -2538,9 +2538,12 @@
             }
 
             audio.volume = targetVolume;
+            
+            // Aumentar la velocidad de reproducción para que suene más natural (1.25x más rápido)
+            audio.playbackRate = 1.23;
 
             // Log para debugging del volumen
-            console.log(`🔊 Reproduciendo: ${audioFile.split('/').pop()} - Volumen: ${targetVolume}, Ganancia: ${gainValue}x`);
+            console.log(`🔊 Reproduciendo: ${audioFile.split('/').pop()} - Volumen: ${targetVolume}, Ganancia: ${gainValue}x, Velocidad: ${audio.playbackRate}x`);
 
             // Usar Web Audio API para amplificar el volumen de los archivos de voz
             let audioSource = null;
