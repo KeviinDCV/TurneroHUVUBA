@@ -20,6 +20,33 @@ El error **419** en Laravel indica que el **token CSRF ha expirado**. Esto ocurr
 
 ## ✅ Solución Implementada
 
+### **🎯 Solución Principal: Excluir Rutas Públicas del CSRF**
+
+**Archivo:** `app/Http/Middleware/VerifyCsrfToken.php` (líneas 14-22)
+
+Las rutas de turnos son **públicas** y no manejan datos sensibles de usuario, por lo que NO requieren protección CSRF.
+
+```php
+protected $except = [
+    'admin',
+    'login',
+    'api/*',
+    // Excluir rutas públicas de turnos (no requieren autenticación)
+    'turnos/seleccionar',
+    'turnos/crear-con-prioridad',
+];
+```
+
+**Ventajas:**
+- ✅ Elimina el error 419 completamente
+- ✅ No requiere token CSRF para estas rutas
+- ✅ La pantalla puede estar abierta indefinidamente
+- ✅ Seguro: estas rutas solo crean turnos, no manejan autenticación ni datos sensibles
+
+---
+
+### **🛡️ Solución de Respaldo: Sistema de Reintento Automático**
+
 ### **1. Ruta para Refrescar Token CSRF**
 
 **Archivo:** `routes/web.php` (líneas 233-236)
@@ -31,11 +58,13 @@ Route::get('/refresh-csrf', function() {
 })->name('refresh-csrf');
 ```
 
-Esta ruta permite obtener un nuevo token CSRF sin recargar toda la página.
+Esta ruta permite obtener un nuevo token CSRF sin recargar toda la página (usada como respaldo).
+
+> **Nota:** Con la exclusión de CSRF implementada arriba, este sistema de reintento ya NO es necesario para las rutas de turnos, pero se mantiene como **medida de seguridad adicional** por si otras rutas lo necesitan en el futuro.
 
 ---
 
-### **2. Sistema de Reintento Automático**
+### **2. Sistema de Reintento Automático (Respaldo)**
 
 **Archivo:** `resources/views/turnos/menu.blade.php` (líneas 285-333)
 
@@ -244,13 +273,17 @@ Para reducir la frecuencia de expiración del token, edita `config/session.php`:
 
 ## 📝 Archivos Modificados
 
-1. **`routes/web.php`** (líneas 233-236)
-   - Nueva ruta `/refresh-csrf` para obtener nuevo token
+1. **`app/Http/Middleware/VerifyCsrfToken.php`** ⭐ **PRINCIPAL**
+   - Agregadas rutas `turnos/seleccionar` y `turnos/crear-con-prioridad` a `$except`
+   - Estas rutas ya NO requieren token CSRF
 
-2. **`resources/views/turnos/menu.blade.php`** (líneas 278-474)
+2. **`routes/web.php`** (líneas 233-236)
+   - Nueva ruta `/refresh-csrf` para obtener nuevo token (respaldo)
+
+3. **`resources/views/turnos/menu.blade.php`** (líneas 278-354)
    - Variable `csrfToken` ahora es `let` (mutable)
-   - Nueva función `refreshCsrfToken()`
-   - Nueva función `fetchWithCsrfRetry()`
+   - Nueva función `refreshCsrfToken()` (respaldo)
+   - Nueva función `fetchWithCsrfRetry()` con detección de sesión expirada
    - Funciones convertidas a `async/await`:
      - `seleccionarServicio()`
      - `seleccionarSubservicio()`
@@ -260,7 +293,31 @@ Para reducir la frecuencia de expiración del token, edita `config/session.php`:
 
 ## ✅ Resultado
 
-El error **419 (proxy reauthentication required)** ahora se maneja automáticamente sin interrumpir la experiencia del usuario. La pantalla de turnos puede permanecer abierta indefinidamente sin problemas.
+### **Solución Principal (Excepción CSRF)**
+
+El error **419** ya NO ocurrirá porque las rutas de turnos están **excluidas del middleware CSRF**.
 
 **Antes:** ❌ Error 419 → Usuario no puede sacar turno → Necesita recargar la página  
-**Ahora:** ✅ Error 419 detectado → Token refrescado automáticamente → Turno creado exitosamente
+**Ahora:** ✅ Sin error 419 → Turnos creados sin problemas → Pantalla abierta 24/7 ✨
+
+### **Solución de Respaldo (Reintento Automático)**
+
+Si por alguna razón el error 419 aún ocurre (en otras rutas o ambientes diferentes):
+1. El sistema detecta el error 419 automáticamente
+2. Intenta refrescar el token
+3. Reintenta la petición
+4. Si falla, recarga la página automáticamente
+
+---
+
+## 🔐 Nota sobre Seguridad
+
+**¿Por qué es seguro excluir estas rutas del CSRF?**
+
+✅ Las rutas `turnos/seleccionar` y `turnos/crear-con-prioridad` son **endpoints públicos**  
+✅ No requieren autenticación (cualquier persona puede sacar un turno)  
+✅ No manejan datos sensibles del usuario  
+✅ Solo crean registros de turnos en la base de datos  
+✅ No hay riesgo de CSRF porque no hay sesión de usuario que atacar  
+
+**El CSRF protege contra ataques que explotan sesiones autenticadas**. Como estas rutas no tienen sesiones de usuario, no hay nada que atacar.

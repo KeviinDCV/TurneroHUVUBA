@@ -322,6 +322,27 @@
                         }
                     }
                     
+                    // Si sigue siendo 419 después del reintento, la sesión ha expirado completamente
+                    if (response.status === 419 && attempt >= maxRetries) {
+                        console.error('❌ La sesión ha expirado completamente. Recargando página...');
+                        mostrarModal('La sesión ha expirado. Recargando...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                        return response; // Retornar para evitar más procesamiento
+                    }
+                    
+                    // Verificar que la respuesta sea JSON antes de continuar
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && !contentType.includes('application/json')) {
+                        console.error('❌ Respuesta no es JSON (probablemente HTML de error). Recargando página...');
+                        mostrarModal('Error de sesión. Recargando...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                        throw new Error('Respuesta no es JSON, sesión expirada');
+                    }
+                    
                     return response;
                 } catch (error) {
                     if (attempt >= maxRetries) {
