@@ -84,25 +84,39 @@ class AdminController extends Controller
 
         try {
             // Validar los datos del formulario
-            $validated = $request->validate([
+            $rules = [
                 'nombre_completo' => 'required|string|max:255',
-                'cedula' => 'required|string|max:20|unique:users,cedula',
-                'correo_electronico' => 'required|email|max:255|unique:users,correo_electronico',
+                'cedula' => 'nullable|string|max:20',
+                'correo_electronico' => 'nullable|string|max:255',
                 'nombre_usuario' => 'required|string|max:255|unique:users,nombre_usuario',
                 'rol' => 'required|in:Administrador,Asesor',
-                'password' => 'required|string|min:8|confirmed',
-            ]);
+                'password' => 'nullable|string|confirmed',
+            ];
+            
+            // Solo validar unique si el campo no está vacío
+            if ($request->filled('cedula')) {
+                $rules['cedula'] .= '|unique:users,cedula';
+            }
+            
+            if ($request->filled('correo_electronico')) {
+                $rules['correo_electronico'] .= '|unique:users,correo_electronico';
+            }
+            
+            $validated = $request->validate($rules);
 
             \Log::info('Validación exitosa', ['datos_validados' => $validated]);
 
             // Crear nuevo usuario
+            // Si no se proporciona contraseña, usar una cadena vacía hasheada
+            $password = $request->filled('password') ? $validated['password'] : '';
+            
             $nuevoUsuario = User::create([
                 'nombre_completo' => $validated['nombre_completo'],
-                'cedula' => $validated['cedula'],
-                'correo_electronico' => $validated['correo_electronico'],
+                'cedula' => $validated['cedula'] ?? null,
+                'correo_electronico' => $validated['correo_electronico'] ?? null,
                 'nombre_usuario' => $validated['nombre_usuario'],
                 'rol' => $validated['rol'],
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($password),
             ]);
 
             \Log::info('Usuario creado exitosamente', ['usuario_id' => $nuevoUsuario->id]);
@@ -149,15 +163,24 @@ class AdminController extends Controller
         // Validar los datos del formulario
         $rules = [
             'nombre_completo' => 'required|string|max:255',
-            'cedula' => 'required|string|max:20|unique:users,cedula,' . $id,
-            'correo_electronico' => 'required|email|max:255|unique:users,correo_electronico,' . $id,
+            'cedula' => 'nullable|string|max:20',
+            'correo_electronico' => 'nullable|string|max:255',
             'nombre_usuario' => 'required|string|max:255|unique:users,nombre_usuario,' . $id,
             'rol' => 'required|in:Administrador,Asesor',
         ];
+        
+        // Solo validar unique si el campo no está vacío
+        if ($request->filled('cedula')) {
+            $rules['cedula'] .= '|unique:users,cedula,' . $id;
+        }
+        
+        if ($request->filled('correo_electronico')) {
+            $rules['correo_electronico'] .= '|unique:users,correo_electronico,' . $id;
+        }
 
         // Si se está cambiando la contraseña, validarla
         if ($request->filled('password')) {
-            $rules['password'] = 'required|string|min:8|confirmed';
+            $rules['password'] = 'nullable|string|confirmed';
         }
 
         $validated = $request->validate($rules);
@@ -165,15 +188,16 @@ class AdminController extends Controller
         // Preparar datos para actualizar
         $updateData = [
             'nombre_completo' => $validated['nombre_completo'],
-            'cedula' => $validated['cedula'],
-            'correo_electronico' => $validated['correo_electronico'],
+            'cedula' => $validated['cedula'] ?? null,
+            'correo_electronico' => $validated['correo_electronico'] ?? null,
             'nombre_usuario' => $validated['nombre_usuario'],
             'rol' => $validated['rol'],
         ];
 
-        // Actualizar contraseña solo si se proporcionó
-        if ($request->filled('password')) {
-            $updateData['password'] = Hash::make($validated['password']);
+        // Actualizar contraseña si el campo está presente (incluso si está vacío)
+        if ($request->has('password')) {
+            $password = $request->input('password', '');
+            $updateData['password'] = Hash::make($password);
         }
 
         // Actualizar el usuario
