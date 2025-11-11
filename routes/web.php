@@ -230,6 +230,11 @@ Route::post('/turnos/seleccionar', [TurnoController::class, 'seleccionarServicio
 Route::post('/turnos/crear-con-prioridad', [TurnoController::class, 'crearTurnoConPrioridad'])->name('turnos.crear-con-prioridad');
 Route::get('/turnos/ticket/{turno}', [TurnoController::class, 'mostrarTicket'])->name('turnos.ticket');
 
+// Ruta para refrescar el token CSRF (usado cuando expira)
+Route::get('/refresh-csrf', function() {
+    return response()->json(['csrf_token' => csrf_token()]);
+})->name('refresh-csrf');
+
 // Ruta para el televisor - visualizador de turnos
 Route::get('/tv', [TvConfigController::class, 'show'])->name('tv.display');
 

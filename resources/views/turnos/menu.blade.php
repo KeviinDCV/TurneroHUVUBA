@@ -276,11 +276,61 @@
 
     <script>
         // Configurar CSRF token para peticiones AJAX
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
         // Variables para almacenar datos del servicio seleccionado
         let servicioSeleccionadoId = null;
         let servicioSeleccionadoNombre = '';
+        
+        // Función para refrescar el token CSRF
+        async function refreshCsrfToken() {
+            try {
+                const response = await fetch('{{ route('refresh-csrf') }}');
+                const data = await response.json();
+                csrfToken = data.csrf_token;
+                // Actualizar también el meta tag
+                document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', csrfToken);
+                console.log('✅ Token CSRF refrescado exitosamente');
+                return true;
+            } catch (error) {
+                console.error('❌ Error al refrescar token CSRF:', error);
+                return false;
+            }
+        }
+        
+        // Función auxiliar para hacer fetch con reintento automático en caso de error 419
+        async function fetchWithCsrfRetry(url, options, maxRetries = 1) {
+            let attempt = 0;
+            
+            while (attempt <= maxRetries) {
+                try {
+                    const response = await fetch(url, options);
+                    
+                    // Si es error 419 (token expirado), refrescar y reintentar
+                    if (response.status === 419 && attempt < maxRetries) {
+                        console.warn('⚠️ Token CSRF expirado (419). Refrescando token...');
+                        const refreshed = await refreshCsrfToken();
+                        
+                        if (refreshed) {
+                            // Actualizar el token en los headers para el reintento
+                            options.headers['X-CSRF-TOKEN'] = csrfToken;
+                            attempt++;
+                            console.log('🔄 Reintentando petición con nuevo token...');
+                            continue; // Reintentar
+                        } else {
+                            throw new Error('No se pudo refrescar el token CSRF');
+                        }
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    if (attempt >= maxRetries) {
+                        throw error;
+                    }
+                    attempt++;
+                }
+            }
+        }
 
         // Función para navegar a subservicios
         function navegarASubservicios(servicioId) {
@@ -289,21 +339,22 @@
         }
 
         // Función para seleccionar un servicio principal (sin subservicios)
-        function seleccionarServicio(servicioId, nombreServicio) {
+        async function seleccionarServicio(servicioId, nombreServicio) {
             if (navigator.vibrate) navigator.vibrate(30);
 
-            fetch('{{ route('turnos.seleccionar') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: JSON.stringify({
-                    servicio_id: servicioId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const response = await fetchWithCsrfRetry('{{ route('turnos.seleccionar') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        servicio_id: servicioId
+                    })
+                });
+
+                const data = await response.json();
                 if (data.success) {
                     // Verificar si requiere priorización
                     if (data.requiere_priorizacion) {
@@ -321,29 +372,29 @@
                 } else {
                     mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
-                mostrarModal('Error de conexión');
-            });
+                mostrarModal('Error de conexión. Por favor, intente nuevamente.');
+            }
         }
 
         // Función para seleccionar un subservicio
-        function seleccionarSubservicio(subservicioId, nombreSubservicio) {
+        async function seleccionarSubservicio(subservicioId, nombreSubservicio) {
             if (navigator.vibrate) navigator.vibrate(30);
 
-            fetch('{{ route('turnos.seleccionar') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: JSON.stringify({
-                    subservicio_id: subservicioId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const response = await fetchWithCsrfRetry('{{ route('turnos.seleccionar') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        subservicio_id: subservicioId
+                    })
+                });
+
+                const data = await response.json();
                 if (data.success) {
                     // Verificar si requiere priorización
                     if (data.requiere_priorizacion) {
@@ -361,11 +412,10 @@
                 } else {
                     mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
-                mostrarModal('Error de conexión');
-            });
+                mostrarModal('Error de conexión. Por favor, intente nuevamente.');
+            }
         }
 
         // Mostrar modal de selección de prioridad
@@ -382,7 +432,7 @@
         }
 
         // Seleccionar prioridad y crear turno
-        function seleccionarPrioridad(prioridad) {
+        async function seleccionarPrioridad(prioridad) {
             if (navigator.vibrate) navigator.vibrate(30);
             
             if (!servicioSeleccionadoId) {
@@ -390,19 +440,20 @@
                 return;
             }
 
-            fetch('{{ route('turnos.crear-con-prioridad') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: JSON.stringify({
-                    servicio_id: servicioSeleccionadoId,
-                    prioridad: prioridad
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const response = await fetchWithCsrfRetry('{{ route('turnos.crear-con-prioridad') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        servicio_id: servicioSeleccionadoId,
+                        prioridad: prioridad
+                    })
+                });
+
+                const data = await response.json();
                 cerrarPrioridadModal();
                 
                 if (data.success) {
@@ -415,12 +466,11 @@
                 } else {
                     mostrarModal(data.message || 'Error al generar el turno');
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
                 cerrarPrioridadModal();
-                mostrarModal('Error de conexión');
-            });
+                mostrarModal('Error de conexión. Por favor, intente nuevamente.');
+            }
         }
 
         // Función para mostrar el modal personalizado
