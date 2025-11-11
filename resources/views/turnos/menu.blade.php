@@ -275,6 +275,9 @@
     </div>
 
     <script>
+        // Configurar CSRF token para peticiones AJAX
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
         // Variables para almacenar datos del servicio seleccionado
         let servicioSeleccionadoId = null;
         let servicioSeleccionadoNombre = '';
@@ -286,21 +289,21 @@
         }
 
         // Función para seleccionar un servicio principal (sin subservicios)
-        async function seleccionarServicio(servicioId, nombreServicio) {
+        function seleccionarServicio(servicioId, nombreServicio) {
             if (navigator.vibrate) navigator.vibrate(30);
 
-            try {
-                const response = await fetch('{{ route('turnos.seleccionar') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        servicio_id: servicioId
-                    })
-                });
-
-                const data = await response.json();
+            fetch('{{ route('turnos.seleccionar') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    servicio_id: servicioId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
                 if (data.success) {
                     // Verificar si requiere priorización
                     if (data.requiere_priorizacion) {
@@ -318,28 +321,29 @@
                 } else {
                     mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
-            } catch (error) {
+            })
+            .catch(error => {
                 console.error('Error:', error);
-                mostrarModal('Error de conexión. Por favor, intente nuevamente.');
-            }
+                mostrarModal('Error de conexión');
+            });
         }
 
         // Función para seleccionar un subservicio
-        async function seleccionarSubservicio(subservicioId, nombreSubservicio) {
+        function seleccionarSubservicio(subservicioId, nombreSubservicio) {
             if (navigator.vibrate) navigator.vibrate(30);
 
-            try {
-                const response = await fetch('{{ route('turnos.seleccionar') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        subservicio_id: subservicioId
-                    })
-                });
-
-                const data = await response.json();
+            fetch('{{ route('turnos.seleccionar') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    subservicio_id: subservicioId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
                 if (data.success) {
                     // Verificar si requiere priorización
                     if (data.requiere_priorizacion) {
@@ -357,10 +361,11 @@
                 } else {
                     mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
-            } catch (error) {
+            })
+            .catch(error => {
                 console.error('Error:', error);
-                mostrarModal('Error de conexión. Por favor, intente nuevamente.');
-            }
+                mostrarModal('Error de conexión');
+            });
         }
 
         // Mostrar modal de selección de prioridad
@@ -377,7 +382,7 @@
         }
 
         // Seleccionar prioridad y crear turno
-        async function seleccionarPrioridad(prioridad) {
+        function seleccionarPrioridad(prioridad) {
             if (navigator.vibrate) navigator.vibrate(30);
             
             if (!servicioSeleccionadoId) {
@@ -385,19 +390,19 @@
                 return;
             }
 
-            try {
-                const response = await fetch('{{ route('turnos.crear-con-prioridad') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        servicio_id: servicioSeleccionadoId,
-                        prioridad: prioridad
-                    })
-                });
-
-                const data = await response.json();
+            fetch('{{ route('turnos.crear-con-prioridad') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    servicio_id: servicioSeleccionadoId,
+                    prioridad: prioridad
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
                 cerrarPrioridadModal();
                 
                 if (data.success) {
@@ -410,11 +415,12 @@
                 } else {
                     mostrarModal(data.message || 'Error al generar el turno');
                 }
-            } catch (error) {
+            })
+            .catch(error => {
                 console.error('Error:', error);
                 cerrarPrioridadModal();
-                mostrarModal('Error de conexión. Por favor, intente nuevamente.');
-            }
+                mostrarModal('Error de conexión');
+            });
         }
 
         // Función para mostrar el modal personalizado
