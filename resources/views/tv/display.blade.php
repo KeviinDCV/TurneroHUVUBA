@@ -1401,6 +1401,7 @@
         }
 
         // Obtener turnos ya reproducidos en esta sesión desde localStorage
+        // Usa una clave compuesta de turnoId_fecha_llamado para detectar turnos recién llamados
         function getTurnosReproducidos() {
             try {
                 const stored = localStorage.getItem('turnos_reproducidos_' + sessionId);
@@ -1410,11 +1411,19 @@
             }
         }
 
-        // Guardar turno como reproducido en localStorage
-        function marcarTurnoReproducido(turnoId) {
+        // Generar clave única para un turno basada en ID y fecha_llamado
+        function getTurnoKey(turno) {
+            const fechaLlamado = turno.fecha_llamado || turno.fecha_llamado_original || '';
+            return `${turno.id}_${fechaLlamado}`;
+        }
+
+        // Guardar turno como reproducido en localStorage usando clave compuesta
+        function marcarTurnoReproducido(turnoId, fechaLlamado = null) {
             try {
                 const reproducidos = getTurnosReproducidos();
-                reproducidos.add(turnoId);
+                // Si se proporciona fecha_llamado, usar clave compuesta
+                const key = fechaLlamado ? `${turnoId}_${fechaLlamado}` : turnoId;
+                reproducidos.add(key);
                 localStorage.setItem('turnos_reproducidos_' + sessionId, JSON.stringify([...reproducidos]));
             } catch (e) {
                 console.warn('No se pudo guardar en localStorage');
@@ -1489,8 +1498,10 @@
             mostrarModalTurno(siguienteTurno);
 
             // Marcar como reproducido antes de empezar (solo para turnos reales, no repeticiones)
+            // Usar clave compuesta de ID y fecha_llamado para detectar turnos recién llamados
             if (!siguienteTurno.id.toString().startsWith('repetir_')) {
-                marcarTurnoReproducido(siguienteTurno.id);
+                const fechaLlamado = siguienteTurno.fecha_llamado || siguienteTurno.fecha_llamado_original || '';
+                marcarTurnoReproducido(siguienteTurno.id, fechaLlamado);
             }
 
             // Reproducir audio con callback al terminar
@@ -1729,10 +1740,14 @@
                     const turnosAtendidos = newTurnos.filter(t => t.estado === 'atendido');
 
                     // Solo reproducir audio para turnos nuevos en estado "llamado"
+                    // Usar clave compuesta de ID y fecha_llamado para detectar turnos recién llamados
                     turnosLlamando.forEach(turno => {
-                        if (!turnosReproducidos.has(turno.id)) {
+                        const turnoKey = getTurnoKey(turno);
+                        if (!turnosReproducidos.has(turnoKey)) {
                             turnosNuevos.push(turno);
-                            console.log('🔊 Nuevo turno para reproducir:', turno.codigo_completo);
+                            console.log('🔊 Nuevo turno para reproducir:', turno.codigo_completo, 'fecha_llamado:', turno.fecha_llamado);
+                        } else {
+                            console.log('🔇 Turno ya reproducido (misma fecha_llamado):', turno.codigo_completo, 'key:', turnoKey);
                         }
                     });
 
@@ -2075,9 +2090,11 @@
 
                     // SOLUCIÓN: Marcar todos los turnos existentes como ya reproducidos
                     // para evitar que suenen cuando alguien ingresa por primera vez a la página
+                    // Usar clave compuesta de ID y fecha_llamado para detectar turnos recién llamados
                     const turnosLlamandoExistentes = turnosExistentes.filter(t => t.estado === 'llamado');
                     turnosLlamandoExistentes.forEach(turno => {
-                        marcarTurnoReproducido(turno.id);
+                        const fechaLlamado = turno.fecha_llamado || turno.fecha_llamado_original || '';
+                        marcarTurnoReproducido(turno.id, fechaLlamado);
                     });
 
                     if (turnosLlamandoExistentes.length > 0) {

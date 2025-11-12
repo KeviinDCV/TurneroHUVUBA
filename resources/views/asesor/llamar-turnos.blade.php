@@ -398,9 +398,13 @@
                         <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $servicio['pendientes'] }}">
                             {{ $servicio['pendientes'] }}
                         </div>
-                        <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $servicio['aplazados'] }}">
-                            {{ $servicio['aplazados'] }}
-                        </div>
+                            <div class="grid-item p-3 border-r border-gray-200 text-center transition-count cursor-pointer hover:bg-blue-50" 
+                                 data-aplazados="{{ $servicio['aplazados'] }}"
+                                 data-servicio-id="{{ $servicio['id'] }}"
+                                 onclick="abrirModalAplazados({{ $servicio['id'] }}, '{{ $servicio['nombre'] }}', {{ $servicio['aplazados'] }})"
+                                 style="{{ $servicio['aplazados'] > 0 ? 'cursor: pointer; font-weight: bold; color: #f97316;' : '' }}">
+                                {{ $servicio['aplazados'] }}
+                            </div>
                         <div class="grid-item p-3 text-center">
                             <button
                                 class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
@@ -421,7 +425,13 @@
                                     {{ $subservicio['nombre'] }}
                                 </div>
                                 <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="{{ $subservicio['pendientes'] }}">{{ $subservicio['pendientes'] }}</div>
-                                <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="{{ $subservicio['aplazados'] }}">{{ $subservicio['aplazados'] }}</div>
+                                <div class="grid-item p-3 border-r border-gray-200 text-center transition-count cursor-pointer hover:bg-blue-50" 
+                                     data-aplazados="{{ $subservicio['aplazados'] }}"
+                                     data-servicio-id="{{ $subservicio['id'] }}"
+                                     onclick="abrirModalAplazados({{ $subservicio['id'] }}, '{{ $subservicio['nombre'] }}', {{ $subservicio['aplazados'] }})"
+                                     style="{{ $subservicio['aplazados'] > 0 ? 'cursor: pointer; font-weight: bold; color: #f97316;' : '' }}">
+                                    {{ $subservicio['aplazados'] }}
+                                </div>
                                 <div class="grid-item p-3 text-center">
                                     <button
                                         class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
@@ -584,6 +594,47 @@
                         style="background-color: #064b9e;"
                     >
                         Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Turnos Aplazados -->
+    <div id="modal-aplazados" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 animate-fade-in max-h-[80vh] flex flex-col">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900">Turnos Aplazados</h3>
+                    <button id="btn-cerrar-modal-aplazados" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <p id="modal-aplazados-servicio" class="text-sm text-gray-600 mt-2"></p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="modal-aplazados-lista" class="space-y-2">
+                    <!-- Los turnos se cargarán aquí -->
+                    <div class="text-center text-gray-500 py-8">
+                        <svg class="animate-spin mx-auto h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Cargando turnos aplazados...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-gray-200">
+                <div class="flex justify-end gap-3">
+                    <button 
+                        id="btn-cerrar-modal-aplazados-footer"
+                        class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors"
+                    >
+                        Cerrar
                     </button>
                 </div>
             </div>
@@ -826,7 +877,11 @@
                             <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${servicio.pendientes}">
                                 ${servicio.pendientes}
                             </div>
-                            <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${servicio.aplazados}">
+                            <div class="grid-item p-3 border-r border-gray-200 text-center transition-count cursor-pointer hover:bg-blue-50" 
+                                 data-aplazados="${servicio.aplazados}"
+                                 data-servicio-id="${servicio.id}"
+                                 onclick="abrirModalAplazados(${servicio.id}, '${servicio.nombre.replace(/'/g, "\\'")}', ${servicio.aplazados})"
+                                 style="${servicio.aplazados > 0 ? 'cursor: pointer; font-weight: bold; color: #f97316;' : ''}">
                                 ${servicio.aplazados}
                             </div>
                             <div class="grid-item p-3 text-center">
@@ -856,7 +911,13 @@
                                         ${subservicio.nombre}
                                     </div>
                                     <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-pendientes="${subservicio.pendientes}">${subservicio.pendientes}</div>
-                                    <div class="grid-item p-3 border-r border-gray-200 text-center transition-count" data-aplazados="${subservicio.aplazados}">${subservicio.aplazados}</div>
+                                    <div class="grid-item p-3 border-r border-gray-200 text-center transition-count cursor-pointer hover:bg-blue-50" 
+                                         data-aplazados="${subservicio.aplazados}"
+                                         data-servicio-id="${subservicio.id}"
+                                         onclick="abrirModalAplazados(${subservicio.id}, '${subservicio.nombre.replace(/'/g, "\\'")}', ${subservicio.aplazados})"
+                                         style="${subservicio.aplazados > 0 ? 'cursor: pointer; font-weight: bold; color: #f97316;' : ''}">
+                                        ${subservicio.aplazados}
+                                    </div>
                                     <div class="grid-item p-3 text-center">
                                         <button
                                             class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200 ${enCanalNoPresencial ? 'opacity-50 cursor-not-allowed' : ''}"
@@ -1502,6 +1563,189 @@
                 btnCanalNoPresencial.style.backgroundColor = '#ef4444'; // Rojo
             @endif
         }
+
+        // ===== FUNCIONES PARA MODAL DE TURNOS APLAZADOS =====
+
+        const modalAplazados = document.getElementById('modal-aplazados');
+        const btnCerrarModalAplazados = document.getElementById('btn-cerrar-modal-aplazados');
+        const btnCerrarModalAplazadosFooter = document.getElementById('btn-cerrar-modal-aplazados-footer');
+        const modalAplazadosLista = document.getElementById('modal-aplazados-lista');
+        const modalAplazadosServicio = document.getElementById('modal-aplazados-servicio');
+        let servicioIdActual = null;
+
+        function abrirModalAplazados(servicioId, nombreServicio, cantidadAplazados) {
+            if (cantidadAplazados === 0) {
+                mostrarModal('Sin turnos aplazados', 'No hay turnos aplazados para este servicio', 'error');
+                return;
+            }
+
+            servicioIdActual = servicioId;
+            modalAplazadosServicio.textContent = `Servicio: ${nombreServicio} (${cantidadAplazados} turno${cantidadAplazados > 1 ? 's' : ''} aplazado${cantidadAplazados > 1 ? 's' : ''})`;
+            
+            // Mostrar modal
+            modalAplazados.classList.remove('hidden');
+            modalAplazados.classList.add('flex');
+
+            // Cargar turnos aplazados
+            cargarTurnosAplazados(servicioId);
+        }
+
+        function cerrarModalAplazados() {
+            modalAplazados.classList.remove('flex');
+            modalAplazados.classList.add('hidden');
+            servicioIdActual = null;
+        }
+
+        function cargarTurnosAplazados(servicioId) {
+            // Mostrar loading
+            modalAplazadosLista.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <svg class="animate-spin mx-auto h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Cargando turnos aplazados...</span>
+                </div>
+            `;
+
+            fetch(`{{ route('asesor.turnos-aplazados') }}?servicio_id=${servicioId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarTurnosAplazados(data.turnos);
+                    } else {
+                        modalAplazadosLista.innerHTML = `
+                            <div class="text-center text-red-500 py-8">
+                                <p>Error al cargar turnos aplazados: ${data.message}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar turnos aplazados:', error);
+                    modalAplazadosLista.innerHTML = `
+                        <div class="text-center text-red-500 py-8">
+                            <p>Error de conexión al cargar turnos aplazados</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function mostrarTurnosAplazados(turnos) {
+            if (!turnos || turnos.length === 0) {
+                modalAplazadosLista.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <p>No hay turnos aplazados para este servicio</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const coloresPrioridad = {
+                5: 'bg-red-100 text-red-800 border-red-300',
+                4: 'bg-orange-100 text-orange-800 border-orange-300',
+                3: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                2: 'bg-blue-100 text-blue-800 border-blue-300',
+                1: 'bg-green-100 text-green-800 border-green-300'
+            };
+
+            modalAplazadosLista.innerHTML = turnos.map(turno => {
+                const colorPrioridad = coloresPrioridad[turno.prioridad] || 'bg-gray-100 text-gray-800 border-gray-300';
+                
+                return `
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl font-bold text-gray-900">${turno.codigo_completo}</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded border ${colorPrioridad}">
+                                    Prioridad ${turno.prioridad_letra}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${turno.servicio.nombre}</p>
+                        </div>
+                        <button 
+                            onclick="volverLlamarTurnoAplazado(${turno.id}, '${turno.codigo_completo}')"
+                            class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors ml-4 ${turnoActual ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${turnoActual ? 'disabled' : ''}
+                        >
+                            Llamar
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function volverLlamarTurnoAplazado(turnoId, codigoCompleto) {
+            // Verificar si ya hay un turno en proceso
+            if (turnoActual) {
+                mostrarModal('Turno en Proceso', 
+                    `Ya tiene el turno ${turnoActual.codigo_completo} en proceso. Debe marcarlo como "Atendido" antes de llamar otro turno.`,
+                    'error');
+                return;
+            }
+
+            // Deshabilitar botón mientras se procesa
+            const botones = document.querySelectorAll(`button[onclick*="${turnoId}"]`);
+            botones.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+
+            fetch('{{ route("asesor.volver-llamar-turno") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    turno_id: turnoId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar interfaz con el turno llamado
+                    actualizarInterfazTurno(data.turno);
+                    
+                    // Cerrar modal
+                    cerrarModalAplazados();
+                    
+                    // Mostrar mensaje de éxito
+                    mostrarModal('Turno Llamado', data.message);
+                    
+                    // Actualizar estadísticas y historial
+                    actualizarEstadisticasServicios();
+                    cargarHistorialTurnos();
+                } else {
+                    mostrarModal('Error', data.message, 'error');
+                    
+                    // Rehabilitar botones
+                    botones.forEach(btn => {
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error al volver a llamar turno:', error);
+                mostrarModal('Error', 'Error de conexión', 'error');
+                
+                // Rehabilitar botones
+                botones.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
+            });
+        }
+
+        // Event listeners para el modal de aplazados
+        btnCerrarModalAplazados.addEventListener('click', cerrarModalAplazados);
+        btnCerrarModalAplazadosFooter.addEventListener('click', cerrarModalAplazados);
+        modalAplazados.addEventListener('click', function(e) {
+            if (e.target === modalAplazados) {
+                cerrarModalAplazados();
+            }
+        });
 
         // Inicializar historial al cargar la página
         document.addEventListener('DOMContentLoaded', function() {

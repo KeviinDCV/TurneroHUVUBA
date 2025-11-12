@@ -61,6 +61,9 @@ class TurneroBroadcaster
      */
     public static function notificarTurnoLlamado($turno)
     {
+        // Refrescar el modelo para asegurar que tenga los datos más recientes
+        $turno->refresh();
+
         // Cargar relaciones necesarias si no están cargadas
         if (!$turno->relationLoaded('caja')) {
             $turno->load('caja');
@@ -70,6 +73,16 @@ class TurneroBroadcaster
             $turno->load('servicio');
         }
 
+        // Verificar que el turno tenga fecha_llamado (debe estar en estado 'llamado')
+        if (!$turno->fecha_llamado) {
+            Log::error('Intento de notificar turno sin fecha_llamado', [
+                'turno_id' => $turno->id,
+                'codigo_completo' => $turno->codigo_completo,
+                'estado' => $turno->estado
+            ]);
+            return false;
+        }
+
         // Datos para la transmisión
         $datos = [
             'id' => $turno->id,
@@ -77,8 +90,16 @@ class TurneroBroadcaster
             'caja' => $turno->caja ? $turno->caja->nombre : null,
             'numero_caja' => $turno->caja ? $turno->caja->numero_caja : null,
             'servicio' => $turno->servicio ? $turno->servicio->nombre : null,
-            'fecha_llamado' => $turno->fecha_llamado->format('Y-m-d H:i:s')
+            'fecha_llamado' => $turno->fecha_llamado->format('Y-m-d H:i:s'),
+            'timestamp' => now()->timestamp // Agregar timestamp para forzar actualización en el cliente
         ];
+
+        Log::info('Enviando notificación de turno llamado al televisor', [
+            'turno_id' => $turno->id,
+            'codigo_completo' => $turno->codigo_completo,
+            'fecha_llamado' => $datos['fecha_llamado'],
+            'timestamp' => $datos['timestamp']
+        ]);
 
         return self::broadcast('turnero', 'turno.llamado', $datos);
     }

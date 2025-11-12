@@ -231,7 +231,7 @@ class AsesorController extends Controller
                         'codigo' => $subservicio->codigo,
                         'pendientes' => $turnosPendientesHijo,
                         'aplazados' => $turnosAplazadosHijo,
-                        'total' => $turnosPendientesHijo + $turnosAplazadosHijo
+                        'total' => $turnosPendientesHijo // Solo pendientes para el botón DISPONIBLE
                     ];
                 }
             }
@@ -247,7 +247,7 @@ class AsesorController extends Controller
                 'codigo' => $servicioPadre->codigo,
                 'pendientes' => $totalPendientes,
                 'aplazados' => $totalAplazados,
-                'total' => $totalPendientes + $totalAplazados,
+                'total' => $totalPendientes, // Solo pendientes para el botón DISPONIBLE
                 'tiene_hijos' => $servicioPadre->subservicios->isNotEmpty(),
                 'pendientes_propios' => $turnosPendientesPadre, // Solo los turnos del padre
                 'aplazados_propios' => $turnosAplazadosPadre,   // Solo los turnos del padre
@@ -272,7 +272,7 @@ class AsesorController extends Controller
                 'codigo' => $subservicio->codigo,
                 'pendientes' => $turnosPendientes,
                 'aplazados' => $turnosAplazados,
-                'total' => $turnosPendientes + $turnosAplazados,
+                'total' => $turnosPendientes, // Solo pendientes para el botón DISPONIBLE
                 'tiene_hijos' => false,
                 'pendientes_propios' => $turnosPendientes, // Mismo valor que pendientes
                 'aplazados_propios' => $turnosAplazados,   // Mismo valor que aplazados
@@ -429,11 +429,11 @@ class AsesorController extends Controller
             return null;
         }
 
-        // Obtener todos los turnos pendientes/aplazados del día para los servicios especificados
+        // Obtener solo los turnos pendientes del día para los servicios especificados
+        // Los turnos aplazados se llaman desde el modal de la columna APLAZADOS
         $turnos = Turno::whereIn('servicio_id', $serviciosIds)
-            ->whereIn('estado', ['pendiente', 'aplazado'])
+            ->where('estado', 'pendiente')
             ->delDia()
-            ->orderBy('estado', 'asc') // Pendientes primero
             ->orderBy('numero', 'asc')
             ->get();
 
@@ -962,7 +962,7 @@ class AsesorController extends Controller
                         'codigo' => $subservicio->codigo,
                         'pendientes' => $turnosPendientesHijo,
                         'aplazados' => $turnosAplazadosHijo,
-                        'total' => $turnosPendientesHijo + $turnosAplazadosHijo
+                        'total' => $turnosPendientesHijo // Solo pendientes para el botón DISPONIBLE
                     ];
                 }
             }
@@ -978,7 +978,7 @@ class AsesorController extends Controller
                 'codigo' => $servicioPadre->codigo,
                 'pendientes' => $totalPendientes,
                 'aplazados' => $totalAplazados,
-                'total' => $totalPendientes + $totalAplazados,
+                'total' => $totalPendientes, // Solo pendientes para el botón DISPONIBLE
                 'tiene_hijos' => $servicioPadre->subservicios->isNotEmpty(),
                 'pendientes_propios' => $turnosPendientesPadre, // Solo los turnos del padre
                 'aplazados_propios' => $turnosAplazadosPadre,   // Solo los turnos del padre
@@ -1003,7 +1003,7 @@ class AsesorController extends Controller
                 'codigo' => $subservicio->codigo,
                 'pendientes' => $turnosPendientes,
                 'aplazados' => $turnosAplazados,
-                'total' => $turnosPendientes + $turnosAplazados,
+                'total' => $turnosPendientes, // Solo pendientes para el botón DISPONIBLE
                 'tiene_hijos' => false,
                 'pendientes_propios' => $turnosPendientes, // Mismo valor que pendientes
                 'aplazados_propios' => $turnosAplazados,   // Mismo valor que aplazados
@@ -1196,6 +1196,73 @@ class AsesorController extends Controller
     }
 
     /**
+     * Obtener turnos aplazados de un servicio específico
+     */
+    public function getTurnosAplazados(Request $request)
+    {
+        $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
+
+        if (!$user->esAsesor() || !$cajaId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+
+        $request->validate([
+            'servicio_id' => 'required|exists:servicios,id'
+        ]);
+
+        $servicioId = $request->servicio_id;
+        $servicio = Servicio::find($servicioId);
+
+        // Verificar que el servicio esté asignado al asesor
+        if (!$user->servicios()->where('servicios.id', $servicioId)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Servicio no asignado'], 403);
+        }
+
+        // Obtener turnos aplazados del servicio y sus subservicios asignados al asesor
+        $serviciosIds = [$servicioId];
+        
+        // Si es un servicio padre, incluir subservicios asignados al asesor
+        if ($servicio->subservicios->isNotEmpty()) {
+            $subserviciosIds = $servicio->subservicios()
+                ->whereHas('usuarios', function($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->pluck('id')
+                ->toArray();
+            $serviciosIds = array_merge($serviciosIds, $subserviciosIds);
+        }
+
+        $turnosAplazados = Turno::whereIn('servicio_id', $serviciosIds)
+            ->where('estado', 'aplazado')
+            ->where('asesor_id', $user->id)
+            ->where('caja_id', $cajaId)
+            ->delDia()
+            ->with('servicio')
+            ->orderBy('prioridad', 'desc')
+            ->orderBy('numero', 'asc')
+            ->get();
+
+        $turnosFormateados = $turnosAplazados->map(function ($turno) {
+            return [
+                'id' => $turno->id,
+                'codigo_completo' => $turno->codigo_completo,
+                'servicio' => [
+                    'id' => $turno->servicio->id,
+                    'nombre' => $turno->servicio->nombre
+                ],
+                'prioridad' => $turno->prioridad,
+                'prioridad_letra' => $turno->prioridad_letra
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'turnos' => $turnosFormateados
+        ]);
+    }
+
+    /**
      * Volver a llamar un turno aplazado
      */
     public function volverLlamarTurno(Request $request)
@@ -1222,11 +1289,49 @@ class AsesorController extends Controller
             ], 400);
         }
 
+        // Validar que se proporcione turno_id O codigo_completo
         $request->validate([
-            'turno_id' => 'required|integer|exists:turnos,id'
+            'turno_id' => 'nullable|integer|exists:turnos,id',
+            'codigo_completo' => 'nullable|string'
         ]);
 
-        $turno = Turno::find($request->turno_id);
+        // Buscar turno por ID o por código completo
+        if ($request->has('turno_id')) {
+            $turno = Turno::find($request->turno_id);
+        } elseif ($request->has('codigo_completo')) {
+            // Extraer código y número del código completo (ej: "CP-001" -> código="CP", número=1)
+            $codigoCompleto = $request->codigo_completo;
+            $partes = explode('-', $codigoCompleto);
+
+            if (count($partes) !== 2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Formato de código completo inválido'
+                ]);
+            }
+
+            $codigo = $partes[0];
+            $numero = (int) $partes[1];
+
+            $turno = Turno::where('codigo', $codigo)
+                ->where('numero', $numero)
+                ->where('asesor_id', $user->id)
+                ->where('caja_id', $cajaId)
+                ->delDia()
+                ->first();
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar turno_id o codigo_completo'
+            ]);
+        }
+
+        if (!$turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Turno no encontrado'
+            ]);
+        }
 
         // Verificar que el turno pertenece al asesor
         if ($turno->asesor_id != $user->id || $turno->caja_id != $cajaId) {
@@ -1244,11 +1349,33 @@ class AsesorController extends Controller
             ], 400);
         }
 
-        // Marcar como llamado nuevamente
+        // Marcar como llamado nuevamente (esto establece fecha_llamado y estado='llamado')
         $turno->marcarComoLlamado($cajaId, $user->id);
 
-        // Transmitir el evento
-        TurneroBroadcaster::notificarTurnoLlamado($turno);
+        // Refrescar el modelo para asegurar que tenga los datos actualizados
+        $turno->refresh();
+
+        // Cargar relaciones necesarias para el broadcaster
+        $turno->load('servicio', 'caja');
+
+        // Log para debugging
+        \Log::info('Volviendo a llamar turno aplazado', [
+            'turno_id' => $turno->id,
+            'codigo_completo' => $turno->codigo_completo,
+            'estado' => $turno->estado,
+            'fecha_llamado' => $turno->fecha_llamado,
+            'caja_id' => $turno->caja_id,
+            'asesor_id' => $turno->asesor_id
+        ]);
+
+        // Transmitir el evento al televisor
+        $broadcastResult = TurneroBroadcaster::notificarTurnoLlamado($turno);
+
+        // Log del resultado del broadcast
+        \Log::info('Resultado del broadcast', [
+            'turno_id' => $turno->id,
+            'broadcast_exitoso' => $broadcastResult
+        ]);
 
         return response()->json([
             'success' => true,

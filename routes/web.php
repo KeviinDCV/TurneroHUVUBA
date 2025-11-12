@@ -202,6 +202,7 @@ Route::middleware(['auth', 'asesor.role', 'update.user.activity', 'clean.expired
     Route::get('/api/turno/{turno}/estado', [AsesorController::class, 'verificarEstadoTurno'])->name('api.turno.estado');
     Route::get('/asesor/historial-turnos', [AsesorController::class, 'historialTurnos'])->name('asesor.historial-turnos');
     Route::post('/asesor/volver-llamar-turno', [AsesorController::class, 'volverLlamarTurno'])->name('asesor.volver-llamar-turno');
+    Route::get('/asesor/turnos-aplazados', [AsesorController::class, 'getTurnosAplazados'])->name('asesor.turnos-aplazados');
 
     // API para obtener estadísticas de servicios para el asesor (actualización en tiempo real)
     Route::get('/api/asesor/servicios-estadisticas', [AsesorController::class, 'getServiciosEstadisticas'])->name('api.asesor.servicios-estadisticas');
