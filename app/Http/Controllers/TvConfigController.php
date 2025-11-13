@@ -430,11 +430,14 @@ class TvConfigController extends Controller
      */
     public function getTurnosLlamados()
     {
-        // Obtener turnos llamados y atendidos recientes (últimas 2 horas)
+        // Obtener turnos llamados y atendidos del día actual (desde inicio del día hasta ahora)
+        // Los turnos solo desaparecerán a las 12:00 AM del día siguiente
         // Limitado a 5 turnos para evitar desbordamiento visual en la pantalla TV
         // Excluir turnos de servicios con ocultar_turno = true
+        $inicioDelDia = now()->startOfDay();
+        
         $turnos = \App\Models\Turno::whereIn('estado', ['llamado', 'atendido'])
-            ->where('fecha_llamado', '>=', now()->subHours(2))
+            ->where('fecha_llamado', '>=', $inicioDelDia)
             ->with(['servicio', 'caja'])
             ->whereHas('servicio', function($query) {
                 $query->where('ocultar_turno', false);

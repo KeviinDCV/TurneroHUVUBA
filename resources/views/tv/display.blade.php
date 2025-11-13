@@ -1605,6 +1605,9 @@
         let mediaTimer = null;
         let isMediaPlaying = false;
 
+        // Variable para rastrear el último día procesado
+        let ultimoDiaProcesado = null;
+        
         // Actualizar la hora cada minuto (Zona horaria de Colombia)
         function updateTime() {
             // Crear fecha con zona horaria de Colombia (UTC-5)
@@ -1618,6 +1621,36 @@
             const minutes = colombiaTime.getMinutes().toString().padStart(2, '0');
 
             document.getElementById('current-time').textContent = `${month} ${day} - ${hours}:${minutes}`;
+            
+            // Verificar si es medianoche (12:00 AM) para limpiar turnos del día anterior
+            const fechaActual = colombiaTime.toDateString();
+            const esMedianoche = hours === '00' && minutes === '00';
+            
+            // Solo limpiar una vez cuando cambia el día a las 12:00 AM
+            if (esMedianoche && ultimoDiaProcesado !== fechaActual) {
+                console.log('🕛 Medianoche detectada - Limpiando turnos del día anterior (solo de la vista, NO de BD)');
+                ultimoDiaProcesado = fechaActual;
+                
+                // Limpiar turnos de la vista local (NO eliminar de BD)
+                turnos = [];
+                turnosVistos.clear();
+                ultimoTurnoId = null;
+                ultimoContenidoTurnos = '';
+                
+                // Limpiar cola de audio
+                limpiarColaAudio(true);
+                
+                // Limpiar localStorage de turnos reproducidos antiguos
+                limpiarTurnosAntiguos();
+                
+                // Actualizar la vista
+                renderTurnos([]);
+                
+                console.log('✅ Turnos limpiados de la vista (mantenidos en BD)');
+            } else if (!esMedianoche && ultimoDiaProcesado === null) {
+                // Inicializar el día actual si no está establecido
+                ultimoDiaProcesado = fechaActual;
+            }
         }
 
         // Actualizar configuración del TV desde el servidor
@@ -1673,11 +1706,20 @@
             }
         }
 
-        // Cargar multimedia desde el servidor
+        // Cargar multimedia desde el servidor con mejor manejo de errores
+        let multimediaErrorCount = 0;
+        const MAX_MULTIMEDIA_ERRORS = 3;
+        
         function loadMultimedia() {
             fetch('/api/multimedia')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    multimediaErrorCount = 0; // Resetear contador de errores en éxito
                     const newMultimediaList = data.multimedia || [];
 
                     // Comparar si la lista ha cambiado
@@ -1688,6 +1730,9 @@
                         multimediaList = newMultimediaList;
 
                         if (multimediaList.length > 0) {
+                            // Resetear contador de intentos cuando hay nueva lista válida
+                            intentosCargaMedia = 0;
+                            
                             // Si hay multimedia y no se está reproduciendo, iniciar
                             if (!isMediaPlaying) {
                                 startMediaPlayback();
@@ -1697,18 +1742,30 @@
                                 if (!currentMedia) {
                                     // El archivo actual ya no existe, reiniciar desde el principio
                                     currentMediaIndex = 0;
+                                    intentosCargaMedia = 0; // Resetear contador
                                     showCurrentMedia();
                                 }
                             }
                         } else {
-                            // No hay multimedia, mostrar placeholder
-                            showPlaceholder();
+                            // Solo mostrar placeholder si realmente no hay multimedia
+                            // No ocultar si hay multimedia cargado previamente
+                            if (multimediaList.length === 0) {
+                                showPlaceholder();
+                            }
                         }
                     }
                 })
                 .catch(error => {
-                    console.error('Error al cargar multimedia:', error);
-                    showPlaceholder();
+                    multimediaErrorCount++;
+                    console.error('Error al cargar multimedia:', error, `(Intento ${multimediaErrorCount}/${MAX_MULTIMEDIA_ERRORS})`);
+                    
+                    // Solo mostrar placeholder si hay múltiples errores consecutivos
+                    // Esto evita que el multimedia desaparezca por errores temporales de red
+                    if (multimediaErrorCount >= MAX_MULTIMEDIA_ERRORS && multimediaList.length === 0) {
+                        console.warn('Múltiples errores al cargar multimedia, mostrando placeholder');
+                        showPlaceholder();
+                    }
+                    // Si ya hay multimedia cargado, mantenerlo visible aunque haya error temporal
                 });
         }
 
@@ -2244,6 +2301,7 @@
 
                 img.onload = () => {
                     container.appendChild(img);
+                    intentosCargaMedia = 0; // Resetear contador al cargar exitosamente
 
                     // Aplicar transición de entrada
                     setTimeout(() => {
@@ -2259,7 +2317,10 @@
 
                 img.onerror = () => {
                     console.error('Error al cargar imagen:', media.url);
-                    nextMedia();
+                    // Intentar siguiente media después de un breve delay
+                    setTimeout(() => {
+                        nextMedia();
+                    }, 500);
                 };
 
             } else if (media.tipo === 'video') {
@@ -2273,6 +2334,7 @@
 
                 video.onloadeddata = () => {
                     container.appendChild(video);
+                    intentosCargaMedia = 0; // Resetear contador al cargar exitosamente
 
                     // Aplicar transición de entrada
                     setTimeout(() => {
@@ -2287,12 +2349,18 @@
 
                 video.onerror = () => {
                     console.error('Error al cargar video:', media.url);
-                    nextMedia();
+                    // Intentar siguiente media después de un breve delay
+                    setTimeout(() => {
+                        nextMedia();
+                    }, 500);
                 };
             }
         }
 
         // Avanzar al siguiente archivo multimedia con transición
+        let intentosCargaMedia = 0;
+        const MAX_INTENTOS_MEDIA = 3;
+        
         function nextMedia() {
             if (mediaTimer) {
                 clearTimeout(mediaTimer);
@@ -2305,7 +2373,17 @@
                 return;
             }
 
+            // Incrementar índice y asegurar que esté dentro del rango
             currentMediaIndex = (currentMediaIndex + 1) % multimediaList.length;
+            
+            // Si hemos intentado cargar todos los archivos sin éxito, mantener el último que funcionó
+            if (intentosCargaMedia >= MAX_INTENTOS_MEDIA * multimediaList.length) {
+                console.warn('⚠️ Múltiples errores al cargar multimedia, manteniendo último contenido válido');
+                intentosCargaMedia = 0; // Resetear contador después de un tiempo
+                return; // No intentar más, mantener lo que está visible
+            }
+            
+            intentosCargaMedia++;
             showCurrentMedia();
         }
 
@@ -2546,7 +2624,7 @@
 
             // El pito inicial mantiene su volumen original
             if (audioFile.includes('turno.mp3') && !audioFile.includes('voice/')) {
-                targetVolume = 1.0;  // Volumen normal para el pito
+                targetVolume = 0.2;  // Volumen reducido para el pito
                 gainValue = 1.0;
             } else {
                 // Aumentar volumen para archivos de voz
