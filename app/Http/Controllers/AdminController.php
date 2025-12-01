@@ -794,4 +794,145 @@ class AdminController extends Controller
         $turnosEnCola = $this->getTurnosEnColaData();
         return response()->json($turnosEnCola);
     }
+
+    /**
+     * API para obtener estadísticas detalladas de un usuario específico
+     */
+    public function getEstadisticasUsuario(Request $request, $userId)
+    {
+        $request->validate([
+            'fecha_inicio' => 'nullable|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+        ]);
+
+        $usuario = User::findOrFail($userId);
+
+        // Fechas por defecto: hoy
+        $fechaInicio = $request->fecha_inicio 
+            ? Carbon::parse($request->fecha_inicio)->startOfDay() 
+            : Carbon::today()->startOfDay();
+        $fechaFin = $request->fecha_fin 
+            ? Carbon::parse($request->fecha_fin)->endOfDay() 
+            : Carbon::today()->endOfDay();
+
+        // Obtener turnos del usuario en el rango de fechas
+        $turnos = Turno::with(['servicio', 'caja'])
+            ->where('asesor_id', $userId)
+            ->whereBetween('fecha_creacion', [$fechaInicio, $fechaFin])
+            ->orderBy('fecha_creacion', 'desc')
+            ->get();
+
+        $turnosAtendidos = $turnos->where('estado', 'atendido');
+
+        // Estadísticas generales
+        $estadisticas = [
+            'total_turnos' => $turnos->count(),
+            'turnos_atendidos' => $turnosAtendidos->count(),
+            'turnos_pendientes' => $turnos->whereIn('estado', ['pendiente', 'aplazado'])->count(),
+            'turnos_aplazados' => $turnos->where('estado', 'aplazado')->count(),
+            'turnos_cancelados' => $turnos->where('estado', 'cancelado')->count(),
+            'tiempo_promedio_atencion' => $turnosAtendidos->count() > 0 
+                ? round($turnosAtendidos->avg('duracion_atencion') / 60, 2) 
+                : 0,
+            'tiempo_total_atencion' => round($turnosAtendidos->sum('duracion_atencion') / 60, 2),
+        ];
+
+        // Calcular tiempo promedio entre turnos
+        $turnosOrdenados = $turnosAtendidos->sortBy('fecha_atencion')->values();
+        $tiemposEntreTurnos = [];
+        for ($i = 1; $i < $turnosOrdenados->count(); $i++) {
+            $anterior = $turnosOrdenados[$i - 1];
+            $actual = $turnosOrdenados[$i];
+            
+            if ($anterior->fecha_finalizacion && $actual->fecha_llamado) {
+                $minutos = Carbon::parse($anterior->fecha_finalizacion)
+                    ->diffInMinutes(Carbon::parse($actual->fecha_llamado));
+                $tiemposEntreTurnos[] = $minutos;
+            }
+        }
+        $estadisticas['tiempo_promedio_entre_turnos'] = count($tiemposEntreTurnos) > 0 
+            ? round(array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos), 2) 
+            : 0;
+
+        // Turnos por servicio
+        $turnosPorServicio = $turnos->groupBy('servicio.nombre')->map(function ($grupo) {
+            return [
+                'total' => $grupo->count(),
+                'atendidos' => $grupo->where('estado', 'atendido')->count(),
+                'pendientes' => $grupo->whereIn('estado', ['pendiente', 'aplazado'])->count(),
+            ];
+        });
+
+        // Turnos por día (para gráfico)
+        $turnosPorDia = $turnos->groupBy(function ($turno) {
+            return Carbon::parse($turno->fecha_creacion)->format('Y-m-d');
+        })->map(function ($grupo) {
+            return [
+                'total' => $grupo->count(),
+                'atendidos' => $grupo->where('estado', 'atendido')->count(),
+            ];
+        });
+
+        // Canales no presenciales
+        $canalesNoPresenciales = \App\Models\CanalNoPresencialHistorial::where('user_id', $userId)
+            ->whereBetween('inicio', [$fechaInicio, $fechaFin])
+            ->orderBy('inicio', 'desc')
+            ->get();
+
+        $totalMinutosCanal = $canalesNoPresenciales->sum('duracion_minutos');
+
+        // Detalle de turnos (últimos 20)
+        $turnosDetalle = $turnosAtendidos->take(20)->map(function ($turno) {
+            return [
+                'codigo' => $turno->codigo_completo,
+                'servicio' => $turno->servicio->nombre ?? 'N/A',
+                'fecha_llamado' => $turno->fecha_llamado 
+                    ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') 
+                    : 'N/A',
+                'fecha_atencion' => $turno->fecha_atencion 
+                    ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') 
+                    : 'N/A',
+                'fecha_finalizacion' => $turno->fecha_finalizacion 
+                    ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') 
+                    : 'N/A',
+                'duracion_minutos' => $turno->duracion_atencion 
+                    ? round($turno->duracion_atencion / 60, 2) 
+                    : 0,
+                'caja' => $turno->caja->numero_caja ?? 'N/A',
+            ];
+        });
+
+        // Detalle de canales no presenciales
+        $canalesDetalle = $canalesNoPresenciales->take(10)->map(function ($actividad) {
+            return [
+                'inicio' => $actividad->inicio->format('d/m/Y H:i:s'),
+                'fin' => $actividad->fin ? $actividad->fin->format('d/m/Y H:i:s') : 'En curso',
+                'duracion_minutos' => $actividad->duracion_minutos ?? 0,
+                'actividad' => $actividad->actividad,
+            ];
+        });
+
+        return response()->json([
+            'usuario' => [
+                'id' => $usuario->id,
+                'nombre_completo' => $usuario->nombre_completo,
+                'nombre_usuario' => $usuario->nombre_usuario,
+                'rol' => $usuario->rol,
+            ],
+            'periodo' => [
+                'inicio' => $fechaInicio->format('d/m/Y'),
+                'fin' => $fechaFin->format('d/m/Y'),
+            ],
+            'estadisticas' => $estadisticas,
+            'turnos_por_servicio' => $turnosPorServicio,
+            'turnos_por_dia' => $turnosPorDia,
+            'canal_no_presencial' => [
+                'cantidad_actividades' => $canalesNoPresenciales->count(),
+                'tiempo_total_minutos' => $totalMinutosCanal,
+                'tiempo_total_horas' => round($totalMinutosCanal / 60, 2),
+                'detalle' => $canalesDetalle,
+            ],
+            'turnos_detalle' => $turnosDetalle,
+        ]);
+    }
 }

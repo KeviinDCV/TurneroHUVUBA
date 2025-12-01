@@ -51,10 +51,17 @@
                             <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white">
                                 @if($usuariosActivos->count() > 0)
                                     @foreach($usuariosActivos as $usuario)
-                                        <tr class="hover:bg-gray-50">
+                                        <tr class="hover:bg-blue-50 cursor-pointer transition-colors" 
+                                            onclick="abrirModalEstadisticas({{ $usuario['id'] }}, '{{ addslashes($usuario['name']) }}')"
+                                            title="Clic para ver estadísticas de {{ $usuario['name'] }}">
                                             <td class="py-3 px-4 whitespace-nowrap">
                                                 <div class="flex flex-col">
-                                                    <span class="text-sm font-medium text-gray-900">{{ $usuario['name'] }}</span>
+                                                    <span class="text-sm font-medium text-gray-900 flex items-center">
+                                                        {{ $usuario['name'] }}
+                                                        <svg class="w-4 h-4 ml-2 text-hospital-blue opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                                        </svg>
+                                                    </span>
                                                     <span class="text-xs text-gray-500">Sesión activa: {{ $usuario['tiempo_sesion'] }}</span>
                                                 </div>
                                             </td>
@@ -445,6 +452,100 @@
     </div>
 </div>
 
+<!-- Modal de Estadísticas de Usuario (Alpine.js) -->
+<div
+    x-data="estadisticasUsuarioModal()"
+    x-cloak
+    @keydown.escape.window="isOpen = false"
+>
+    <div
+        x-show="isOpen"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
+        style="display: none;"
+    >
+        <div
+            @click.away="isOpen = false"
+            class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform scale-100"
+            x-transition:leave-end="opacity-0 transform scale-95"
+        >
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-800">Estadísticas del Usuario</h2>
+                    <button @click="isOpen = false" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Nombre del usuario -->
+                <p class="text-sm text-gray-500 mb-6" x-text="'Usuario: ' + usuarioNombre"></p>
+
+                <!-- Filtros de Fecha -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                        <input
+                            type="date"
+                            x-model="fechaInicio"
+                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                        <input
+                            type="date"
+                            x-model="fechaFin"
+                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                        >
+                    </div>
+                </div>
+
+                <!-- Atajos de fecha -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button @click="setFechaRapida('hoy')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Hoy</button>
+                    <button @click="setFechaRapida('ayer')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Ayer</button>
+                    <button @click="setFechaRapida('semana')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Última Semana</button>
+                    <button @click="setFechaRapida('mes')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Último Mes</button>
+                </div>
+
+                <!-- Indicador de Carga -->
+                <div x-show="loading" class="flex justify-center items-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-hospital-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                <!-- Contenido de Estadísticas -->
+                <div x-show="!loading" id="estadisticas-contenido" class="max-h-80 overflow-y-auto">
+                    <!-- El contenido se carga dinámicamente -->
+                </div>
+
+                <div class="mt-8 flex justify-end space-x-3">
+                    <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
+                        Cerrar
+                    </button>
+                    <button type="button" @click="cargarEstadisticas()" class="bg-hospital-blue text-white px-6 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                        Aplicar Filtro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de resultado -->
 <div id="resultModal" class="fixed inset-0 modal-overlay hidden z-50">
     <div class="flex items-center justify-center min-h-screen p-4">
@@ -811,11 +912,21 @@ function actualizarUsuariosActivos() {
                         actividadHtml = '<span class="text-gray-400">—</span>';
                     }
 
+                    // Escapar nombre para evitar problemas con comillas
+                    const nombreEscapado = usuario.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    
                     html += `
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-blue-50 cursor-pointer transition-colors" 
+                            onclick="abrirModalEstadisticas(${usuario.id}, '${nombreEscapado}')"
+                            title="Clic para ver estadísticas de ${usuario.name}">
                             <td class="py-3 px-4 whitespace-nowrap">
                                 <div class="flex flex-col">
-                                    <span class="text-sm font-medium text-gray-900">${usuario.name}</span>
+                                    <span class="text-sm font-medium text-gray-900 flex items-center">
+                                        ${usuario.name}
+                                        <svg class="w-4 h-4 ml-2 text-hospital-blue opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                        </svg>
+                                    </span>
                                     <span class="text-xs text-gray-500">Sesión activa: ${usuario.tiempo_sesion}</span>
                                 </div>
                             </td>
@@ -1212,6 +1323,270 @@ actualizarUsuariosActivos();
 actualizarTurnosPorServicio();
 actualizarTurnosPorAsesor();
 actualizarTurnosEnCola();
+
+// ===== MODAL DE ESTADÍSTICAS DE USUARIO (Alpine.js) =====
+function abrirModalEstadisticas(userId, nombreUsuario) {
+    window.dispatchEvent(new CustomEvent('open-estadisticas-modal', {
+        detail: { userId, nombreUsuario }
+    }));
+}
+
+// Componente Alpine.js para el modal de estadísticas
+function estadisticasUsuarioModal() {
+    return {
+        isOpen: false,
+        loading: false,
+        usuarioId: null,
+        usuarioNombre: '',
+        fechaInicio: new Date().toISOString().split('T')[0],
+        fechaFin: new Date().toISOString().split('T')[0],
+
+        init() {
+            window.addEventListener('open-estadisticas-modal', (event) => {
+                const { userId, nombreUsuario } = event.detail;
+                this.usuarioId = userId;
+                this.usuarioNombre = nombreUsuario;
+                this.fechaInicio = new Date().toISOString().split('T')[0];
+                this.fechaFin = new Date().toISOString().split('T')[0];
+                this.isOpen = true;
+                this.cargarEstadisticas();
+            });
+        },
+
+        setFechaRapida(tipo) {
+            const hoy = new Date();
+            let fechaInicio, fechaFin;
+            
+            switch(tipo) {
+                case 'hoy':
+                    fechaInicio = fechaFin = hoy;
+                    break;
+                case 'ayer':
+                    const ayer = new Date(hoy);
+                    ayer.setDate(ayer.getDate() - 1);
+                    fechaInicio = fechaFin = ayer;
+                    break;
+                case 'semana':
+                    fechaFin = hoy;
+                    fechaInicio = new Date(hoy);
+                    fechaInicio.setDate(fechaInicio.getDate() - 7);
+                    break;
+                case 'mes':
+                    fechaFin = hoy;
+                    fechaInicio = new Date(hoy);
+                    fechaInicio.setMonth(fechaInicio.getMonth() - 1);
+                    break;
+            }
+            
+            this.fechaInicio = fechaInicio.toISOString().split('T')[0];
+            this.fechaFin = fechaFin.toISOString().split('T')[0];
+            this.cargarEstadisticas();
+        },
+
+        cargarEstadisticas() {
+            if (!this.usuarioId) return;
+            
+            this.loading = true;
+            const contenedor = document.getElementById('estadisticas-contenido');
+            
+            let url = `/api/admin/usuario/${this.usuarioId}/estadisticas`;
+            if (this.fechaInicio && this.fechaFin) {
+                url += `?fecha_inicio=${this.fechaInicio}&fecha_fin=${this.fechaFin}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    this.loading = false;
+                    this.renderizarEstadisticas(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.loading = false;
+                    contenedor.innerHTML = `
+                        <div class="text-center py-12 text-red-600">
+                            <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p>Error al cargar las estadísticas</p>
+                        </div>
+                    `;
+                });
+        },
+
+        renderizarEstadisticas(data) {
+            const contenedor = document.getElementById('estadisticas-contenido');
+            const est = data.estadisticas;
+            const canal = data.canal_no_presencial;
+            
+            let html = `
+                <!-- Resumen General -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-blue-50 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-blue-600">${est.total_turnos}</p>
+                        <p class="text-xs text-gray-600">Total Turnos</p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-green-600">${est.turnos_atendidos}</p>
+                        <p class="text-xs text-gray-600">Atendidos</p>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-yellow-600">${est.turnos_pendientes}</p>
+                        <p class="text-xs text-gray-600">Pendientes</p>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-red-600">${est.turnos_cancelados}</p>
+                        <p class="text-xs text-gray-600">Cancelados</p>
+                    </div>
+                </div>
+                
+                <!-- Tiempos -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_atencion} min</p>
+                                <p class="text-xs text-gray-500">Tiempo Prom. Atención</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            <div>
+                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_total_atencion} min</p>
+                                <p class="text-xs text-gray-500">Tiempo Total</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <div>
+                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_entre_turnos} min</p>
+                                <p class="text-xs text-gray-500">Tiempo Entre Turnos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Canal No Presencial -->
+                ${canal.cantidad_actividades > 0 ? `
+                <div class="mb-6">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                        </svg>
+                        Canal No Presencial
+                    </h4>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="bg-orange-50 p-3 rounded-lg text-center">
+                            <p class="text-xl font-bold text-orange-600">${canal.cantidad_actividades}</p>
+                            <p class="text-xs text-gray-600">Actividades</p>
+                        </div>
+                        <div class="bg-orange-50 p-3 rounded-lg text-center">
+                            <p class="text-xl font-bold text-orange-600">${canal.tiempo_total_horas} hrs</p>
+                            <p class="text-xs text-gray-600">Tiempo Total</p>
+                        </div>
+                    </div>
+                    ${canal.detalle.length > 0 ? `
+                    <div class="max-h-32 overflow-y-auto border rounded-lg">
+                        <table class="w-full text-xs">
+                            <thead class="bg-orange-100 sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-2 text-left">Actividad</th>
+                                    <th class="py-2 px-2 text-left">Inicio</th>
+                                    <th class="py-2 px-2 text-left">Duración</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                ${canal.detalle.map(a => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="py-2 px-2">${a.actividad}</td>
+                                        <td class="py-2 px-2">${a.inicio}</td>
+                                        <td class="py-2 px-2">${a.duracion_minutos} min</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
+                
+                <!-- Turnos por Servicio -->
+                ${Object.keys(data.turnos_por_servicio).length > 0 ? `
+                <div class="mb-6">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                        Turnos por Servicio
+                    </h4>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        ${Object.entries(data.turnos_por_servicio).map(([servicio, datos]) => `
+                            <div class="bg-gray-50 p-2 rounded-lg">
+                                <p class="text-xs font-medium text-gray-700 truncate" title="${servicio}">${servicio}</p>
+                                <p class="text-sm font-bold text-hospital-blue">${datos.atendidos}/${datos.total}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Detalle de Turnos -->
+                ${data.turnos_detalle.length > 0 ? `
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        Últimos Turnos Atendidos
+                    </h4>
+                    <div class="max-h-48 overflow-y-auto border rounded-lg">
+                        <table class="w-full text-xs">
+                            <thead class="bg-hospital-blue text-white sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-2 text-left">Código</th>
+                                    <th class="py-2 px-2 text-left">Servicio</th>
+                                    <th class="py-2 px-2 text-left">Hora</th>
+                                    <th class="py-2 px-2 text-left">Duración</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y bg-white">
+                                ${data.turnos_detalle.map(t => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="py-2 px-2 font-medium">${t.codigo}</td>
+                                        <td class="py-2 px-2">${t.servicio}</td>
+                                        <td class="py-2 px-2">${t.fecha_atencion}</td>
+                                        <td class="py-2 px-2">${t.duracion_minutos} min</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : `
+                <div class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <p>No hay turnos atendidos en este período</p>
+                </div>
+                `}
+            `;
+            
+            contenedor.innerHTML = html;
+        }
+    }
+}
 </script>
 
 <style>
