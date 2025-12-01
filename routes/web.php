@@ -107,6 +107,10 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::post('/asignacion-servicios/desasignar', [App\Http\Controllers\AsignacionServicioController::class, 'desasignarServicio'])->name('admin.asignacion-servicios.desasignar');
     Route::post('/asignacion-servicios/asignar-multiples', [App\Http\Controllers\AsignacionServicioController::class, 'asignarMultiplesServicios'])->name('admin.asignacion-servicios.asignar-multiples');
 
+    // Rutas de gestión de turnos (admin)
+    Route::get('/admin/turnos', [AdminController::class, 'turnos'])->name('admin.turnos');
+    Route::get('/api/admin/turnos-hoy', [AdminController::class, 'getTurnosHoy'])->name('api.admin.turnos-hoy');
+
     // Rutas de configuración del TV (incluye multimedia)
     Route::get('/tv-config', [TvConfigController::class, 'index'])->name('admin.tv-config');
     Route::post('/tv-config', [TvConfigController::class, 'update'])->name('admin.tv-config.update');

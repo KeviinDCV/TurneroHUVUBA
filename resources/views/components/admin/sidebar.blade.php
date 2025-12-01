@@ -97,6 +97,17 @@
                 @endif
             </a>
 
+            <!-- Turnos -->
+            <a href="{{ route('admin.turnos') }}" class="sidebar-item group w-full flex items-center justify-start {{ $currentRoute === 'admin.turnos' ? 'bg-white/20 text-white border-l-4 border-white shadow-md relative' : 'text-blue-200 hover:text-white hover:bg-white/10' }} p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
+                <svg class="mr-3 h-5 w-5 {{ $currentRoute === 'admin.turnos' ? '' : 'group-hover:text-white transition-colors' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                </svg>
+                <span class="text-sm font-medium">Turnos</span>
+                @if($currentRoute === 'admin.turnos')
+                    <div class="absolute right-3 w-2 h-2 bg-white rounded-full active-indicator"></div>
+                @endif
+            </a>
+
             <!-- Usuarios -->
             <a href="{{ route('admin.users') }}" class="sidebar-item group w-full flex items-center justify-start {{ $currentRoute === 'admin.users' ? 'bg-white/20 text-white border-l-4 border-white shadow-md relative' : 'text-blue-200 hover:text-white hover:bg-white/10' }} p-3 rounded-lg transition-all duration-200 hover:translate-x-1">
                 <svg class="mr-3 h-5 w-5 {{ $currentRoute === 'admin.users' ? '' : 'group-hover:text-white transition-colors' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">

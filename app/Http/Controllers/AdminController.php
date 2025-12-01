@@ -935,4 +935,151 @@ class AdminController extends Controller
             'turnos_detalle' => $turnosDetalle,
         ]);
     }
+
+    /**
+     * Vista de gestión de turnos del día
+     */
+    public function turnos(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Obtener filtros
+        $estado = $request->input('estado');
+        $servicio = $request->input('servicio');
+        $asesor = $request->input('asesor');
+        $search = $request->input('search');
+        
+        // Obtener todos los servicios para el filtro
+        $servicios = Servicio::where('estado', 'activo')->orderBy('nombre')->get();
+        
+        // Obtener todos los asesores para el filtro
+        $asesores = User::whereIn('rol', ['asesor', 'administrador'])
+            ->orderBy('nombre_completo')
+            ->get();
+        
+        // Construir query de turnos del día
+        $query = Turno::with(['servicio', 'caja', 'asesor'])
+            ->whereDate('fecha_creacion', Carbon::today())
+            ->orderBy('fecha_creacion', 'desc');
+        
+        // Aplicar filtros
+        if ($estado) {
+            $query->where('estado', $estado);
+        }
+        
+        if ($servicio) {
+            $query->where('servicio_id', $servicio);
+        }
+        
+        if ($asesor) {
+            $query->where('asesor_id', $asesor);
+        }
+        
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('codigo', 'like', "%{$search}%")
+                  ->orWhere('numero', 'like', "%{$search}%")
+                  ->orWhereHas('servicio', function($sq) use ($search) {
+                      $sq->where('nombre', 'like', "%{$search}%");
+                  });
+            });
+        }
+        
+        $turnos = $query->paginate(20);
+        
+        // Estadísticas rápidas
+        $estadisticas = [
+            'total' => Turno::whereDate('fecha_creacion', Carbon::today())->count(),
+            'pendientes' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'pendiente')->count(),
+            'llamados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'llamado')->count(),
+            'atendidos' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'atendido')->count(),
+            'aplazados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'aplazado')->count(),
+            'cancelados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'cancelado')->count(),
+        ];
+        
+        return view('admin.turnos', compact('user', 'turnos', 'servicios', 'asesores', 'estadisticas', 'estado', 'servicio', 'asesor', 'search'));
+    }
+
+    /**
+     * API para obtener turnos del día (actualización en tiempo real)
+     */
+    public function getTurnosHoy(Request $request)
+    {
+        $estado = $request->input('estado');
+        $servicio = $request->input('servicio');
+        $asesor = $request->input('asesor');
+        $search = $request->input('search');
+        
+        $query = Turno::with(['servicio', 'caja', 'asesor'])
+            ->whereDate('fecha_creacion', Carbon::today())
+            ->orderBy('fecha_creacion', 'desc');
+        
+        if ($estado) {
+            $query->where('estado', $estado);
+        }
+        
+        if ($servicio) {
+            $query->where('servicio_id', $servicio);
+        }
+        
+        if ($asesor) {
+            $query->where('asesor_id', $asesor);
+        }
+        
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('codigo', 'like', "%{$search}%")
+                  ->orWhere('numero', 'like', "%{$search}%");
+            });
+        }
+        
+        $turnos = $query->get()->map(function($turno) {
+            return [
+                'id' => $turno->id,
+                'codigo' => $turno->codigo,
+                'numero' => $turno->numero,
+                'codigo_completo' => $turno->codigo_completo,
+                'servicio' => $turno->servicio ? [
+                    'id' => $turno->servicio->id,
+                    'nombre' => $turno->servicio->nombre,
+                    'codigo' => $turno->servicio->codigo,
+                ] : null,
+                'caja' => $turno->caja ? [
+                    'id' => $turno->caja->id,
+                    'nombre' => $turno->caja->nombre,
+                    'numero' => $turno->caja->numero_caja,
+                ] : null,
+                'asesor' => $turno->asesor ? [
+                    'id' => $turno->asesor->id,
+                    'nombre' => $turno->asesor->nombre_completo,
+                ] : null,
+                'estado' => $turno->estado,
+                'prioridad' => $turno->prioridad,
+                'prioridad_letra' => $turno->prioridad_letra,
+                'prioridad_color' => $turno->prioridad_color,
+                'fecha_creacion' => $turno->fecha_creacion ? $turno->fecha_creacion->format('H:i:s') : null,
+                'fecha_llamado' => $turno->fecha_llamado ? $turno->fecha_llamado->format('H:i:s') : null,
+                'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('H:i:s') : null,
+                'duracion_atencion' => $turno->duracion_atencion,
+                'duracion_formateada' => $turno->duracion_atencion 
+                    ? gmdate('i:s', $turno->duracion_atencion) 
+                    : null,
+                'observaciones' => $turno->observaciones,
+            ];
+        });
+        
+        $estadisticas = [
+            'total' => Turno::whereDate('fecha_creacion', Carbon::today())->count(),
+            'pendientes' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'pendiente')->count(),
+            'llamados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'llamado')->count(),
+            'atendidos' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'atendido')->count(),
+            'aplazados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'aplazado')->count(),
+            'cancelados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'cancelado')->count(),
+        ];
+        
+        return response()->json([
+            'turnos' => $turnos,
+            'estadisticas' => $estadisticas,
+        ]);
+    }
 }
