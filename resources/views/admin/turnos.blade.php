@@ -9,12 +9,10 @@
             <h1 class="text-xl md:text-2xl font-bold text-gray-800">Turnos del Día</h1>
             <p class="text-sm text-gray-500">{{ \Carbon\Carbon::now()->format('d/m/Y') }}</p>
         </div>
-        <button onclick="actualizarTurnos()" class="bg-hospital-blue text-white px-4 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            Actualizar
-        </button>
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            Actualización automática
+        </div>
     </div>
 
     <!-- Estadísticas Rápidas -->
@@ -214,6 +212,66 @@
 <script>
 let autoUpdateInterval = null;
 
+function getEstadoBadge(estado) {
+    const badges = {
+        'pendiente': '<span class="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendiente</span>',
+        'llamado': '<span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Llamado</span>',
+        'atendido': '<span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Atendido</span>',
+        'aplazado': '<span class="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Aplazado</span>',
+        'cancelado': '<span class="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Cancelado</span>'
+    };
+    return badges[estado] || `<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${estado}</span>`;
+}
+
+function renderTurnoRow(turno) {
+    const asesorHtml = turno.asesor 
+        ? `<div class="flex items-center">
+               <div class="w-6 h-6 rounded-full bg-hospital-blue text-white flex items-center justify-center text-xs font-medium mr-2">
+                   ${turno.asesor.nombre.charAt(0)}
+               </div>
+               <span class="text-gray-700 text-xs">${turno.asesor.nombre}</span>
+           </div>`
+        : '<span class="text-gray-400">-</span>';
+    
+    const cajaHtml = turno.caja 
+        ? `<span class="text-gray-700">Caja ${turno.caja.numero}</span>`
+        : '<span class="text-gray-400">-</span>';
+    
+    const duracionHtml = turno.duracion_formateada 
+        ? `<span class="text-gray-700 font-medium">${turno.duracion_formateada}</span>`
+        : '<span class="text-gray-400">-</span>';
+
+    return `
+        <tr class="hover:bg-gray-50">
+            <td class="py-3 px-3 whitespace-nowrap">
+                <span class="font-bold text-gray-900">${turno.codigo_completo}</span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">
+                <span class="text-gray-700">${turno.servicio?.nombre || 'N/A'}</span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold" 
+                      style="background-color: ${turno.prioridad_color}">
+                    ${turno.prioridad_letra.charAt(0)}
+                </span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">${getEstadoBadge(turno.estado)}</td>
+            <td class="py-3 px-3 whitespace-nowrap">${asesorHtml}</td>
+            <td class="py-3 px-3 whitespace-nowrap">${cajaHtml}</td>
+            <td class="py-3 px-3 whitespace-nowrap">
+                <span class="text-gray-600">${turno.fecha_creacion || '-'}</span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">
+                <span class="text-gray-600">${turno.fecha_llamado || '-'}</span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">
+                <span class="text-gray-600">${turno.fecha_atencion || '-'}</span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">${duracionHtml}</td>
+        </tr>
+    `;
+}
+
 function actualizarTurnos() {
     const params = new URLSearchParams(window.location.search);
     
@@ -227,17 +285,37 @@ function actualizarTurnos() {
             document.getElementById('stat-atendidos').textContent = data.estadisticas.atendidos;
             document.getElementById('stat-aplazados').textContent = data.estadisticas.aplazados;
             document.getElementById('stat-cancelados').textContent = data.estadisticas.cancelados;
+            
+            // Actualizar tabla de turnos
+            const tbody = document.querySelector('table tbody');
+            if (data.turnos && data.turnos.length > 0) {
+                tbody.innerHTML = data.turnos.map(turno => renderTurnoRow(turno)).join('');
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="py-8 text-center text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                            </svg>
+                            <p>No se encontraron turnos para hoy</p>
+                        </td>
+                    </tr>
+                `;
+            }
         })
         .catch(error => console.error('Error actualizando turnos:', error));
 }
 
-// Actualización automática cada 10 segundos
+// Actualización automática cada 5 segundos
 function startAutoUpdate() {
     if (autoUpdateInterval) clearInterval(autoUpdateInterval);
-    autoUpdateInterval = setInterval(actualizarTurnos, 10000);
+    autoUpdateInterval = setInterval(actualizarTurnos, 5000);
 }
 
 // Iniciar actualización automática
 startAutoUpdate();
+
+// Actualizar inmediatamente al cargar
+actualizarTurnos();
 </script>
 @endsection
