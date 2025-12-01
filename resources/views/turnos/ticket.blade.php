@@ -97,14 +97,6 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
             </div>
         </div>
 
-        <!-- Priority if applicable -->
-        @if($turno->prioridad === 'prioritaria')
-        <div class="mb-3">
-            <div class="bg-red-600 text-white px-3 py-1 text-xs font-bold">
-                ★ TURNO PRIORITARIO ★
-            </div>
-        </div>
-        @endif
 
         <!-- Separator -->
         <div class="border-t border-dashed border-gray-500 my-3"></div>

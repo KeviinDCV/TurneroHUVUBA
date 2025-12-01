@@ -441,37 +441,61 @@ class AsesorController extends Controller
             return null;
         }
 
-        // Agrupar turnos por prioridad
-        $turnosPorPrioridad = $turnos->groupBy('prioridad');
+        // Separar turnos en normales (prioridad < 4) y prioritarios (prioridad >= 4)
+        $turnosNormales = $turnos->filter(fn($t) => $t->prioridad < 4)->sortBy('numero');
+        $turnosPrioritarios = $turnos->filter(fn($t) => $t->prioridad >= 4)->sortBy('numero');
 
-        // Definir pesos para cada nivel de prioridad (en porcentajes)
-        $pesos = [
-            5 => 40, // E - Prioridad más alta
-            4 => 30, // D
-            3 => 20, // C - Media
-            2 => 7,  // B
-            1 => 3,  // A - Prioridad más baja
-        ];
-
-        // Crear array de prioridades disponibles con sus pesos
-        $prioridadesDisponibles = [];
-        foreach ($pesos as $prioridad => $peso) {
-            if ($turnosPorPrioridad->has($prioridad)) {
-                $prioridadesDisponibles[$prioridad] = $peso;
-            }
+        // Si solo hay un tipo, retornar el primero de ese tipo
+        if ($turnosPrioritarios->isEmpty()) {
+            return $turnosNormales->first();
+        }
+        if ($turnosNormales->isEmpty()) {
+            return $turnosPrioritarios->first();
         }
 
-        if (empty($prioridadesDisponibles)) {
-            // Si no hay turnos con las prioridades esperadas, tomar el primero disponible
-            return $turnos->first();
+        // Hay ambos tipos pendientes
+        $primerNormal = $turnosNormales->first();
+        $primerPrioritario = $turnosPrioritarios->first();
+
+        // REGLA 1: Si el prioritario tiene número menor o igual al normal, 
+        // llamarlo en su orden natural (no retrasarlo)
+        if ($primerPrioritario->numero <= $primerNormal->numero) {
+            return $primerPrioritario;
         }
 
-        // Seleccionar prioridad basada en peso proporcional
-        $prioridadSeleccionada = $this->seleccionarPrioridadPonderada($prioridadesDisponibles);
+        // REGLA 2: El prioritario tiene número mayor (llegó después)
+        // Verificar si toca adelantarlo (cada 5 normales)
+        $ultimoPrioritarioAtendido = Turno::whereIn('servicio_id', $serviciosIds)
+            ->where('prioridad', '>=', 4)
+            ->whereIn('estado', ['atendido', 'llamado'])
+            ->delDia()
+            ->orderBy('fecha_llamado', 'desc')
+            ->first();
 
-        // Retornar el primer turno de la prioridad seleccionada
-        // Ya están ordenados por estado (pendiente primero) y número
-        return $turnosPorPrioridad[$prioridadSeleccionada]->first();
+        if ($ultimoPrioritarioAtendido) {
+            // Contar normales llamados después del último prioritario
+            $normalesDesdeUltimoPrioritario = Turno::whereIn('servicio_id', $serviciosIds)
+                ->where('prioridad', '<', 4)
+                ->whereIn('estado', ['atendido', 'llamado'])
+                ->where('fecha_llamado', '>', $ultimoPrioritarioAtendido->fecha_llamado)
+                ->delDia()
+                ->count();
+        } else {
+            // No hay prioritarios atendidos, contar todos los normales atendidos
+            $normalesDesdeUltimoPrioritario = Turno::whereIn('servicio_id', $serviciosIds)
+                ->where('prioridad', '<', 4)
+                ->whereIn('estado', ['atendido', 'llamado'])
+                ->delDia()
+                ->count();
+        }
+
+        // Si ya se llamaron 5 normales, adelantar al prioritario
+        if ($normalesDesdeUltimoPrioritario >= 5) {
+            return $primerPrioritario;
+        }
+
+        // Si no, seguir el orden normal
+        return $primerNormal;
     }
 
     /**
@@ -753,22 +777,18 @@ class AsesorController extends Controller
         if ($request->has('turno_id')) {
             $turno = Turno::find($request->turno_id);
         } elseif ($request->has('codigo_completo')) {
-            // Extraer código y número del código completo (ej: "CP-001" -> código="CP", número=1)
-            $codigoCompleto = $request->codigo_completo;
-            $partes = explode('-', $codigoCompleto);
+            // Parsear código completo (formato: "CP-001")
+            $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
 
-            if (count($partes) !== 2) {
+            if (!$datos) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Formato de código completo inválido'
                 ]);
             }
 
-            $codigo = $partes[0];
-            $numero = (int) $partes[1];
-
-            $turno = Turno::where('codigo', $codigo)
-                ->where('numero', $numero)
+            $turno = Turno::where('codigo', $datos['codigo'])
+                ->where('numero', $datos['numero'])
                 ->where('asesor_id', $user->id)
                 ->where('caja_id', $cajaId)
                 ->delDia()
@@ -844,22 +864,18 @@ class AsesorController extends Controller
         if ($request->has('turno_id')) {
             $turno = Turno::find($request->turno_id);
         } elseif ($request->has('codigo_completo')) {
-            // Extraer código y número del código completo (ej: "CP-001" -> código="CP", número=1)
-            $codigoCompleto = $request->codigo_completo;
-            $partes = explode('-', $codigoCompleto);
+            // Parsear código completo (formato: "CP-001")
+            $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
 
-            if (count($partes) !== 2) {
+            if (!$datos) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Formato de código completo inválido'
                 ]);
             }
 
-            $codigo = $partes[0];
-            $numero = (int) $partes[1];
-
-            $turno = Turno::where('codigo', $codigo)
-                ->where('numero', $numero)
+            $turno = Turno::where('codigo', $datos['codigo'])
+                ->where('numero', $datos['numero'])
                 ->where('asesor_id', $user->id)
                 ->where('caja_id', $cajaId)
                 ->delDia()
@@ -1299,22 +1315,18 @@ class AsesorController extends Controller
         if ($request->has('turno_id')) {
             $turno = Turno::find($request->turno_id);
         } elseif ($request->has('codigo_completo')) {
-            // Extraer código y número del código completo (ej: "CP-001" -> código="CP", número=1)
-            $codigoCompleto = $request->codigo_completo;
-            $partes = explode('-', $codigoCompleto);
+            // Parsear código completo (formato: "CP-001")
+            $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
 
-            if (count($partes) !== 2) {
+            if (!$datos) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Formato de código completo inválido'
                 ]);
             }
 
-            $codigo = $partes[0];
-            $numero = (int) $partes[1];
-
-            $turno = Turno::where('codigo', $codigo)
-                ->where('numero', $numero)
+            $turno = Turno::where('codigo', $datos['codigo'])
+                ->where('numero', $datos['numero'])
                 ->where('asesor_id', $user->id)
                 ->where('caja_id', $cajaId)
                 ->delDia()

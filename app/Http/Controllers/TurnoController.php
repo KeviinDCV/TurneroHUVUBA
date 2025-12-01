@@ -136,15 +136,15 @@ class TurnoController extends Controller
     {
         $request->validate([
             'servicio_id' => 'required|exists:servicios,id',
-            'prioridad' => 'required|in:A,B,C,D,E'
+            'prioridad' => 'required|in:normal,alta,A,B,C,D,E'
         ]);
 
         try {
             $servicioId = $request->servicio_id;
-            $prioridadLetra = $request->prioridad;
+            $prioridadTipo = $request->prioridad;
 
-            // Convertir letra a número
-            $prioridad = Turno::letraAPrioridad($prioridadLetra);
+            // Convertir tipo a número (normal=3, alta=5)
+            $prioridad = Turno::tipoAPrioridad($prioridadTipo);
 
             // Crear el turno
             $turno = Turno::crear($servicioId, $prioridad);
@@ -153,7 +153,9 @@ class TurnoController extends Controller
             $servicio = Servicio::find($servicioId);
             $nombreServicio = $servicio->nombre_completo;
 
-            $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio} - Prioridad {$prioridadLetra}";
+            // Determinar texto de prioridad
+            $tipoPrioridad = $prioridad >= 4 ? 'Prioritario' : 'Normal';
+            $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio} - {$tipoPrioridad}";
 
             return response()->json([
                 'success' => true,
@@ -163,7 +165,7 @@ class TurnoController extends Controller
                     'codigo_completo' => $turno->codigo_completo,
                     'servicio' => $nombreServicio,
                     'numero' => $turno->numero,
-                    'prioridad' => $prioridadLetra
+                    'prioridad' => $tipoPrioridad
                 ],
                 'redirect_url' => route('turnos.ticket', $turno->id)
             ]);

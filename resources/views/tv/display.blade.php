@@ -2068,7 +2068,7 @@
 
         // Función para separar dinámicamente el código del servicio y número del turno
         function separarCodigoTurno(codigoCompleto) {
-            // El formato es: CODIGO-NUMERO (ej: "CIT-001", "COPAGOS-123")
+            // Formato: CODIGO-NUMERO (ej: "CIT-001", "COPAGOS-123")
             const partes = codigoCompleto.split('-');
 
             let codigoServicio = '';
@@ -2092,13 +2092,6 @@
 
             // Convertir el código del servicio en letras individuales
             const letrasServicio = codigoServicio.split('');
-
-            console.log('📝 Código separado:', {
-                original: codigoCompleto,
-                codigoServicio: codigoServicio,
-                letrasServicio: letrasServicio,
-                numeroTurno: numeroTurno
-            });
 
             return {
                 codigoServicio: codigoServicio,

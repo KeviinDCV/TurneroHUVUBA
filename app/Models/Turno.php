@@ -134,7 +134,16 @@ class Turno extends Model
     // Métodos auxiliares
     public function getCodigoCompletoAttribute()
     {
+        // Todos los turnos usan el mismo formato (sin indicador de prioridad visible)
         return $this->codigo . '-' . str_pad($this->numero, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Verificar si es un turno prioritario (D o E)
+     */
+    public function esPrioritario()
+    {
+        return $this->prioridad >= 4;
     }
 
     public function esPendiente()
@@ -159,27 +168,19 @@ class Turno extends Model
 
     public function getPrioridadLetraAttribute()
     {
-        // Convertir número a letra (1=A, 2=B, 3=C, 4=D, 5=E)
-        $letras = ['', 'A', 'B', 'C', 'D', 'E'];
-        return $letras[$this->prioridad] ?? 'C';
+        // Solo 2 tipos: Normal y Prioritario
+        return $this->prioridad >= 4 ? 'Prioritario' : 'Normal';
     }
 
     public function getPrioridadColorAttribute()
     {
-        // Colores para cada nivel de prioridad
-        $colores = [
-            1 => '#10b981', // A - Verde (baja)
-            2 => '#3b82f6', // B - Azul
-            3 => '#f59e0b', // C - Amarillo (media)
-            4 => '#f97316', // D - Naranja
-            5 => '#ef4444', // E - Rojo (alta)
-        ];
-        return $colores[$this->prioridad] ?? $colores[3];
+        // Solo 2 colores: Azul para Normal, Rojo para Prioritario
+        return $this->prioridad >= 4 ? '#ef4444' : '#3b82f6';
     }
 
     public function esPrioridadAlta()
     {
-        return $this->prioridad >= 4; // D o E
+        return $this->prioridad >= 4;
     }
 
     public function marcarComoLlamado($cajaId = null, $asesorId = null)
@@ -287,10 +288,12 @@ class Turno extends Model
     }
 
     // Método estático para generar el siguiente número de turno
-    public static function siguienteNumero($servicioId, $fecha = null)
+    // Numeración única para todos los turnos (normal y prioritario)
+    public static function siguienteNumero($servicioId, $prioridad = 3, $fecha = null)
     {
         $fecha = $fecha ?: Carbon::today();
 
+        // Buscar el último turno del día para este servicio (sin importar prioridad)
         $ultimoTurno = static::where('servicio_id', $servicioId)
             ->whereDate('fecha_creacion', $fecha)
             ->orderBy('numero', 'desc')
@@ -312,7 +315,8 @@ class Turno extends Model
             $prioridad = 3; // Por defecto C (media)
         }
 
-        $numero = static::siguienteNumero($servicioId);
+        // Generar número según el tipo de turno (normal o prioritario)
+        $numero = static::siguienteNumero($servicioId, $prioridad);
 
         return static::create([
             'codigo' => $servicio->codigo,
@@ -324,16 +328,74 @@ class Turno extends Model
         ]);
     }
 
-    // Método estático para convertir letra a número
-    public static function letraAPrioridad($letra)
+    // Método estático para convertir tipo de prioridad a número
+    // Solo 2 tipos: 'normal' (3) y 'alta' (5)
+    public static function tipoAPrioridad($tipo)
     {
         $mapa = [
-            'A' => 1,
-            'B' => 2,
+            'normal' => 3,
+            'alta' => 5,
+            // Compatibilidad con el sistema anterior (letras A-E)
+            'A' => 3,
+            'B' => 3,
             'C' => 3,
-            'D' => 4,
+            'D' => 5,
             'E' => 5,
         ];
-        return $mapa[strtoupper($letra)] ?? 3;
+        return $mapa[strtolower($tipo)] ?? $mapa[strtoupper($tipo)] ?? 3;
+    }
+    
+    // Alias para compatibilidad
+    public static function letraAPrioridad($letra)
+    {
+        return static::tipoAPrioridad($letra);
+    }
+
+    /**
+     * Parsear un código completo y extraer sus componentes
+     * Formato: CODIGO-NUMERO (ej: "CP-001")
+     * 
+     * @param string $codigoCompleto
+     * @return array|null ['codigo' => string, 'numero' => int] o null si inválido
+     */
+    public static function parsearCodigoCompleto($codigoCompleto)
+    {
+        $partes = explode('-', $codigoCompleto);
+        
+        if (count($partes) !== 2) {
+            return null;
+        }
+        
+        $codigo = strtoupper($partes[0]);
+        $numero = (int) $partes[1];
+        
+        if ($numero <= 0) {
+            return null;
+        }
+        
+        return [
+            'codigo' => $codigo,
+            'numero' => $numero
+        ];
+    }
+
+    /**
+     * Buscar un turno por su código completo
+     * 
+     * @param string $codigoCompleto
+     * @return Turno|null
+     */
+    public static function buscarPorCodigoCompleto($codigoCompleto)
+    {
+        $datos = static::parsearCodigoCompleto($codigoCompleto);
+        
+        if (!$datos) {
+            return null;
+        }
+        
+        return static::where('codigo', $datos['codigo'])
+            ->where('numero', $datos['numero'])
+            ->delDia()
+            ->first();
     }
 }

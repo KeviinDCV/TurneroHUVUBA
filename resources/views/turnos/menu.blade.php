@@ -63,38 +63,17 @@
         }
 
         /* Estilos para botones de prioridad */
-        .btn-prioridad-a {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        .btn-prioridad-a:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-        }
-
-        .btn-prioridad-b {
+        .btn-prioridad-normal {
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         }
-        .btn-prioridad-b:hover {
+        .btn-prioridad-normal:hover {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         }
 
-        .btn-prioridad-c {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        }
-        .btn-prioridad-c:hover {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-        }
-
-        .btn-prioridad-d {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        }
-        .btn-prioridad-d:hover {
-            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
-        }
-
-        .btn-prioridad-e {
+        .btn-prioridad-alta {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         }
-        .btn-prioridad-e:hover {
+        .btn-prioridad-alta:hover {
             background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
         }
 
@@ -211,10 +190,10 @@
 
     <!-- Modal de selección de prioridad -->
     <div id="prioridadModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh] animate-slide-in">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-y-auto max-h-[90vh] animate-slide-in">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-gray-900">Seleccione la Prioridad</h3>
+                    <h3 class="text-xl font-bold text-gray-900">Seleccione el Tipo de Turno</h3>
                     <button onclick="cerrarPrioridadModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -224,26 +203,19 @@
                 
                 <p id="prioridadServicioNombre" class="text-sm text-gray-600 mb-6 text-center"></p>
                 
-                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-                    <button onclick="seleccionarPrioridad('A')" class="btn-prioridad btn-prioridad-a h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                        <div class="text-4xl mb-1">A</div>
-                        <div class="text-xs font-normal">Baja</div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button onclick="seleccionarPrioridad('normal')" class="btn-prioridad-normal h-32 rounded-lg font-bold text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center">
+                        <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        <div class="text-xl">Normal</div>
                     </button>
-                    <button onclick="seleccionarPrioridad('B')" class="btn-prioridad btn-prioridad-b h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                        <div class="text-4xl mb-1">B</div>
-                        <div class="text-xs font-normal">Normal</div>
-                    </button>
-                    <button onclick="seleccionarPrioridad('C')" class="btn-prioridad btn-prioridad-c h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                        <div class="text-4xl mb-1">C</div>
-                        <div class="text-xs font-normal">Media</div>
-                    </button>
-                    <button onclick="seleccionarPrioridad('D')" class="btn-prioridad btn-prioridad-d h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                        <div class="text-4xl mb-1">D</div>
-                        <div class="text-xs font-normal">Alta</div>
-                    </button>
-                    <button onclick="seleccionarPrioridad('E')" class="btn-prioridad btn-prioridad-e h-28 rounded-lg font-bold text-white text-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                        <div class="text-4xl mb-1">E</div>
-                        <div class="text-xs font-normal">Urgente</div>
+                    <button onclick="seleccionarPrioridad('alta')" class="btn-prioridad-alta h-32 rounded-lg font-bold text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center">
+                        <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <div class="text-xl">Prioritario</div>
+                        <div class="text-xs font-normal opacity-80">Adulto mayor, embarazada, discapacidad</div>
                     </button>
                 </div>
                 
