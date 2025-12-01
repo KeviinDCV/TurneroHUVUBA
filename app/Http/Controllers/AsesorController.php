@@ -138,24 +138,40 @@ class AsesorController extends Controller
 
         // Verificar que tenga una caja seleccionada
         $cajaId = session('caja_seleccionada');
+        $caja = null;
 
-        // Si no hay caja en sesión, buscar en la base de datos
+        // Si hay caja en sesión, verificar que siga válida
+        if ($cajaId) {
+            $caja = Caja::find($cajaId);
+            
+            // Verificar que la caja exista, esté activa y asignada al usuario
+            if (!$caja || $caja->estado !== 'activa' || $caja->asesor_activo_id != $user->id) {
+                // La caja ya no es válida, buscar si tiene otra asignada
+                session()->forget('caja_seleccionada');
+                $cajaId = null;
+                $caja = null;
+            }
+        }
+
+        // Si no hay caja válida en sesión, buscar en la base de datos
         if (!$cajaId) {
             $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
                 ->where('estado', 'activa')
                 ->first();
 
-            if ($cajaAsignada && $cajaAsignada->estaOcupada()) {
-                // Actualizar el session_id en la base de datos para la nueva sesión
+            if ($cajaAsignada) {
+                // El usuario tiene una caja asignada en DB, restaurar la sesión
+                // Actualizar session_id y fecha para la nueva sesión (recarga de página)
                 $cajaAsignada->update([
                     'session_id' => session()->getId(),
-                    'fecha_asignacion' => now(), // Renovar la fecha de asignación
+                    'fecha_asignacion' => now(),
                     'ip_asesor' => request()->ip()
                 ]);
 
                 // Restaurar la caja en la sesión
                 session(['caja_seleccionada' => $cajaAsignada->id]);
                 $cajaId = $cajaAsignada->id;
+                $caja = $cajaAsignada;
 
                 \Log::info("Caja restaurada en sesión para usuario {$user->nombre_usuario}", [
                     'caja_id' => $cajaAsignada->id,
@@ -163,25 +179,18 @@ class AsesorController extends Controller
                     'nueva_session_id' => session()->getId()
                 ]);
             } else {
-                // No tiene caja asignada, redirigir a selección
+                // No tiene caja asignada en DB, redirigir a selección
                 return redirect()->route('asesor.seleccionar-caja');
             }
         }
 
-        $caja = Caja::find($cajaId);
-        if (!$caja || $caja->estado !== 'activa') {
-            // Si la caja ya no existe o está inactiva, redirigir a selección
-            session()->forget('caja_seleccionada');
-            return redirect()->route('asesor.seleccionar-caja')
-                ->withErrors(['caja' => 'La caja seleccionada ya no está disponible.']);
-        }
-
-        // Verificar que la caja siga asignada al usuario actual
-        if (!$caja->estaOcupadaPor($user->id)) {
-            // La caja ya no está asignada a este usuario, limpiar sesión
-            session()->forget('caja_seleccionada');
-            return redirect()->route('asesor.seleccionar-caja')
-                ->withErrors(['caja' => 'La caja ya no está asignada a tu usuario.']);
+        // Renovar la fecha de asignación para mantener la sesión activa
+        if ($caja && $caja->asesor_activo_id == $user->id) {
+            $caja->update([
+                'session_id' => session()->getId(),
+                'fecha_asignacion' => now(),
+                'ip_asesor' => request()->ip()
+            ]);
         }
 
         // Obtener servicios asignados al asesor con estadísticas de turnos
