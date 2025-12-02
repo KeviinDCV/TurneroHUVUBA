@@ -685,7 +685,22 @@ class AsesorController extends Controller
     public function llamarTurnoEspecifico(Request $request)
     {
         $user = Auth::user();
-        $cajaId = $request->input('caja_id');
+        
+        // Obtener caja_id del request, sesión o base de datos
+        $cajaId = $request->input('caja_id') ?? session('caja_seleccionada');
+        
+        // Si no hay caja en request ni sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+        
         $codigo = $request->input('codigo');
         $numero = $request->input('numero');
 
@@ -695,6 +710,13 @@ class AsesorController extends Controller
             'codigo' => $codigo,
             'numero' => $numero
         ]);
+
+        if (!$cajaId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene una caja asignada'
+            ], 403);
+        }
 
         // Verificar que el asesor no esté en canal no presencial
         if ($user->estaEnCanalNoPresencial()) {
