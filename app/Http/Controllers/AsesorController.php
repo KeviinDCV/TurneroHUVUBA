@@ -326,8 +326,20 @@ class AsesorController extends Controller
         $user = Auth::user();
         $cajaId = session('caja_seleccionada');
 
+        // Si no hay caja en sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+
         if (!$user->esAsesor() || !$cajaId) {
-            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+            return response()->json(['success' => false, 'message' => 'No autorizado o sin caja asignada'], 403);
         }
 
         // Verificar que el asesor no esté en canal no presencial
@@ -340,7 +352,6 @@ class AsesorController extends Controller
 
         // VALIDACIÓN CRÍTICA: Verificar si el asesor ya tiene un turno en proceso
         $turnoEnProceso = Turno::where('asesor_id', $user->id)
-            ->where('caja_id', $cajaId)
             ->where('estado', 'llamado')
             ->delDia()
             ->first();
@@ -771,8 +782,20 @@ class AsesorController extends Controller
         $user = Auth::user();
         $cajaId = session('caja_seleccionada');
 
+        // Si no hay caja en sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+
         if (!$user->esAsesor() || !$cajaId) {
-            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+            return response()->json(['success' => false, 'message' => 'No autorizado o sin caja asignada'], 403);
         }
 
         // Validar que se proporcione turno_id O codigo_completo
@@ -783,9 +806,9 @@ class AsesorController extends Controller
         ]);
 
         // Buscar turno por ID o por código completo
-        if ($request->has('turno_id')) {
+        if ($request->has('turno_id') && $request->turno_id) {
             $turno = Turno::find($request->turno_id);
-        } elseif ($request->has('codigo_completo')) {
+        } elseif ($request->has('codigo_completo') && $request->codigo_completo) {
             // Parsear código completo (formato: "CP-001")
             $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
 
@@ -799,7 +822,6 @@ class AsesorController extends Controller
             $turno = Turno::where('codigo', $datos['codigo'])
                 ->where('numero', $datos['numero'])
                 ->where('asesor_id', $user->id)
-                ->where('caja_id', $cajaId)
                 ->delDia()
                 ->first();
         } else {
@@ -816,8 +838,15 @@ class AsesorController extends Controller
             ]);
         }
 
-        // Verificar que el turno esté asignado a esta caja y asesor (solo si se buscó por turno_id)
-        if ($request->has('turno_id') && ($turno->caja_id != $cajaId || $turno->asesor_id != $user->id)) {
+        // Verificar que el turno esté asignado al asesor actual
+        if ($turno->asesor_id != $user->id) {
+            \Log::warning("Intento de atender turno ajeno", [
+                'turno_id' => $turno->id,
+                'turno_asesor_id' => $turno->asesor_id,
+                'user_id' => $user->id,
+                'caja_sesion' => $cajaId,
+                'turno_caja_id' => $turno->caja_id
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'No tiene permisos para atender este turno'
@@ -858,8 +887,20 @@ class AsesorController extends Controller
         $user = Auth::user();
         $cajaId = session('caja_seleccionada');
 
+        // Si no hay caja en sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+
         if (!$user->esAsesor() || !$cajaId) {
-            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+            return response()->json(['success' => false, 'message' => 'No autorizado o sin caja asignada'], 403);
         }
 
         // Validar que se proporcione turno_id O codigo_completo
@@ -870,9 +911,9 @@ class AsesorController extends Controller
         ]);
 
         // Buscar turno por ID o por código completo
-        if ($request->has('turno_id')) {
+        if ($request->has('turno_id') && $request->turno_id) {
             $turno = Turno::find($request->turno_id);
-        } elseif ($request->has('codigo_completo')) {
+        } elseif ($request->has('codigo_completo') && $request->codigo_completo) {
             // Parsear código completo (formato: "CP-001")
             $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
 
@@ -886,7 +927,6 @@ class AsesorController extends Controller
             $turno = Turno::where('codigo', $datos['codigo'])
                 ->where('numero', $datos['numero'])
                 ->where('asesor_id', $user->id)
-                ->where('caja_id', $cajaId)
                 ->delDia()
                 ->first();
         } else {
@@ -903,8 +943,8 @@ class AsesorController extends Controller
             ]);
         }
 
-        // Verificar que el turno esté asignado a esta caja y asesor (solo si se buscó por turno_id)
-        if ($request->has('turno_id') && ($turno->caja_id != $cajaId || $turno->asesor_id != $user->id)) {
+        // Verificar que el turno esté asignado al asesor actual
+        if ($turno->asesor_id != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tiene permisos para aplazar este turno'
@@ -1295,13 +1335,24 @@ class AsesorController extends Controller
         $user = Auth::user();
         $cajaId = session('caja_seleccionada');
 
+        // Si no hay caja en sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+
         if (!$user->esAsesor() || !$cajaId) {
-            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+            return response()->json(['success' => false, 'message' => 'No autorizado o sin caja asignada'], 403);
         }
 
         // Verificar si ya tiene un turno en proceso
         $turnoEnProceso = Turno::where('asesor_id', $user->id)
-            ->where('caja_id', $cajaId)
             ->where('estado', 'llamado')
             ->delDia()
             ->first();
@@ -1321,9 +1372,9 @@ class AsesorController extends Controller
         ]);
 
         // Buscar turno por ID o por código completo
-        if ($request->has('turno_id')) {
+        if ($request->has('turno_id') && $request->turno_id) {
             $turno = Turno::find($request->turno_id);
-        } elseif ($request->has('codigo_completo')) {
+        } elseif ($request->has('codigo_completo') && $request->codigo_completo) {
             // Parsear código completo (formato: "CP-001")
             $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
 
@@ -1337,7 +1388,6 @@ class AsesorController extends Controller
             $turno = Turno::where('codigo', $datos['codigo'])
                 ->where('numero', $datos['numero'])
                 ->where('asesor_id', $user->id)
-                ->where('caja_id', $cajaId)
                 ->delDia()
                 ->first();
         } else {
@@ -1355,7 +1405,7 @@ class AsesorController extends Controller
         }
 
         // Verificar que el turno pertenece al asesor
-        if ($turno->asesor_id != $user->id || $turno->caja_id != $cajaId) {
+        if ($turno->asesor_id != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tiene permisos para gestionar este turno'
