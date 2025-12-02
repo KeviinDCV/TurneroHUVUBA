@@ -1747,9 +1747,27 @@
             }
         });
 
+        // Función para verificar si hay un turno en proceso al cargar la página
+        function verificarTurnoEnProcesoInicial() {
+            fetch('{{ route("asesor.verificar-turno-en-proceso") }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.turno_en_proceso && data.turno) {
+                        console.log('📌 Turno en proceso encontrado:', data.turno);
+                        actualizarInterfazTurno(data.turno);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error verificando turno en proceso:', error);
+                });
+        }
+
         // Inicializar historial al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Inicializando historial de turnos...');
+
+            // Verificar si hay un turno en proceso (importante al recargar la página)
+            verificarTurnoEnProcesoInicial();
 
             // Verificar estado de canal no presencial
             verificarEstadoCanalNoPresencial();

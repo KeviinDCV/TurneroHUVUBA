@@ -706,7 +706,6 @@ class AsesorController extends Controller
 
         // VALIDACIÓN CRÍTICA: Verificar si el asesor ya tiene un turno en proceso
         $turnoEnProceso = Turno::where('asesor_id', $user->id)
-            ->where('caja_id', $cajaId)
             ->where('estado', 'llamado')
             ->delDia()
             ->first();
@@ -1085,14 +1084,13 @@ class AsesorController extends Controller
     public function verificarTurnoEnProceso()
     {
         $user = Auth::user();
-        $cajaId = session('caja_seleccionada');
 
-        if (!$user->esAsesor() || !$cajaId) {
+        if (!$user->esAsesor()) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
+        // Buscar turno en proceso solo por asesor_id (no depender de caja_id en sesión)
         $turnoEnProceso = Turno::where('asesor_id', $user->id)
-            ->where('caja_id', $cajaId)
             ->where('estado', 'llamado')
             ->delDia()
             ->with('servicio')
