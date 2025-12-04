@@ -726,22 +726,21 @@
             border-collapse: collapse !important;
         }
 
-        /* Columna izquierda - Código del turno */
+        /* Columna izquierda - Código del turno (más espacio para códigos largos como CID-001) */
         .turno-numero {
             display: table-cell !important;
-            width: 50% !important;
+            width: 60% !important;
             text-align: left !important;
             padding-left: 0.75rem !important;
             vertical-align: middle !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            overflow: visible !important;
             white-space: nowrap !important;
         }
 
-        /* Columna derecha - CAJA */
+        /* Columna derecha - CAJA (reducida para dar espacio al código) */
         .turno-caja {
             display: table-cell !important;
-            width: 50% !important;
+            width: 40% !important;
             text-align: right !important;
             padding-right: 0.75rem !important;
             vertical-align: middle !important;
