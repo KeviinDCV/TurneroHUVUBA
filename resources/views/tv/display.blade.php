@@ -2689,6 +2689,11 @@
                         audioCompleted = true;
                         clearTimeout(timeoutId);
 
+                        // Registrar éxito en reproducción
+                        if (window.registrarExitoAudio) {
+                            window.registrarExitoAudio();
+                        }
+
                         // Limpiar conexiones de Web Audio API
                         if (audioSource && gainNode) {
                             try {
@@ -2712,6 +2717,12 @@
                         clearTimeout(timeoutId);
 
                         console.error('❌ Error al reproducir audio:', audioFiles[index]);
+                        
+                        // Registrar error en reproducción
+                        if (window.registrarErrorAudio) {
+                            window.registrarErrorAudio();
+                        }
+                        
                         // Limpiar conexiones en caso de error
                         if (audioSource && gainNode) {
                             try {
@@ -2738,6 +2749,12 @@
                             clearTimeout(timeoutId);
 
                             console.error('❌ Error al iniciar reproducción:', error);
+                            
+                            // Registrar error en reproducción
+                            if (window.registrarErrorAudio) {
+                                window.registrarErrorAudio();
+                            }
+                            
                             // Limpiar conexiones en caso de error
                             if (audioSource && gainNode) {
                                 try {
@@ -2941,6 +2958,111 @@
                 e.preventDefault();
             }
         });
+
+        // ============================================
+        // SISTEMA DE MONITOREO Y AUTO-RECARGA 24/7
+        // ============================================
+        
+        let erroresAudioConsecutivos = 0;
+        const MAX_ERRORES_ANTES_RECARGA = 5;
+        let ultimaReproduccionExitosa = Date.now();
+        let audioContextRecreado = 0;
+        
+        // Función para registrar éxito en reproducción de audio
+        window.registrarExitoAudio = function() {
+            erroresAudioConsecutivos = 0;
+            ultimaReproduccionExitosa = Date.now();
+        };
+        
+        // Función para registrar error en reproducción de audio
+        window.registrarErrorAudio = function() {
+            erroresAudioConsecutivos++;
+            console.warn(`⚠️ Error de audio consecutivo #${erroresAudioConsecutivos}`);
+            
+            // Si hay muchos errores consecutivos, intentar recrear AudioContext
+            if (erroresAudioConsecutivos >= 3 && audioContextRecreado < 2) {
+                console.warn('🔧 Intentando recrear AudioContext...');
+                recrearAudioContext();
+            }
+            
+            // Si hay demasiados errores, recargar la página
+            if (erroresAudioConsecutivos >= MAX_ERRORES_ANTES_RECARGA) {
+                console.error('❌ Demasiados errores de audio consecutivos. Recargando página...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            }
+        };
+        
+        // Función para recrear el AudioContext
+        function recrearAudioContext() {
+            audioContextRecreado++;
+            console.log('🔄 Recreando AudioContext (intento ' + audioContextRecreado + ')...');
+            
+            try {
+                if (audioContext) {
+                    audioContext.close().catch(() => {});
+                }
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('✅ AudioContext recreado exitosamente');
+                
+                // Reiniciar contador de errores
+                erroresAudioConsecutivos = 0;
+            } catch (e) {
+                console.error('❌ Error al recrear AudioContext:', e);
+            }
+        }
+        
+        // Monitoreo periódico del estado del audio (cada 2 minutos)
+        setInterval(function() {
+            const tiempoSinExito = Date.now() - ultimaReproduccionExitosa;
+            
+            // Si el AudioContext está suspendido, intentar reanudarlo
+            if (audioContext && audioContext.state === 'suspended') {
+                console.log('🔧 AudioContext suspendido, intentando reanudar...');
+                audioContext.resume().then(() => {
+                    console.log('✅ AudioContext reanudado');
+                }).catch(e => {
+                    console.error('❌ Error al reanudar AudioContext:', e);
+                });
+            }
+            
+            // Si han pasado más de 30 minutos sin reproducción exitosa y hay cola de audio,
+            // probablemente hay un problema
+            if (tiempoSinExito > 1800000 && colaAudio.length > 0) {
+                console.warn('⚠️ Más de 30 minutos sin reproducción exitosa con cola activa');
+                recrearAudioContext();
+            }
+            
+        }, 120000); // Cada 2 minutos
+        
+        // Auto-recarga preventiva cada 4 horas para limpiar memoria
+        // Esto evita problemas acumulativos del navegador en uso 24/7
+        const HORAS_PARA_RECARGA = 4;
+        const tiempoRecargaMs = HORAS_PARA_RECARGA * 60 * 60 * 1000;
+        
+        console.log(`⏰ Auto-recarga programada en ${HORAS_PARA_RECARGA} horas`);
+        
+        setTimeout(function() {
+            console.log('🔄 Ejecutando auto-recarga preventiva (4 horas)...');
+            
+            // Solo recargar si no hay audio reproduciéndose
+            if (!reproduciendoAudio && colaAudio.length === 0) {
+                window.location.reload();
+            } else {
+                // Si hay audio en proceso, esperar 1 minuto y reintentar
+                console.log('⏳ Audio en proceso, esperando para recargar...');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 60000);
+            }
+        }, tiempoRecargaMs);
+        
+        // Log de inicio del sistema de monitoreo
+        console.log('🔊 Sistema de monitoreo de audio 24/7 iniciado');
+        console.log('   - Max errores antes de recarga:', MAX_ERRORES_ANTES_RECARGA);
+        console.log('   - Auto-recarga preventiva cada:', HORAS_PARA_RECARGA, 'horas');
     </script>
 </body>
 </html>
