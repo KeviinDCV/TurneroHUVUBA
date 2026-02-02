@@ -228,7 +228,7 @@
                     <th class="text-center">Atendidos</th>
                     <th class="text-center">Pendientes</th>
                     <th class="text-center">Cancelados</th>
-                    <th class="text-center">Tiempo Promedio (min)</th>
+                    <th class="text-center">Tiempo Promedio (mm:ss)</th>
                 </tr>
             </thead>
             <tbody>
@@ -240,7 +240,16 @@
                     <td class="text-center">{{ $datos['pendientes'] }}</td>
                     <td class="text-center">{{ $datos['cancelados'] }}</td>
                     <td class="text-center">
-                        {{ isset($datos['tiempo_promedio_atencion']) && $datos['tiempo_promedio_atencion'] ? round($datos['tiempo_promedio_atencion'] / 60, 2) : 'N/A' }}
+                        @if(isset($datos['tiempo_promedio']) && $datos['tiempo_promedio'])
+                            @php
+                                $val = abs($datos['tiempo_promedio']);
+                                $min = floor($val / 60);
+                                $seg = $val % 60;
+                            @endphp
+                            {{ sprintf('%02d:%02d', $min, $seg) }}
+                        @else
+                            N/A
+                        @endif
                     </td>
                 </tr>
                 @endforeach
@@ -259,7 +268,7 @@
                     <th>Asesor</th>
                     <th class="text-center">Total Turnos</th>
                     <th class="text-center">Turnos Atendidos</th>
-                    <th class="text-center">Tiempo Promedio (min)</th>
+                    <th class="text-center">Tiempo Promedio (mm:ss)</th>
                 </tr>
             </thead>
             <tbody>
@@ -269,7 +278,16 @@
                     <td class="text-center">{{ $datos['total'] }}</td>
                     <td class="text-center">{{ $datos['atendidos'] }}</td>
                     <td class="text-center">
-                        {{ isset($datos['tiempo_promedio_atencion']) && $datos['tiempo_promedio_atencion'] ? round($datos['tiempo_promedio_atencion'] / 60, 2) : 'N/A' }}
+                        @if(isset($datos['tiempo_promedio_atencion']) && $datos['tiempo_promedio_atencion'])
+                            @php
+                                $val = abs($datos['tiempo_promedio_atencion']);
+                                $min = floor($val / 60);
+                                $seg = $val % 60;
+                            @endphp
+                            {{ sprintf('%02d:%02d', $min, $seg) }}
+                        @else
+                            N/A
+                        @endif
                     </td>
                 </tr>
                 @endforeach

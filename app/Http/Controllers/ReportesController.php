@@ -120,9 +120,9 @@ class ReportesController extends Controller
             $asesor = $grupo->first()->asesor;
             $turnosAtendidos = $grupo->where('estado', 'atendido');
             
-            // Contar turnos transferidos
+            // Contar turnos transferidos (solo los salientes)
             $turnosTransferidos = $grupo->filter(function($turno) {
-                return $turno->observaciones && str_starts_with($turno->observaciones, 'Transferido');
+                return $turno->observaciones && str_contains($turno->observaciones, 'Transferido a ');
             })->count();
             
             // Calcular tiempo entre turnos
@@ -160,10 +160,10 @@ class ReportesController extends Controller
                 // Detalle de turnos
                 'turnos_detalle' => $turnosAtendidos->map(function($turno) {
                     // Convertir duración de segundos a formato mm:ss
-                    $duracionSegundos = $turno->duracion_atencion ?? 0;
+                    $duracionSegundos = abs($turno->duracion_atencion ?? 0);
                     $minutos = floor($duracionSegundos / 60);
                     $segundos = $duracionSegundos % 60;
-                    $duracionFormato = sprintf('%d:%02d', $minutos, $segundos);
+                    $duracionFormato = sprintf('%02d:%02d', $minutos, $segundos);
                     
                     return [
                         'codigo' => $turno->codigo_completo,
@@ -734,10 +734,10 @@ class ReportesController extends Controller
         $row = 2;
         foreach ($turnos as $turno) {
             // Formato de duración mm:ss
-            $duracionSegundos = $turno->duracion_atencion ?? 0;
+            $duracionSegundos = abs($turno->duracion_atencion ?? 0);
             $minutos = floor($duracionSegundos / 60);
             $segundos = $duracionSegundos % 60;
-            $duracionFormato = $duracionSegundos ? sprintf('%d:%02d', $minutos, $segundos) : 'N/A';
+            $duracionFormato = $duracionSegundos ? sprintf('%02d:%02d', $minutos, $segundos) : 'N/A';
             
             $sheet->setCellValue('A' . $row, $turno->codigo);
             $sheet->setCellValue('B' . $row, $turno->numero);
@@ -786,7 +786,7 @@ class ReportesController extends Controller
             'C1' => 'Atendidos',
             'D1' => 'Pendientes',
             'E1' => 'Cancelados',
-            'F1' => 'Tiempo Promedio (min)'
+            'F1' => 'Tiempo Promedio (mm:ss)'
         ];
 
         foreach ($headers as $cell => $header) {
@@ -811,12 +811,18 @@ class ReportesController extends Controller
         // Datos
         $row = 2;
         foreach ($porServicio as $servicio => $datos) {
+            // Formatear promedio mm:ss
+            $promedioSegundos = abs($datos['tiempo_promedio'] ?? 0);
+            $minPromedio = floor($promedioSegundos / 60);
+            $segPromedio = $promedioSegundos % 60;
+            $tiempoPromedioFormato = sprintf('%02d:%02d', $minPromedio, $segPromedio);
+
             $sheet->setCellValue('A' . $row, $servicio);
             $sheet->setCellValue('B' . $row, $datos['total']);
             $sheet->setCellValue('C' . $row, $datos['atendidos']);
             $sheet->setCellValue('D' . $row, $datos['pendientes']);
             $sheet->setCellValue('E' . $row, $datos['cancelados']);
-            $sheet->setCellValue('F' . $row, $datos['tiempo_promedio'] ? round($datos['tiempo_promedio'] / 60, 2) : 'N/A');
+            $sheet->setCellValue('F' . $row, $tiempoPromedioFormato);
             $row++;
         }
 
@@ -875,16 +881,17 @@ class ReportesController extends Controller
         $row = 2;
         foreach ($porAsesor as $asesorId => $datos) {
             // Formato de tiempos mm:ss
-            $tiempoPromedioSeg = $datos['tiempo_promedio_atencion'] ?? 0;
-            $tiempoTotalSeg = $datos['tiempo_total_atencion'] ?? 0;
-            
-            $promMin = floor($tiempoPromedioSeg / 60);
-            $promSeg = round($tiempoPromedioSeg % 60);
-            $tiempoPromedioFormato = sprintf('%d:%02d', $promMin, $promSeg);
-            
-            $totalMin = floor($tiempoTotalSeg / 60);
-            $totalSeg = round($tiempoTotalSeg % 60);
-            $tiempoTotalFormato = sprintf('%d:%02d', $totalMin, $totalSeg);
+            // Formatear promedio
+            $promedioSegundos = abs($datos['tiempo_promedio_atencion']);
+            $minPromedio = floor($promedioSegundos / 60);
+            $segPromedio = $promedioSegundos % 60;
+            $tiempoPromedioFormato = sprintf('%02d:%02d', $minPromedio, $segPromedio);
+
+            // Formatear total
+            $totalSegundos = abs($datos['tiempo_total_atencion']);
+            $minTotal = floor($totalSegundos / 60);
+            $segTotal = $totalSegundos % 60;
+            $tiempoTotalFormato = sprintf('%02d:%02d', $minTotal, $segTotal);
             
             $sheet->setCellValue('A' . $row, $datos['nombre_completo']);
             $sheet->setCellValue('B' . $row, $datos['nombre_usuario']);
