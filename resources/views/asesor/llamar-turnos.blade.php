@@ -1138,45 +1138,9 @@
                 
                 const duracionFormateada = dataAtender.duracion ? formatearTiempo(dataAtender.duracion) : '00:00';
                 
-                // Si hay transferencia programada, ejecutarla
-                if (transferenciaProgramada) {
-                    const codigoTurno = turnoActual.codigo_completo;
-                    const servicioDestinoNombre = transferenciaProgramada.servicioDestinoNombre; // Guardar antes de limpiar
-                    
-                    const responseTransferir = await fetch('/asesor/transferir-turno', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            codigo_completo: codigoTurno,
-                            servicio_destino_id: transferenciaProgramada.servicioDestinoId,
-                            posicion: transferenciaProgramada.posicion
-                        })
-                    });
-                    
-                    const dataTransferir = await responseTransferir.json();
-                    
-                    if (dataTransferir.success) {
-                        limpiarInterfazTurno();
-                        mostrarModal(
-                            'Turno Atendido y Transferido', 
-                            `Turno atendido (${duracionFormateada} min) y transferido a ${servicioDestinoNombre}.`
-                        );
-                    } else {
-                        limpiarInterfazTurno();
-                        mostrarModal(
-                            'Atendido pero Error al Transferir', 
-                            `Turno atendido correctamente pero hubo un error al transferir: ${dataTransferir.message}`, 
-                            'error'
-                        );
-                    }
-                } else {
-                    // Sin transferencia, solo marcar como atendido
-                    limpiarInterfazTurno();
-                    mostrarModal('Turno Atendido', `Turno atendido correctamente. Tiempo de atención: ${duracionFormateada} min`);
-                }
+                // Sin transferencia, solo marcar como atendido
+                limpiarInterfazTurno();
+                mostrarModal('Turno Atendido', `Turno atendido correctamente. Tiempo de atención: ${duracionFormateada} min`);
                 
                 actualizarEstadisticasServicios();
                 cargarHistorialTurnos();
@@ -1505,8 +1469,8 @@
             turnoATransferir = null;
         }
 
-        // Programar transferencia (se ejecutará al marcar como atendido)
-        function programarTransferencia() {
+        // Ejecutar transferencia inmediatamente
+        async function programarTransferencia() {
             const servicioDestinoId = selectServicioDestino.value;
             const posicion = document.querySelector('input[name="posicion-cola"]:checked').value;
             
@@ -1524,28 +1488,66 @@
             const servicioOption = selectServicioDestino.options[selectServicioDestino.selectedIndex];
             const servicioDestinoNombre = servicioOption.textContent;
             
-            // Guardar la configuración de transferencia
-            transferenciaProgramada = {
-                servicioDestinoId: servicioDestinoId,
-                servicioDestinoNombre: servicioDestinoNombre,
-                posicion: posicion
-            };
-            
+            // Guardar código en variable local antes de cerrar el modal (que limpia turnoATransferir)
+            const codigoTurnoParaTransferir = turnoATransferir;
+
             // Cerrar modal
             cerrarModalTransferir();
             
-            // Actualizar el botón para mostrar que hay una transferencia programada
-            btnTransferir.textContent = '✓ TRANSFERIR A: ' + servicioDestinoNombre.split(' - ')[0];
-            btnTransferir.classList.remove('bg-purple-600');
-            btnTransferir.classList.add('bg-purple-800');
-            
-            // Mostrar confirmación
-            const posicionTexto = posicion === 'primero' ? 'de primero' : 'de último';
-            mostrarModal(
-                'Transferencia Programada', 
-                `El turno será transferido a "${servicioDestinoNombre}" (${posicionTexto}) cuando marque como ATENDIDO.`,
-                'success'
-            );
+            try {
+                // Hacer la petición de transferencia directa
+                console.log('Enviando transferencia:', {
+                    codigo_completo: codigoTurnoParaTransferir,
+                    servicio_destino_id: servicioDestinoId,
+                    posicion: posicion
+                });
+
+                const response = await fetch('/asesor/transferir-turno', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        codigo_completo: codigoTurnoParaTransferir,
+                        servicio_destino_id: servicioDestinoId,
+                        posicion: posicion
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Si el turno transferido era el actual, limpiar la interfaz
+                    if (turnoActual && turnoActual.codigo_completo === codigoTurnoParaTransferir) {
+                        limpiarInterfazTurno();
+                    }
+                    
+                    mostrarModal(
+                        'Turno Transferido', 
+                        `Turno transferido exitosamente a ${servicioDestinoNombre}.`,
+                        'success'
+                    );
+                    
+                    actualizarEstadisticasServicios();
+                    cargarHistorialTurnos();
+                } else {
+                    console.error('Error del servidor:', data);
+                    let errorMessage = data.message;
+                    
+                    // Si hay errores de validación específicos
+                    if (data.errors) {
+                        const errorDetails = Object.values(data.errors).flat().join('\n');
+                        errorMessage += '\n' + errorDetails;
+                    }
+                    
+                    mostrarModal('Error', errorMessage, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarModal('Error', 'Error de conexión al transferir', 'error');
+            }
         }
         
         // Cancelar transferencia programada

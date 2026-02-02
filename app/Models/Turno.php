@@ -244,12 +244,21 @@ class Turno extends Model
         //     'duracion_frontend' => $duracionFrontend
         // ]);
 
-        $this->update([
-            'estado' => 'atendido',
-            'fecha_atencion' => now(),
-            'fecha_finalizacion' => now(),
-            'duracion_atencion' => $duracion
-        ]);
+        try {
+            $this->update([
+                'estado' => 'atendido',
+                'fecha_atencion' => now(),
+                'fecha_finalizacion' => now(),
+                'duracion_atencion' => $duracion
+            ]);
+        } catch (\Exception $e) {
+            // Si falla en producción por falta del campo fecha_finalizacion
+            $this->update([
+                'estado' => 'atendido',
+                'fecha_atencion' => now(),
+                'duracion_atencion' => $duracion
+            ]);
+        }
 
         return $duracion;
     }

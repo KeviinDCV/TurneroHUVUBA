@@ -994,6 +994,8 @@ class AsesorController extends Controller
      */
     public function transferirTurno(Request $request)
     {
+        \Log::info('Solicitud de transferencia recibida', $request->all());
+
         $user = Auth::user();
 
         if (!$user->esAsesor()) {
@@ -1084,47 +1086,72 @@ class AsesorController extends Controller
             $nuevoNumero = $maxNumero ? ($maxNumero + 1) : 1;
         }
 
-        // Marcar el turno original como "atendido" con observación de transferencia
-        // Calcular duración desde que se llamó
-        $duracion = 0;
-        if ($turno->fecha_llamado) {
-            $duracion = now()->diffInSeconds($turno->fecha_llamado);
+        try {
+            // Marcar el turno original como "atendido" con observación de transferencia
+            // Calcular duración desde que se llamó
+            $duracion = 0;
+            if ($turno->fecha_llamado) {
+                $duracion = abs(now()->diffInSeconds($turno->fecha_llamado));
+            }
+            
+            try {
+                $turno->update([
+                    'estado' => 'atendido',
+                    'fecha_atencion' => now(),
+                    'fecha_finalizacion' => now(),
+                    'duracion_atencion' => $duracion,
+                    'observaciones' => 'Transferido a ' . $servicioDestino->nombre
+                ]);
+            } catch (\Exception $e) {
+                // Si falla (probablemente porque no existe el campo fecha_finalizacion en producción),
+                // intentamos actualizar sin ese campo
+                \Log::warning('Error actualizando fecha_finalizacion, intentando sin campo: ' . $e->getMessage());
+                $turno->update([
+                    'estado' => 'atendido',
+                    'fecha_atencion' => now(),
+                    'duracion_atencion' => $duracion,
+                    'observaciones' => 'Transferido a ' . $servicioDestino->nombre
+                ]);
+            }
+
+            // Crear un NUEVO turno en el servicio destino pero con el MISMO código y número
+            // para que el paciente mantenga su ticket original
+            $nuevoTurno = new Turno();
+            $nuevoTurno->servicio_id = $servicioDestino->id;
+            $nuevoTurno->codigo = $turno->codigo; // Mantener el código ORIGINAL
+            $nuevoTurno->numero = $turno->numero; // Mantener el número ORIGINAL
+            $nuevoTurno->prioridad = $turno->prioridad; // Mantener la prioridad original
+            $nuevoTurno->estado = 'pendiente';
+            $nuevoTurno->fecha_creacion = now();
+            $nuevoTurno->observaciones = 'Transferido desde ' . $servicioOriginal->nombre;
+            $nuevoTurno->save();
+
+            \Log::info('Turno transferido', [
+                'turno_original_id' => $turno->id,
+                'nuevo_turno_id' => $nuevoTurno->id,
+                'codigo_turno' => $nuevoTurno->codigo_completo,
+                'servicio_origen' => $servicioOriginal->nombre,
+                'servicio_destino' => $servicioDestino->nombre,
+                'posicion' => $request->posicion,
+                'asesor' => $user->nombre_completo
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Turno {$nuevoTurno->codigo_completo} transferido a {$servicioDestino->nombre} exitosamente"
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error crítico al transferir turno: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno al transferir: ' . $e->getMessage()
+            ], 500);
         }
-        
-        $turno->update([
-            'estado' => 'atendido',
-            'fecha_atencion' => now(),
-            'fecha_finalizacion' => now(),
-            'duracion_atencion' => $duracion,
-            'observaciones' => 'Transferido a ' . $servicioDestino->nombre
-        ]);
-
-        // Crear un NUEVO turno en el servicio destino pero con el MISMO código y número
-        // para que el paciente mantenga su ticket original
-        $nuevoTurno = new Turno();
-        $nuevoTurno->servicio_id = $servicioDestino->id;
-        $nuevoTurno->codigo = $turno->codigo; // Mantener el código ORIGINAL
-        $nuevoTurno->numero = $turno->numero; // Mantener el número ORIGINAL
-        $nuevoTurno->prioridad = $turno->prioridad; // Mantener la prioridad original
-        $nuevoTurno->estado = 'pendiente';
-        $nuevoTurno->fecha_creacion = now();
-        $nuevoTurno->observaciones = 'Transferido desde ' . $servicioOriginal->nombre;
-        $nuevoTurno->save();
-
-        \Log::info('Turno transferido', [
-            'turno_original_id' => $turno->id,
-            'nuevo_turno_id' => $nuevoTurno->id,
-            'codigo_turno' => $nuevoTurno->codigo_completo,
-            'servicio_origen' => $servicioOriginal->nombre,
-            'servicio_destino' => $servicioDestino->nombre,
-            'posicion' => $request->posicion,
-            'asesor' => $user->nombre_completo
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => "Turno {$nuevoTurno->codigo_completo} transferido a {$servicioDestino->nombre} exitosamente"
-        ]);
     }
 
     /**
@@ -1368,16 +1395,12 @@ class AsesorController extends Controller
 
             if ($turno->estado === 'atendido' && $turno->duracion_atencion) {
                 // Para turnos atendidos, usar la duración guardada (en segundos)
-                $duracion = (int) $turno->duracion_atencion;
+                // Asegurar que siempre sea positiva para visualización
+                $duracion = abs((int) $turno->duracion_atencion);
 
-                // Si la duración es negativa, mostrar el valor para debugging
-                if ($duracion < 0) {
-                    $tiempoTranscurrido = 'NEG:' . abs($duracion);
-                } else {
-                    $minutos = floor($duracion / 60);
-                    $segundos = $duracion % 60;
-                    $tiempoTranscurrido = sprintf('%02d:%02d', $minutos, $segundos);
-                }
+                $minutos = floor($duracion / 60);
+                $segundos = $duracion % 60;
+                $tiempoTranscurrido = sprintf('%02d:%02d', $minutos, $segundos);
             } elseif ($turno->estado === 'llamado' && $turno->fecha_llamado) {
                 // Para turnos en proceso, calcular tiempo desde llamado hasta ahora
                 try {
