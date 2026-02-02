@@ -362,13 +362,6 @@
                     >
                         Llamar
                     </button>
-                    <button
-                        id="btn-canal-no-presencial"
-                        class="px-6 py-2 text-white rounded-md transition-colors duration-200 hover:opacity-90"
-                        style="background-color: #064b9e;"
-                    >
-                        Canales no presenciales
-                    </button>
                 </div>
             </div>
 
@@ -512,6 +505,13 @@
                     >
                         APLAZAR
                     </button>
+                    <button
+                        id="btn-transferir"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
+                        style="display: none;"
+                    >
+                        TRANSFERIR
+                    </button>
                 </div>
 
                 <!-- Footer -->
@@ -558,47 +558,7 @@
         </div>
     </div>
 
-    <!-- Modal para Canal No Presencial -->
-    <div id="canal-no-presencial-modal" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 animate-fade-in">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-gray-900">Canales no presenciales</h3>
-                    <button id="btn-cerrar-canal-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
 
-                <p class="text-sm text-gray-600 mb-4">Describe la actividad que estás realizando en canales no presenciales:</p>
-
-                <textarea 
-                    id="actividad-canal-input"
-                    rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ejemplo: Atendiendo solicitudes por correo electrónico, respondiendo consultas por WhatsApp..."
-                    maxlength="500"
-                ></textarea>
-
-                <div class="flex justify-end gap-3 mt-4">
-                    <button 
-                        id="btn-cancelar-canal"
-                        class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors"
-                    >
-                        Cancelar
-                    </button>
-                    <button 
-                        id="btn-guardar-canal"
-                        class="px-6 py-2 text-white rounded-md font-medium hover:opacity-90 transition-opacity"
-                        style="background-color: #064b9e;"
-                    >
-                        Guardar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Modal para Turnos Aplazados -->
     <div id="modal-aplazados" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
@@ -641,35 +601,72 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmación para Finalizar Canal No Presencial -->
-    <div id="confirmar-finalizar-modal" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 animate-fade-in">
-            <div class="p-6">
-                <div class="flex items-center mb-4">
-                    <div class="flex-shrink-0 w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
-                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    <!-- Modal para Transferir Turno -->
+    <div id="modal-transferir" class="fixed inset-0 hidden items-center justify-center z-50 backdrop-blur-sm bg-black/30">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 animate-fade-in">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900">Transferir Turno</h3>
+                    <button id="btn-cerrar-modal-transferir" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-lg font-bold text-gray-900">Confirmar Finalización</h3>
+                    </button>
+                </div>
+                <p id="modal-transferir-turno" class="text-sm text-gray-600 mt-2"></p>
+            </div>
+
+            <div class="p-6">
+                <div class="mb-4">
+                    <label for="select-servicio-destino" class="block text-sm font-medium text-gray-700 mb-2">
+                        Seleccionar servicio destino:
+                    </label>
+                    <select id="select-servicio-destino" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">-- Seleccione un servicio --</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Posición en la cola:
+                    </label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="posicion-cola" value="primero" class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-700">De primero (siguiente en llamar)</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="posicion-cola" value="ultimo" checked class="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-700">De último</span>
+                        </label>
                     </div>
                 </div>
 
-                <p class="text-sm text-gray-600 mb-6">¿Desea finalizar la actividad de canal no presencial y volver a estar disponible?</p>
+                <div class="bg-purple-50 border border-purple-200 rounded-md p-3 mb-4">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-sm text-purple-700">
+                            El turno será transferido al servicio seleccionado y quedará disponible para el asesor de ese servicio.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
+            <div class="p-6 border-t border-gray-200">
                 <div class="flex justify-end gap-3">
                     <button 
-                        id="btn-cancelar-finalizar"
+                        id="btn-cancelar-transferir"
                         class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors"
                     >
                         Cancelar
                     </button>
                     <button 
-                        id="btn-confirmar-finalizar"
-                        class="px-6 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors"
+                        id="btn-confirmar-transferir"
+                        class="px-6 py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 transition-colors"
                     >
-                        Sí, Finalizar
+                        Transferir
                     </button>
                 </div>
             </div>
@@ -683,7 +680,6 @@
         let intervalTiempo = null;
         let tiempoTranscurrido = 0;
         let serviciosExpanded = {}; // Almacena el estado de expansión de cada servicio
-        let enCanalNoPresencial = false; // Bandera para controlar el estado
 
         // Elementos del DOM
         const codigoInput = document.getElementById('codigo-turno');
@@ -691,19 +687,23 @@
         const btnLlamarEspecifico = document.getElementById('btn-llamar-especifico');
         const btnAtender = document.getElementById('btn-atender');
         const btnAplazar = document.getElementById('btn-aplazar');
+        const btnTransferir = document.getElementById('btn-transferir');
         const turnoActualElement = document.getElementById('turno-actual');
-        const btnCanalNoPresencial = document.getElementById('btn-canal-no-presencial');
-        const canalNoPresencialModal = document.getElementById('canal-no-presencial-modal');
-        const actividadCanalInput = document.getElementById('actividad-canal-input');
-        const btnCerrarCanalModal = document.getElementById('btn-cerrar-canal-modal');
-        const btnCancelarCanal = document.getElementById('btn-cancelar-canal');
-        const btnGuardarCanal = document.getElementById('btn-guardar-canal');
-        const confirmarFinalizarModal = document.getElementById('confirmar-finalizar-modal');
-        const btnCancelarFinalizar = document.getElementById('btn-cancelar-finalizar');
-        const btnConfirmarFinalizar = document.getElementById('btn-confirmar-finalizar');
         const servicioActualElement = document.getElementById('servicio-actual');
         const tiempoAtencionElement = document.getElementById('tiempo-atencion');
         const serviciosContainer = document.getElementById('servicios-container');
+        
+        // Elementos del modal de transferencia
+        const modalTransferir = document.getElementById('modal-transferir');
+        const btnCerrarModalTransferir = document.getElementById('btn-cerrar-modal-transferir');
+        const btnCancelarTransferir = document.getElementById('btn-cancelar-transferir');
+        const btnConfirmarTransferir = document.getElementById('btn-confirmar-transferir');
+        const selectServicioDestino = document.getElementById('select-servicio-destino');
+        const modalTransferirTurno = document.getElementById('modal-transferir-turno');
+        let turnoATransferir = null; // Almacena el código del turno a transferir
+        
+        // Variables para transferencia programada (se ejecuta al marcar como atendido)
+        let transferenciaProgramada = null; // { servicioDestinoId, servicioDestinoNombre, posicion }
 
         // Inicializar estado de expansión de servicios
         document.querySelectorAll('.servicio-principal').forEach(servicio => {
@@ -886,10 +886,10 @@
                             </div>
                             <div class="grid-item p-3 text-center">
                                 <button
-                                    class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200 ${enCanalNoPresencial ? 'opacity-50 cursor-not-allowed' : ''}"
+                                    class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                     data-servicio-id="${servicio.id}"
                                     style="background-color: #064b9e;"
-                                    ${servicio.total == 0 || enCanalNoPresencial ? 'disabled' : ''}
+                                    ${servicio.total == 0 ? 'disabled' : ''}
                                 >
                                     ${servicio.total > 0 ? 'DISPONIBLE' : 'SIN TURNOS'}
                                 </button>
@@ -920,10 +920,10 @@
                                     </div>
                                     <div class="grid-item p-3 text-center">
                                         <button
-                                            class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200 ${enCanalNoPresencial ? 'opacity-50 cursor-not-allowed' : ''}"
+                                            class="btn-llamar-siguiente text-xs px-3 py-1 rounded text-white transition-colors duration-200"
                                             data-servicio-id="${subservicio.id}"
                                             style="background-color: #064b9e;"
-                                            ${subservicio.total == 0 || enCanalNoPresencial ? 'disabled' : ''}
+                                            ${subservicio.total == 0 ? 'disabled' : ''}
                                         >
                                             ${subservicio.total > 0 ? 'DISPONIBLE' : 'SIN TURNOS'}
                                         </button>
@@ -1018,6 +1018,7 @@
 
             btnAtender.style.display = 'block';
             btnAplazar.style.display = 'block';
+            btnTransferir.style.display = 'block';
 
             // Detener contador anterior si existe
             if (intervalTiempo) {
@@ -1056,6 +1057,13 @@
 
             btnAtender.style.display = 'none';
             btnAplazar.style.display = 'none';
+            btnTransferir.style.display = 'none';
+            
+            // Limpiar transferencia programada
+            transferenciaProgramada = null;
+            btnTransferir.textContent = 'TRANSFERIR';
+            btnTransferir.classList.remove('bg-purple-800');
+            btnTransferir.classList.add('bg-purple-600');
         }
 
         // Event listeners
@@ -1099,7 +1107,7 @@
         // Configurar eventos iniciales
         configurarEventosServiciosDesplegables();
 
-        btnAtender.addEventListener('click', function() {
+        btnAtender.addEventListener('click', async function() {
             if (!turnoActual) return;
 
             // Detener el contador
@@ -1107,32 +1115,76 @@
                 clearInterval(intervalTiempo);
             }
 
-            fetch('{{ route("asesor.marcar-atendido") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    turno_id: turnoActual.id,
-                    duracion: tiempoTranscurrido
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const duracionFormateada = data.duracion ? formatearTiempo(data.duracion) : '00:00';
+            try {
+                // Primero marcar como atendido
+                const responseAtender = await fetch('{{ route("asesor.marcar-atendido") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        turno_id: turnoActual.id,
+                        duracion: tiempoTranscurrido
+                    })
+                });
+                
+                const dataAtender = await responseAtender.json();
+                
+                if (!dataAtender.success) {
+                    mostrarModal('Error', dataAtender.message, 'error');
+                    return;
+                }
+                
+                const duracionFormateada = dataAtender.duracion ? formatearTiempo(dataAtender.duracion) : '00:00';
+                
+                // Si hay transferencia programada, ejecutarla
+                if (transferenciaProgramada) {
+                    const codigoTurno = turnoActual.codigo_completo;
+                    const servicioDestinoNombre = transferenciaProgramada.servicioDestinoNombre; // Guardar antes de limpiar
+                    
+                    const responseTransferir = await fetch('/asesor/transferir-turno', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            codigo_completo: codigoTurno,
+                            servicio_destino_id: transferenciaProgramada.servicioDestinoId,
+                            posicion: transferenciaProgramada.posicion
+                        })
+                    });
+                    
+                    const dataTransferir = await responseTransferir.json();
+                    
+                    if (dataTransferir.success) {
+                        limpiarInterfazTurno();
+                        mostrarModal(
+                            'Turno Atendido y Transferido', 
+                            `Turno atendido (${duracionFormateada} min) y transferido a ${servicioDestinoNombre}.`
+                        );
+                    } else {
+                        limpiarInterfazTurno();
+                        mostrarModal(
+                            'Atendido pero Error al Transferir', 
+                            `Turno atendido correctamente pero hubo un error al transferir: ${dataTransferir.message}`, 
+                            'error'
+                        );
+                    }
+                } else {
+                    // Sin transferencia, solo marcar como atendido
                     limpiarInterfazTurno();
                     mostrarModal('Turno Atendido', `Turno atendido correctamente. Tiempo de atención: ${duracionFormateada} min`);
-                    actualizarEstadisticasServicios(); // Actualizar datos
-                } else {
-                    mostrarModal('Error', data.message, 'error');
                 }
-            })
-            .catch(error => {
+                
+                actualizarEstadisticasServicios();
+                cargarHistorialTurnos();
+                
+            } catch (error) {
                 console.error('Error:', error);
                 mostrarModal('Error', 'Error de conexión', 'error');
-            });
+            }
         });
 
         btnAplazar.addEventListener('click', function() {
@@ -1254,6 +1306,10 @@
                                 class="historial-action-btn px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600">
                             Aplazar
                         </button>
+                        <button onclick="abrirModalTransferir('${turno.codigo_completo}')"
+                                class="historial-action-btn px-2 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600">
+                            Transferir
+                        </button>
                     `;
                 } else {
                     acciones = `
@@ -1370,147 +1426,6 @@
             });
         }
 
-        // Funciones para Canal No Presencial
-        function abrirModalCanalNoPresencial() {
-            actividadCanalInput.value = '';
-            canalNoPresencialModal.classList.remove('hidden');
-            canalNoPresencialModal.classList.add('flex');
-            actividadCanalInput.focus();
-        }
-
-        function cerrarModalCanalNoPresencial() {
-            canalNoPresencialModal.classList.remove('flex');
-            canalNoPresencialModal.classList.add('hidden');
-            actividadCanalInput.value = '';
-        }
-
-        function guardarActividadCanalNoPresencial() {
-            const actividad = actividadCanalInput.value.trim();
-
-            if (!actividad) {
-                showNotification('Error', 'Debe describir la actividad que está realizando', 'error');
-                return;
-            }
-
-            fetch('{{ route("asesor.iniciar-canal-no-presencial") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ actividad: actividad })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        console.error('❌ Error del servidor:', text);
-                        throw new Error(`Error del servidor (${response.status}). Verifica los logs de Laravel.`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    cerrarModalCanalNoPresencial();
-                    showNotification('Éxito', 'Actividad de canal no presencial iniciada. Su estado cambiará a "No disponible"', 'success');
-                    
-                    // Actualizar bandera
-                    enCanalNoPresencial = true;
-                    
-                    // Deshabilitar botones de llamar turnos
-                    btnLlamarEspecifico.disabled = true;
-                    btnLlamarEspecifico.classList.add('opacity-50', 'cursor-not-allowed');
-                    document.querySelectorAll('.btn-llamar-siguiente').forEach(btn => {
-                        btn.disabled = true;
-                        btn.classList.add('opacity-50', 'cursor-not-allowed');
-                    });
-                    
-                    // Cambiar el botón a "Finalizar Canal No Presencial"
-                    btnCanalNoPresencial.textContent = 'Finalizar Canal No Presencial';
-                    btnCanalNoPresencial.style.backgroundColor = '#ef4444'; // Rojo
-                } else {
-                    showNotification('Error', data.message, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Error', error.message || 'Error de conexión', 'error');
-            });
-        }
-
-        function abrirModalConfirmarFinalizar() {
-            confirmarFinalizarModal.classList.remove('hidden');
-            confirmarFinalizarModal.classList.add('flex');
-        }
-
-        function cerrarModalConfirmarFinalizar() {
-            confirmarFinalizarModal.classList.remove('flex');
-            confirmarFinalizarModal.classList.add('hidden');
-        }
-
-        function finalizarCanalNoPresencial() {
-            fetch('{{ route("asesor.finalizar-canal-no-presencial") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        console.error('❌ Error del servidor:', text);
-                        throw new Error(`Error del servidor (${response.status}). Verifica los logs de Laravel.`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    cerrarModalConfirmarFinalizar();
-                    showNotification('Éxito', 'Actividad de canal no presencial finalizada. Ya está disponible nuevamente', 'success');
-                    
-                    // Actualizar bandera
-                    enCanalNoPresencial = false;
-                    
-                    // Rehabilitar botones de llamar turnos
-                    btnLlamarEspecifico.disabled = false;
-                    btnLlamarEspecifico.classList.remove('opacity-50', 'cursor-not-allowed');
-                    document.querySelectorAll('.btn-llamar-siguiente').forEach(btn => {
-                        btn.disabled = false;
-                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    });
-                    
-                    // Restaurar el botón original
-                    btnCanalNoPresencial.textContent = 'Canales no presenciales';
-                    btnCanalNoPresencial.style.backgroundColor = '#064b9e'; // Azul institucional
-                } else {
-                    showNotification('Error', data.message, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Error', error.message || 'Error de conexión', 'error');
-            });
-        }
-
-        // Event Listener principal para el botón de Canal No Presencial
-        btnCanalNoPresencial.addEventListener('click', function() {
-            if (enCanalNoPresencial) {
-                abrirModalConfirmarFinalizar();
-            } else {
-                abrirModalCanalNoPresencial();
-            }
-        });
-        
-        btnCerrarCanalModal.addEventListener('click', cerrarModalCanalNoPresencial);
-        btnCancelarCanal.addEventListener('click', cerrarModalCanalNoPresencial);
-        btnGuardarCanal.addEventListener('click', guardarActividadCanalNoPresencial);
-        
-        // Event Listeners para Modal de Confirmación
-        btnCancelarFinalizar.addEventListener('click', cerrarModalConfirmarFinalizar);
-        btnConfirmarFinalizar.addEventListener('click', finalizarCanalNoPresencial);
-
         // Volver a llamar turno
         function volverLlamarTurno(codigoCompleto) {
             console.log('🔊 Volviendo a llamar turno:', codigoCompleto);
@@ -1542,27 +1457,126 @@
             });
         }
 
-        // Verificar estado de canal no presencial al cargar
-        function verificarEstadoCanalNoPresencial() {
-            @if(Auth::user()->estaEnCanalNoPresencial())
-                console.log('🟠 Usuario está en canal no presencial, restaurando UI...');
+        // ===== FUNCIONES PARA TRANSFERIR TURNO =====
+
+        // Cargar servicios disponibles para transferir
+        async function cargarServiciosParaTransferir() {
+            try {
+                const response = await fetch('/api/asesor/servicios-activos');
+                const data = await response.json();
                 
-                // Actualizar bandera
-                enCanalNoPresencial = true;
+                selectServicioDestino.innerHTML = '<option value="">-- Seleccione un servicio --</option>';
                 
-                // Deshabilitar botones de llamar turnos
-                btnLlamarEspecifico.disabled = true;
-                btnLlamarEspecifico.classList.add('opacity-50', 'cursor-not-allowed');
-                document.querySelectorAll('.btn-llamar-siguiente').forEach(btn => {
-                    btn.disabled = true;
-                    btn.classList.add('opacity-50', 'cursor-not-allowed');
-                });
-                
-                // Cambiar el botón a "Finalizar Canal No Presencial"
-                btnCanalNoPresencial.textContent = 'Finalizar Canal No Presencial';
-                btnCanalNoPresencial.style.backgroundColor = '#ef4444'; // Rojo
-            @endif
+                if (data.success && data.servicios) {
+                    data.servicios.forEach(servicio => {
+                        const option = document.createElement('option');
+                        option.value = servicio.id;
+                        option.textContent = `${servicio.codigo} - ${servicio.nombre}`;
+                        selectServicioDestino.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error al cargar servicios:', error);
+                selectServicioDestino.innerHTML = '<option value="">Error al cargar servicios</option>';
+            }
         }
+
+        // Abrir modal de transferencia
+        function abrirModalTransferir(codigoCompleto) {
+            turnoATransferir = codigoCompleto;
+            modalTransferirTurno.textContent = `Turno a transferir: ${codigoCompleto}`;
+            
+            // Resetear formulario
+            selectServicioDestino.value = '';
+            document.querySelector('input[name="posicion-cola"][value="ultimo"]').checked = true;
+            
+            // Cargar servicios
+            cargarServiciosParaTransferir();
+            
+            // Mostrar modal
+            modalTransferir.classList.remove('hidden');
+            modalTransferir.classList.add('flex');
+        }
+
+        // Cerrar modal de transferencia
+        function cerrarModalTransferir() {
+            modalTransferir.classList.remove('flex');
+            modalTransferir.classList.add('hidden');
+            turnoATransferir = null;
+        }
+
+        // Programar transferencia (se ejecutará al marcar como atendido)
+        function programarTransferencia() {
+            const servicioDestinoId = selectServicioDestino.value;
+            const posicion = document.querySelector('input[name="posicion-cola"]:checked').value;
+            
+            if (!servicioDestinoId) {
+                mostrarModal('Error', 'Debe seleccionar un servicio destino', 'error');
+                return;
+            }
+            
+            if (!turnoATransferir) {
+                mostrarModal('Error', 'No se ha seleccionado un turno para transferir', 'error');
+                return;
+            }
+            
+            // Obtener el nombre del servicio seleccionado
+            const servicioOption = selectServicioDestino.options[selectServicioDestino.selectedIndex];
+            const servicioDestinoNombre = servicioOption.textContent;
+            
+            // Guardar la configuración de transferencia
+            transferenciaProgramada = {
+                servicioDestinoId: servicioDestinoId,
+                servicioDestinoNombre: servicioDestinoNombre,
+                posicion: posicion
+            };
+            
+            // Cerrar modal
+            cerrarModalTransferir();
+            
+            // Actualizar el botón para mostrar que hay una transferencia programada
+            btnTransferir.textContent = '✓ TRANSFERIR A: ' + servicioDestinoNombre.split(' - ')[0];
+            btnTransferir.classList.remove('bg-purple-600');
+            btnTransferir.classList.add('bg-purple-800');
+            
+            // Mostrar confirmación
+            const posicionTexto = posicion === 'primero' ? 'de primero' : 'de último';
+            mostrarModal(
+                'Transferencia Programada', 
+                `El turno será transferido a "${servicioDestinoNombre}" (${posicionTexto}) cuando marque como ATENDIDO.`,
+                'success'
+            );
+        }
+        
+        // Cancelar transferencia programada
+        function cancelarTransferenciaProgramada() {
+            transferenciaProgramada = null;
+            btnTransferir.textContent = 'TRANSFERIR';
+            btnTransferir.classList.remove('bg-purple-800');
+            btnTransferir.classList.add('bg-purple-600');
+            mostrarModal('Información', 'Transferencia cancelada', 'success');
+        }
+
+        // Event listeners para modal de transferencia
+        btnCerrarModalTransferir.addEventListener('click', cerrarModalTransferir);
+        btnCancelarTransferir.addEventListener('click', cerrarModalTransferir);
+        btnConfirmarTransferir.addEventListener('click', programarTransferencia);
+        
+        // Event listener para el botón principal de transferir
+        btnTransferir.addEventListener('click', function() {
+            // Si ya hay una transferencia programada, preguntar si quiere cancelarla
+            if (transferenciaProgramada) {
+                if (confirm('Ya hay una transferencia programada a "' + transferenciaProgramada.servicioDestinoNombre + '". ¿Desea cancelarla o cambiarla?')) {
+                    if (turnoActual && turnoActual.codigo_completo) {
+                        abrirModalTransferir(turnoActual.codigo_completo);
+                    }
+                }
+            } else if (turnoActual && turnoActual.codigo_completo) {
+                abrirModalTransferir(turnoActual.codigo_completo);
+            } else {
+                mostrarModal('Error', 'No hay turno seleccionado para transferir', 'error');
+            }
+        });
 
         // ===== FUNCIONES PARA MODAL DE TURNOS APLAZADOS =====
 
@@ -1768,9 +1782,6 @@
 
             // Verificar si hay un turno en proceso (importante al recargar la página)
             verificarTurnoEnProcesoInicial();
-
-            // Verificar estado de canal no presencial
-            verificarEstadoCanalNoPresencial();
 
             // Cargar historial inicial
             cargarHistorialTurnos();

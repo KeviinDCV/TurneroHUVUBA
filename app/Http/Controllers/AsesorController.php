@@ -990,6 +990,162 @@ class AsesorController extends Controller
     }
 
     /**
+     * Transferir turno a otro servicio
+     */
+    public function transferirTurno(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user->esAsesor()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
+        $request->validate([
+            'codigo_completo' => 'required|string',
+            'servicio_destino_id' => 'required|exists:servicios,id',
+            'posicion' => 'required|in:primero,ultimo'
+        ]);
+
+        // Buscar el turno
+        $turno = Turno::buscarPorCodigoCompleto($request->codigo_completo);
+
+        if (!$turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Turno no encontrado'
+            ]);
+        }
+
+        // Verificar que el turno esté asignado al asesor actual
+        if ($turno->asesor_id != $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permisos para transferir este turno'
+            ]);
+        }
+
+        // Verificar que el turno esté en estado llamado o atendido
+        // (atendido: porque el flujo es primero marcar atendido y luego transferir)
+        if (!in_array($turno->estado, ['llamado', 'atendido'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo se pueden transferir turnos que estén llamados o recién atendidos'
+            ]);
+        }
+
+        // Verificar que el servicio destino exista y esté activo
+        $servicioDestino = Servicio::where('id', $request->servicio_destino_id)
+            ->where('estado', 'activo')
+            ->first();
+
+        if (!$servicioDestino) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El servicio destino no existe o no está activo'
+            ]);
+        }
+
+        // No permitir transferir al mismo servicio
+        if ($turno->servicio_id == $servicioDestino->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede transferir al mismo servicio'
+            ]);
+        }
+
+        // Guardar servicio original para el log
+        $servicioOriginal = $turno->servicio;
+
+        // Determinar el nuevo número según la posición
+        if ($request->posicion === 'primero') {
+            // Obtener el número mínimo actual en el servicio destino y restar 1
+            $minNumero = Turno::where('servicio_id', $servicioDestino->id)
+                ->where('estado', 'pendiente')
+                ->delDia()
+                ->min('numero');
+            
+            // Si hay turnos, usar el mínimo - 1, si no, usar 0
+            $nuevoNumero = $minNumero ? ($minNumero - 1) : 0;
+            
+            // Si el número es menor o igual a 0, usar 0.5 (será el primero)
+            if ($nuevoNumero <= 0) {
+                $nuevoNumero = 0;
+            }
+        } else {
+            // Posición último: obtener el número máximo y sumar 1
+            $maxNumero = Turno::where('servicio_id', $servicioDestino->id)
+                ->whereIn('estado', ['pendiente', 'aplazado'])
+                ->delDia()
+                ->max('numero');
+            
+            $nuevoNumero = $maxNumero ? ($maxNumero + 1) : 1;
+        }
+
+        // Actualizar el turno
+        $turno->servicio_id = $servicioDestino->id;
+        $turno->estado = 'pendiente';
+        $turno->numero = $nuevoNumero;
+        $turno->caja_id = null;
+        $turno->asesor_id = null;
+        $turno->fecha_llamado = null;
+        
+        // Mantener el código del nuevo servicio
+        $turno->codigo = $servicioDestino->codigo;
+        
+        $turno->save();
+
+        \Log::info('Turno transferido', [
+            'turno_id' => $turno->id,
+            'codigo_original' => $request->codigo_completo,
+            'nuevo_codigo' => $turno->codigo_completo,
+            'servicio_origen' => $servicioOriginal->nombre,
+            'servicio_destino' => $servicioDestino->nombre,
+            'posicion' => $request->posicion,
+            'asesor' => $user->nombre_completo
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Turno transferido a {$servicioDestino->nombre} exitosamente"
+        ]);
+    }
+
+    /**
+     * Obtener todos los servicios activos (para transferir turnos)
+     */
+    public function getServiciosActivos()
+    {
+        $user = Auth::user();
+
+        if (!$user->esAsesor()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
+        try {
+            $servicios = Servicio::where('estado', 'activo')
+                ->select('id', 'nombre', 'codigo')
+                ->orderBy('nombre')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'servicios' => $servicios
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar servicios: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Obtener estadísticas actualizadas de servicios (para actualización en tiempo real)
      */
     public function getServiciosEstadisticas()
