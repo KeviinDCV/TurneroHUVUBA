@@ -1084,23 +1084,27 @@ class AsesorController extends Controller
             $nuevoNumero = $maxNumero ? ($maxNumero + 1) : 1;
         }
 
-        // Actualizar el turno
-        $turno->servicio_id = $servicioDestino->id;
-        $turno->estado = 'pendiente';
-        $turno->numero = $nuevoNumero;
-        $turno->caja_id = null;
-        $turno->asesor_id = null;
-        $turno->fecha_llamado = null;
-        
-        // Mantener el código del nuevo servicio
-        $turno->codigo = $servicioDestino->codigo;
-        
+        // Marcar el turno original como "transferido" (tipo especial de atendido)
+        // El turno original ya debería estar marcado como atendido, solo actualizamos una nota
+        $turno->observaciones = 'Transferido a ' . $servicioDestino->nombre;
         $turno->save();
 
+        // Crear un NUEVO turno en el servicio destino pero con el MISMO código y número
+        // para que el paciente mantenga su ticket original
+        $nuevoTurno = new Turno();
+        $nuevoTurno->servicio_id = $servicioDestino->id;
+        $nuevoTurno->codigo = $turno->codigo; // Mantener el código ORIGINAL
+        $nuevoTurno->numero = $turno->numero; // Mantener el número ORIGINAL
+        $nuevoTurno->prioridad = $turno->prioridad; // Mantener la prioridad original
+        $nuevoTurno->estado = 'pendiente';
+        $nuevoTurno->fecha_creacion = now();
+        $nuevoTurno->observaciones = 'Transferido desde ' . $servicioOriginal->nombre;
+        $nuevoTurno->save();
+
         \Log::info('Turno transferido', [
-            'turno_id' => $turno->id,
-            'codigo_original' => $request->codigo_completo,
-            'nuevo_codigo' => $turno->codigo_completo,
+            'turno_original_id' => $turno->id,
+            'nuevo_turno_id' => $nuevoTurno->id,
+            'codigo_turno' => $nuevoTurno->codigo_completo,
             'servicio_origen' => $servicioOriginal->nombre,
             'servicio_destino' => $servicioDestino->nombre,
             'posicion' => $request->posicion,
@@ -1109,7 +1113,7 @@ class AsesorController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Turno transferido a {$servicioDestino->nombre} exitosamente"
+            'message' => "Turno {$nuevoTurno->codigo_completo} transferido a {$servicioDestino->nombre} exitosamente"
         ]);
     }
 
