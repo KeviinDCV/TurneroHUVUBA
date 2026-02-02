@@ -1062,7 +1062,7 @@ class AdminController extends Controller
                 'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('H:i:s') : null,
                 'duracion_atencion' => $turno->duracion_atencion,
                 'duracion_formateada' => $turno->duracion_atencion 
-                    ? gmdate('i:s', $turno->duracion_atencion) 
+                    ? gmdate('i:s', abs($turno->duracion_atencion)) 
                     : null,
                 'observaciones' => $turno->observaciones,
             ];

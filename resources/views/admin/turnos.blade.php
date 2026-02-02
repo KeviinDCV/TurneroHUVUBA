@@ -115,6 +115,7 @@
                     <th class="py-3 px-3 text-left font-semibold">LLAMADO</th>
                     <th class="py-3 px-3 text-left font-semibold">ATENDIDO</th>
                     <th class="py-3 px-3 text-left font-semibold">DURACIÓN</th>
+                    <th class="py-3 px-3 text-left font-semibold">OBSERVACIONES</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
@@ -129,7 +130,7 @@
                     <td class="py-3 px-3 whitespace-nowrap">
                         <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold" 
                               style="background-color: {{ $turno->prioridad_color }}">
-                            {{ $turno->prioridad_letra }}
+                            {{ substr($turno->prioridad_letra, 0, 1) }}
                         </span>
                     </td>
                     <td class="py-3 px-3 whitespace-nowrap">
@@ -183,15 +184,18 @@
                     </td>
                     <td class="py-3 px-3 whitespace-nowrap">
                         @if($turno->duracion_atencion)
-                            <span class="text-gray-700 font-medium">{{ gmdate('i:s', $turno->duracion_atencion) }}</span>
+                            <span class="text-gray-700 font-medium">{{ gmdate('i:s', abs($turno->duracion_atencion)) }}</span>
                         @else
                             <span class="text-gray-400">-</span>
                         @endif
                     </td>
+                    <td class="py-3 px-3 whitespace-nowrap max-w-xs truncate" title="{{ $turno->observaciones }}">
+                        <span class="text-gray-600 text-xs">{{ $turno->observaciones ?? '-' }}</span>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="10" class="py-8 text-center text-gray-500">
+                    <td colspan="11" class="py-8 text-center text-gray-500">
                         <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
                         </svg>
@@ -237,9 +241,15 @@ function renderTurnoRow(turno) {
         ? `<span class="text-gray-700">Caja ${turno.caja.numero}</span>`
         : '<span class="text-gray-400">-</span>';
     
-    const duracionHtml = turno.duracion_formateada 
-        ? `<span class="text-gray-700 font-medium">${turno.duracion_formateada}</span>`
-        : '<span class="text-gray-400">-</span>';
+    // Formato de duración corregido: mm:ss y absoluto
+    let duracionHtml = '<span class="text-gray-400">-</span>';
+    if (turno.duracion_atencion) {
+        const segundos = Math.abs(parseInt(turno.duracion_atencion));
+        const mins = Math.floor(segundos / 60);
+        const secs = segundos % 60;
+        const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        duracionHtml = `<span class="text-gray-700 font-medium">${formatted}</span>`;
+    }
 
     return `
         <tr class="hover:bg-gray-50">
@@ -268,6 +278,9 @@ function renderTurnoRow(turno) {
                 <span class="text-gray-600">${turno.fecha_atencion || '-'}</span>
             </td>
             <td class="py-3 px-3 whitespace-nowrap">${duracionHtml}</td>
+            <td class="py-3 px-3 whitespace-nowrap max-w-xs truncate" title="${turno.observaciones || ''}">
+                <span class="text-gray-600 text-xs">${turno.observaciones || '-'}</span>
+            </td>
         </tr>
     `;
 }
