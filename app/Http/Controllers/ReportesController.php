@@ -97,6 +97,11 @@ class ReportesController extends Controller
         $turnosAtendidos = $turnos->where('estado', 'atendido')->count();
         $turnosPendientes = $turnos->whereIn('estado', ['pendiente', 'aplazado'])->count();
         $turnosCancelados = $turnos->where('estado', 'cancelado')->count();
+        
+        // Contar turnos transferidos (tienen observación que empieza con "Transferido")
+        $turnosTransferidos = $turnos->filter(function($turno) {
+            return $turno->observaciones && str_starts_with($turno->observaciones, 'Transferido');
+        })->count();
 
         // Estadísticas por servicio
         $porServicio = $turnos->groupBy('servicio.nombre')->map(function ($grupo) {
@@ -115,13 +120,10 @@ class ReportesController extends Controller
             $asesor = $grupo->first()->asesor;
             $turnosAtendidos = $grupo->where('estado', 'atendido');
             
-            // Obtener canales no presenciales del asesor
-            $canalesNoPresenciales = \App\Models\CanalNoPresencialHistorial::where('user_id', $asesor->id)
-                ->whereBetween('inicio', [$fechaInicio, $fechaFin])
-                ->orderBy('inicio')
-                ->get();
-            
-            $totalMinutosCanal = $canalesNoPresenciales->sum('duracion_minutos');
+            // Contar turnos transferidos
+            $turnosTransferidos = $grupo->filter(function($turno) {
+                return $turno->observaciones && str_starts_with($turno->observaciones, 'Transferido');
+            })->count();
             
             // Calcular tiempo entre turnos
             $turnosOrdenados = $grupo->where('estado', 'atendido')
@@ -151,31 +153,27 @@ class ReportesController extends Controller
                 'atendidos' => $turnosAtendidos->count(),
                 'pendientes' => $grupo->whereIn('estado', ['pendiente', 'aplazado'])->count(),
                 'aplazados' => $grupo->where('estado', 'aplazado')->count(),
+                'transferidos' => $turnosTransferidos,
                 'tiempo_promedio_atencion' => round($turnosAtendidos->avg('duracion_atencion'), 2),
                 'tiempo_total_atencion' => round($turnosAtendidos->sum('duracion_atencion'), 2),
                 'tiempo_promedio_entre_turnos' => $tiempoPromedioEntreTurnos,
-                // Canales no presenciales
-                'cantidad_actividades_canal' => $canalesNoPresenciales->count(),
-                'tiempo_total_canal_minutos' => $totalMinutosCanal,
-                'tiempo_total_canal_horas' => round($totalMinutosCanal / 60, 2),
-                'actividades_canal' => $canalesNoPresenciales->map(function($actividad) {
-                    return [
-                        'inicio' => $actividad->inicio->format('d/m/Y H:i:s'),
-                        'fin' => $actividad->fin ? $actividad->fin->format('d/m/Y H:i:s') : 'N/A',
-                        'duracion_minutos' => $actividad->duracion_minutos,
-                        'actividad' => $actividad->actividad
-                    ];
-                })->toArray(),
                 // Detalle de turnos
                 'turnos_detalle' => $turnosAtendidos->map(function($turno) {
+                    // Convertir duración de segundos a formato mm:ss
+                    $duracionSegundos = $turno->duracion_atencion ?? 0;
+                    $minutos = floor($duracionSegundos / 60);
+                    $segundos = $duracionSegundos % 60;
+                    $duracionFormato = sprintf('%d:%02d', $minutos, $segundos);
+                    
                     return [
                         'codigo' => $turno->codigo_completo,
                         'servicio' => $turno->servicio->nombre ?? 'N/A',
                         'fecha_llamado' => $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A',
                         'fecha_atencion' => $turno->fecha_atencion ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') : 'N/A',
                         'fecha_finalizacion' => $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A',
-                        'duracion_atencion' => round($turno->duracion_atencion, 2),
-                        'caja' => $turno->caja->nombre ?? 'N/A'
+                        'duracion_atencion' => $duracionFormato,
+                        'caja' => $turno->caja->nombre ?? 'N/A',
+                        'observaciones' => $turno->observaciones ?? '-'
                     ];
                 })->toArray()
             ];
@@ -198,6 +196,7 @@ class ReportesController extends Controller
                 'turnos_atendidos' => $turnosAtendidos,
                 'turnos_pendientes' => $turnosPendientes,
                 'turnos_cancelados' => $turnosCancelados,
+                'turnos_transferidos' => $turnosTransferidos,
                 'porcentaje_atencion' => $totalTurnos > 0 ? round(($turnosAtendidos / $totalTurnos) * 100, 2) : 0,
                 'tiempo_promedio_atencion' => round($turnos->where('estado', 'atendido')->avg('duracion_atencion'), 2),
                 'tiempo_total_atencion' => round($turnos->where('estado', 'atendido')->sum('duracion_atencion'), 2)
@@ -227,15 +226,10 @@ class ReportesController extends Controller
         // Hoja 4: Estadísticas por asesor
         $this->crearHojaAsesores($spreadsheet, $estadisticas['por_asesor']);
 
-        // Hojas 5+: Detalle por cada asesor (turnos y canales no presenciales)
+        // Hojas 5+: Detalle de turnos por cada asesor
         foreach ($estadisticas['por_asesor'] as $asesorId => $datosAsesor) {
             // Hoja de turnos detallados
             $this->crearHojaDetalleTurnosAsesor($spreadsheet, $datosAsesor);
-            
-            // Hoja de canales no presenciales (solo si tiene actividades)
-            if ($datosAsesor['cantidad_actividades_canal'] > 0) {
-                $this->crearHojaCanalesAsesor($spreadsheet, $datosAsesor);
-            }
         }
 
         $filename = 'reporte_turnos_' . $fechaInicio->format('Y-m-d') . '_' . $fechaFin->format('Y-m-d') . '.xlsx';
@@ -610,64 +604,88 @@ class ReportesController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Resumen');
 
-        // Encabezado
+        // Color institucional del Hospital Universitario del Valle
+        $colorInstitucional = '064b9e';
+        $colorInstitucionalClaro = 'e6f0ff';
+
+        // Encabezado principal con estilo institucional
         $sheet->setCellValue('A1', 'REPORTE DE TURNOS - HOSPITAL UNIVERSITARIO DEL VALLE');
-        $sheet->mergeCells('A1:F1');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->mergeCells('A1:D1');
+        $sheet->getStyle('A1:D1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorInstitucional]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(35);
 
         // Período
-        $sheet->setCellValue('A3', 'Período: ' . $fechaInicio->format('d/m/Y') . ' - ' . $fechaFin->format('d/m/Y'));
-        $sheet->mergeCells('A3:F3');
+        $sheet->setCellValue('A3', 'Período:');
+        $sheet->setCellValue('B3', $fechaInicio->format('d/m/Y') . ' - ' . $fechaFin->format('d/m/Y'));
         $sheet->getStyle('A3')->getFont()->setBold(true);
+        $sheet->getStyle('B3')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($colorInstitucional));
 
         // Fecha de generación
-        $sheet->setCellValue('A4', 'Fecha de generación: ' . Carbon::now()->format('d/m/Y H:i:s'));
-        $sheet->mergeCells('A4:F4');
+        $sheet->setCellValue('A4', 'Fecha de generación:');
+        $sheet->setCellValue('B4', Carbon::now()->format('d/m/Y H:i:s'));
+        $sheet->getStyle('A4')->getFont()->setBold(true);
 
-        // Resumen general
+        // Resumen general - Título
         $row = 6;
         $sheet->setCellValue('A' . $row, 'RESUMEN GENERAL');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
+        $sheet->mergeCells('A' . $row . ':B' . $row);
+        $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorInstitucional]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension($row)->setRowHeight(25);
 
-        $row += 2;
+        // Encabezados de tabla
+        $row++;
+        $sheet->setCellValue('A' . $row, 'Concepto');
+        $sheet->setCellValue('B' . $row, 'Valor');
+        $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorInstitucional]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ]);
+
+        // Datos del resumen
         $resumen = $estadisticas['resumen'];
-        $sheet->setCellValue('A' . $row, 'Total de Turnos:');
-        $sheet->setCellValue('B' . $row, $resumen['total_turnos']);
+        $datos = [
+            ['Total de Turnos', $resumen['total_turnos']],
+            ['Turnos Atendidos', $resumen['turnos_atendidos']],
+            ['Turnos Pendientes', $resumen['turnos_pendientes']],
+            ['Turnos Cancelados', $resumen['turnos_cancelados']],
+            ['Turnos Transferidos', $resumen['turnos_transferidos'] ?? 0],
+            ['Porcentaje de Atención', $resumen['porcentaje_atencion'] . '%'],
+            ['Tiempo Promedio de Atención', $resumen['tiempo_promedio_atencion'] ? round($resumen['tiempo_promedio_atencion'] / 60, 2) . ' minutos' : 'N/A'],
+        ];
 
-        $row++;
-        $sheet->setCellValue('A' . $row, 'Turnos Atendidos:');
-        $sheet->setCellValue('B' . $row, $resumen['turnos_atendidos']);
+        $startRow = $row + 1;
+        foreach ($datos as $index => $dato) {
+            $row++;
+            $sheet->setCellValue('A' . $row, $dato[0]);
+            $sheet->setCellValue('B' . $row, $dato[1]);
+            
+            // Alternar colores de fondo
+            $bgColor = $index % 2 === 0 ? $colorInstitucionalClaro : 'FFFFFF';
+            $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            ]);
+        }
 
-        $row++;
-        $sheet->setCellValue('A' . $row, 'Turnos Pendientes:');
-        $sheet->setCellValue('B' . $row, $resumen['turnos_pendientes']);
-
-        $row++;
-        $sheet->setCellValue('A' . $row, 'Turnos Cancelados:');
-        $sheet->setCellValue('B' . $row, $resumen['turnos_cancelados']);
-
-        $row++;
-        $sheet->setCellValue('A' . $row, 'Porcentaje de Atención:');
-        $sheet->setCellValue('B' . $row, $resumen['porcentaje_atencion'] . '%');
-
-        $row++;
-        $sheet->setCellValue('A' . $row, 'Tiempo Promedio de Atención:');
-        $tiempoPromedio = $resumen['tiempo_promedio_atencion'] ? round($resumen['tiempo_promedio_atencion'] / 60, 2) . ' minutos' : 'N/A';
-        $sheet->setCellValue('B' . $row, $tiempoPromedio);
-
-        // Aplicar estilos
-        $sheet->getStyle('A6:B' . $row)->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                ],
-            ],
+        // Resaltar primera fila de datos (Total de Turnos)
+        $sheet->getStyle('A' . $startRow . ':B' . $startRow)->applyFromArray([
+            'font' => ['bold' => true],
         ]);
 
         // Ajustar ancho de columnas
-        $sheet->getColumnDimension('A')->setWidth(25);
-        $sheet->getColumnDimension('B')->setWidth(20);
+        $sheet->getColumnDimension('A')->setWidth(30);
+        $sheet->getColumnDimension('B')->setWidth(25);
+        $sheet->getColumnDimension('C')->setWidth(20);
+        $sheet->getColumnDimension('D')->setWidth(20);
     }
 
     /**
@@ -688,9 +706,10 @@ class ReportesController extends Controller
             'F1' => 'Estado',
             'G1' => 'Prioridad',
             'H1' => 'Fecha Creación',
-            'I1' => 'Fecha Llamado',
-            'J1' => 'Fecha Atención',
-            'K1' => 'Duración (min)'
+            'I1' => 'Hora Llamado',
+            'J1' => 'Hora Finalización',
+            'K1' => 'Duración (mm:ss)',
+            'L1' => 'Observaciones/Transferencia'
         ];
 
         foreach ($headers as $cell => $header) {
@@ -698,13 +717,12 @@ class ReportesController extends Controller
         }
 
         // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:K1')->applyFromArray([
-            'font' => ['bold' => true],
+        $sheet->getStyle('A1:L1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
                 'startColor' => ['rgb' => '064b9e']
             ],
-            'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true],
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
@@ -715,6 +733,12 @@ class ReportesController extends Controller
         // Datos
         $row = 2;
         foreach ($turnos as $turno) {
+            // Formato de duración mm:ss
+            $duracionSegundos = $turno->duracion_atencion ?? 0;
+            $minutos = floor($duracionSegundos / 60);
+            $segundos = $duracionSegundos % 60;
+            $duracionFormato = $duracionSegundos ? sprintf('%d:%02d', $minutos, $segundos) : 'N/A';
+            
             $sheet->setCellValue('A' . $row, $turno->codigo);
             $sheet->setCellValue('B' . $row, $turno->numero);
             $sheet->setCellValue('C' . $row, $turno->servicio->nombre ?? 'N/A');
@@ -724,14 +748,15 @@ class ReportesController extends Controller
             $sheet->setCellValue('G' . $row, strtoupper($turno->prioridad));
             $sheet->setCellValue('H' . $row, $turno->fecha_creacion ? Carbon::parse($turno->fecha_creacion)->format('d/m/Y H:i:s') : 'N/A');
             $sheet->setCellValue('I' . $row, $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('J' . $row, $turno->fecha_atencion ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('K' . $row, $turno->duracion_atencion ? round($turno->duracion_atencion / 60, 2) : 'N/A');
+            $sheet->setCellValue('J' . $row, $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A');
+            $sheet->setCellValue('K' . $row, $duracionFormato);
+            $sheet->setCellValue('L' . $row, $turno->observaciones ?? '-');
             $row++;
         }
 
         // Aplicar bordes a todos los datos
         if ($row > 2) {
-            $sheet->getStyle('A1:K' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:L' . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -741,7 +766,7 @@ class ReportesController extends Controller
         }
 
         // Ajustar ancho de columnas
-        foreach (range('A', 'K') as $column) {
+        foreach (range('A', 'L') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
@@ -820,62 +845,69 @@ class ReportesController extends Controller
         $sheet = $spreadsheet->createSheet();
         $sheet->setTitle('Por Asesor');
 
-        // Encabezados ampliados
+        // Encabezados
         $sheet->setCellValue('A1', 'Asesor');
         $sheet->setCellValue('B1', 'Usuario');
         $sheet->setCellValue('C1', 'Total Turnos');
         $sheet->setCellValue('D1', 'Atendidos');
         $sheet->setCellValue('E1', 'Aplazados');
-        $sheet->setCellValue('F1', 'Tiempo Prom. Atención (min)');
-        $sheet->setCellValue('G1', 'Tiempo Total Atención (min)');
-        $sheet->setCellValue('H1', 'Tiempo Entre Turnos (min)');
-        $sheet->setCellValue('I1', 'Actividades Canal');
-        $sheet->setCellValue('J1', 'Tiempo Canal (hrs)');
+        $sheet->setCellValue('F1', 'Transferidos');
+        $sheet->setCellValue('G1', 'Tiempo Prom. (mm:ss)');
+        $sheet->setCellValue('H1', 'Tiempo Total (mm:ss)');
+        $sheet->setCellValue('I1', 'Entre Turnos (min)');
 
         // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:J1')->applyFromArray([
-            'font' => ['bold' => true],
+        $sheet->getStyle('A1:I1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
                 'startColor' => ['rgb' => '064b9e']
             ],
-            'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true],
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
                 ],
             ],
         ]);
+        $sheet->getRowDimension(1)->setRowHeight(20);
 
         // Datos
         $row = 2;
         foreach ($porAsesor as $asesorId => $datos) {
+            // Formato de tiempos mm:ss
+            $tiempoPromedioSeg = $datos['tiempo_promedio_atencion'] ?? 0;
+            $tiempoTotalSeg = $datos['tiempo_total_atencion'] ?? 0;
+            
+            $promMin = floor($tiempoPromedioSeg / 60);
+            $promSeg = round($tiempoPromedioSeg % 60);
+            $tiempoPromedioFormato = sprintf('%d:%02d', $promMin, $promSeg);
+            
+            $totalMin = floor($tiempoTotalSeg / 60);
+            $totalSeg = round($tiempoTotalSeg % 60);
+            $tiempoTotalFormato = sprintf('%d:%02d', $totalMin, $totalSeg);
+            
             $sheet->setCellValue('A' . $row, $datos['nombre_completo']);
             $sheet->setCellValue('B' . $row, $datos['nombre_usuario']);
             $sheet->setCellValue('C' . $row, $datos['total']);
             $sheet->setCellValue('D' . $row, $datos['atendidos']);
             $sheet->setCellValue('E' . $row, $datos['aplazados']);
-            $sheet->setCellValue('F' . $row, $datos['tiempo_promedio_atencion']);
-            $sheet->setCellValue('G' . $row, $datos['tiempo_total_atencion']);
-            $sheet->setCellValue('H' . $row, $datos['tiempo_promedio_entre_turnos']);
-            $sheet->setCellValue('I' . $row, $datos['cantidad_actividades_canal']);
-            $sheet->setCellValue('J' . $row, $datos['tiempo_total_canal_horas']);
+            $sheet->setCellValue('F' . $row, $datos['transferidos'] ?? 0);
+            $sheet->setCellValue('G' . $row, $tiempoPromedioFormato);
+            $sheet->setCellValue('H' . $row, $tiempoTotalFormato);
+            $sheet->setCellValue('I' . $row, round($datos['tiempo_promedio_entre_turnos'], 2));
+            
+            // Alternar colores de fondo
+            $bgColor = $row % 2 === 0 ? 'e6f0ff' : 'FFFFFF';
+            $sheet->getStyle('A' . $row . ':I' . $row)->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            ]);
+            
             $row++;
         }
 
-        // Aplicar bordes
-        if ($row > 2) {
-            $sheet->getStyle('A1:J' . ($row - 1))->applyFromArray([
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                    ],
-                ],
-            ]);
-        }
-
         // Ajustar ancho de columnas
-        foreach (range('A', 'J') as $column) {
+        foreach (range('A', 'I') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
@@ -889,14 +921,14 @@ class ReportesController extends Controller
         $nombreHoja = substr('Turnos_' . $datosAsesor['nombre_usuario'], 0, 31);
         $sheet->setTitle($nombreHoja);
 
-        // Encabezados
+        // Encabezados (sin Hora Atención porque es redundante con Hora Finalización)
         $sheet->setCellValue('A1', 'Código');
         $sheet->setCellValue('B1', 'Servicio');
         $sheet->setCellValue('C1', 'Hora Llamado');
-        $sheet->setCellValue('D1', 'Hora Atención');
-        $sheet->setCellValue('E1', 'Hora Finalización');
-        $sheet->setCellValue('F1', 'Duración (min)');
-        $sheet->setCellValue('G1', 'Caja');
+        $sheet->setCellValue('D1', 'Hora Finalización');
+        $sheet->setCellValue('E1', 'Duración (mm:ss)');
+        $sheet->setCellValue('F1', 'Caja');
+        $sheet->setCellValue('G1', 'Observaciones');
 
         // Estilo encabezado
         $sheet->getStyle('A1:G1')->applyFromArray([
@@ -911,53 +943,15 @@ class ReportesController extends Controller
             $sheet->setCellValue('A' . $row, $turno['codigo']);
             $sheet->setCellValue('B' . $row, $turno['servicio']);
             $sheet->setCellValue('C' . $row, $turno['fecha_llamado']);
-            $sheet->setCellValue('D' . $row, $turno['fecha_atencion']);
-            $sheet->setCellValue('E' . $row, $turno['fecha_finalizacion']);
-            $sheet->setCellValue('F' . $row, $turno['duracion_atencion']);
-            $sheet->setCellValue('G' . $row, $turno['caja']);
+            $sheet->setCellValue('D' . $row, $turno['fecha_finalizacion']);
+            $sheet->setCellValue('E' . $row, $turno['duracion_atencion']);
+            $sheet->setCellValue('F' . $row, $turno['caja']);
+            $sheet->setCellValue('G' . $row, $turno['observaciones'] ?? '-');
             $row++;
         }
 
         // Ajustar columnas
         foreach (range('A', 'G') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-    }
-
-    /**
-     * Crear hoja de canales no presenciales por asesor
-     */
-    private function crearHojaCanalesAsesor($spreadsheet, $datosAsesor)
-    {
-        $sheet = $spreadsheet->createSheet();
-        $nombreHoja = substr('Canal_' . $datosAsesor['nombre_usuario'], 0, 31);
-        $sheet->setTitle($nombreHoja);
-
-        // Encabezados
-        $sheet->setCellValue('A1', 'Inicio');
-        $sheet->setCellValue('B1', 'Fin');
-        $sheet->setCellValue('C1', 'Duración (min)');
-        $sheet->setCellValue('D1', 'Actividad Realizada');
-
-        // Estilo encabezado
-        $sheet->getStyle('A1:D1')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'f59e0b']],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-        ]);
-
-        // Datos
-        $row = 2;
-        foreach ($datosAsesor['actividades_canal'] as $actividad) {
-            $sheet->setCellValue('A' . $row, $actividad['inicio']);
-            $sheet->setCellValue('B' . $row, $actividad['fin']);
-            $sheet->setCellValue('C' . $row, $actividad['duracion_minutos']);
-            $sheet->setCellValue('D' . $row, $actividad['actividad']);
-            $row++;
-        }
-
-        // Ajustar columnas
-        foreach (range('A', 'D') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
     }

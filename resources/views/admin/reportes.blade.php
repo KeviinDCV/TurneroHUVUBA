@@ -81,13 +81,24 @@
                             Usuarios
                         </label>
                         <div class="max-h-48 overflow-y-auto border border-gray-300 bg-gray-50">
+                            <!-- Seleccionar todos -->
+                            <div class="sticky top-0 bg-hospital-blue text-white p-3 border-b border-gray-300">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox"
+                                           id="seleccionar-todos-usuarios"
+                                           class="border-gray-300 text-white focus:ring-white focus:ring-offset-0"
+                                           onchange="toggleAllCheckboxes('usuarios[]', this.checked)">
+                                    <span class="ml-3 text-sm font-medium">Seleccionar todos</span>
+                                </label>
+                            </div>
                             <div class="p-4 space-y-3">
                                 @foreach($usuarios as $usuario)
                                     <label class="flex items-center p-2 hover:bg-white transition-colors cursor-pointer">
                                         <input type="checkbox"
                                                name="usuarios[]"
                                                value="{{ $usuario->id }}"
-                                               class="border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0">
+                                               class="border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0"
+                                               onchange="updateSelectAllState('usuarios[]', 'seleccionar-todos-usuarios')">
                                         <div class="ml-3">
                                             <span class="text-sm font-medium text-gray-900">{{ $usuario->nombre_completo }}</span>
                                             <span class="text-xs text-gray-500 block">({{ $usuario->nombre_usuario }})</span>
@@ -113,13 +124,24 @@
                             Servicios
                         </label>
                         <div class="max-h-48 overflow-y-auto border border-gray-300 bg-gray-50">
+                            <!-- Seleccionar todos -->
+                            <div class="sticky top-0 bg-hospital-blue text-white p-3 border-b border-gray-300">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox"
+                                           id="seleccionar-todos-servicios"
+                                           class="border-gray-300 text-white focus:ring-white focus:ring-offset-0"
+                                           onchange="toggleAllCheckboxes('servicios[]', this.checked)">
+                                    <span class="ml-3 text-sm font-medium">Seleccionar todos</span>
+                                </label>
+                            </div>
                             <div class="p-4 space-y-3">
                                 @foreach($servicios as $servicio)
                                     <label class="flex items-center p-2 hover:bg-white transition-colors cursor-pointer">
                                         <input type="checkbox"
                                                name="servicios[]"
                                                value="{{ $servicio->id }}"
-                                               class="border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0">
+                                               class="border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0"
+                                               onchange="updateSelectAllState('servicios[]', 'seleccionar-todos-servicios')">
                                         <span class="ml-3 text-sm font-medium text-gray-900">{{ $servicio->nombre }}</span>
                                     </label>
                                 @endforeach
@@ -291,14 +313,42 @@
 </div>
 
 <script>
+// Función para seleccionar/deseleccionar todos los checkboxes de un grupo
+function toggleAllCheckboxes(groupName, checked) {
+    document.querySelectorAll(`input[name="${groupName}"]`).forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+}
+
+// Función para actualizar el estado del checkbox "Seleccionar todos"
+function updateSelectAllState(groupName, selectAllId) {
+    const checkboxes = document.querySelectorAll(`input[name="${groupName}"]`);
+    const selectAllCheckbox = document.getElementById(selectAllId);
+    
+    const totalCheckboxes = checkboxes.length;
+    const checkedCheckboxes = document.querySelectorAll(`input[name="${groupName}"]:checked`).length;
+    
+    if (checkedCheckboxes === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkedCheckboxes === totalCheckboxes) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    }
+}
+
 function limpiarFormulario() {
     // Resetear fechas a valores por defecto
     document.getElementById('fecha_inicio').value = '{{ date('Y-m-d', strtotime('-7 days')) }}';
     document.getElementById('fecha_fin').value = '{{ date('Y-m-d') }}';
 
-    // Desmarcar todos los checkboxes
+    // Desmarcar todos los checkboxes y resetear estados indeterminate
     document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = false;
+        checkbox.indeterminate = false;
     });
 
     // Seleccionar Excel por defecto

@@ -46,6 +46,7 @@ class Turno extends Model
         'fecha_creacion',
         'fecha_llamado',
         'fecha_atencion',
+        'fecha_finalizacion',
         'duracion_atencion',
         'observaciones'
     ];
@@ -54,6 +55,7 @@ class Turno extends Model
         'fecha_creacion' => 'datetime',
         'fecha_llamado' => 'datetime',
         'fecha_atencion' => 'datetime',
+        'fecha_finalizacion' => 'datetime',
         'estado' => 'string',
         'prioridad' => 'integer',
     ];
@@ -245,6 +247,7 @@ class Turno extends Model
         $this->update([
             'estado' => 'atendido',
             'fecha_atencion' => now(),
+            'fecha_finalizacion' => now(),
             'duracion_atencion' => $duracion
         ]);
 

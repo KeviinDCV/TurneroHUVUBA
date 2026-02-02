@@ -240,7 +240,7 @@
                     <td class="text-center">{{ $datos['pendientes'] }}</td>
                     <td class="text-center">{{ $datos['cancelados'] }}</td>
                     <td class="text-center">
-                        {{ $datos['tiempo_promedio'] ? round($datos['tiempo_promedio'] / 60, 2) : 'N/A' }}
+                        {{ isset($datos['tiempo_promedio_atencion']) && $datos['tiempo_promedio_atencion'] ? round($datos['tiempo_promedio_atencion'] / 60, 2) : 'N/A' }}
                     </td>
                 </tr>
                 @endforeach
@@ -269,7 +269,7 @@
                     <td class="text-center">{{ $datos['total'] }}</td>
                     <td class="text-center">{{ $datos['atendidos'] }}</td>
                     <td class="text-center">
-                        {{ $datos['tiempo_promedio'] ? round($datos['tiempo_promedio'] / 60, 2) : 'N/A' }}
+                        {{ isset($datos['tiempo_promedio_atencion']) && $datos['tiempo_promedio_atencion'] ? round($datos['tiempo_promedio_atencion'] / 60, 2) : 'N/A' }}
                     </td>
                 </tr>
                 @endforeach
