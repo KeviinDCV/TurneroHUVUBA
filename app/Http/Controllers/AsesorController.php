@@ -1084,10 +1084,20 @@ class AsesorController extends Controller
             $nuevoNumero = $maxNumero ? ($maxNumero + 1) : 1;
         }
 
-        // Marcar el turno original como "transferido" (tipo especial de atendido)
-        // El turno original ya debería estar marcado como atendido, solo actualizamos una nota
-        $turno->observaciones = 'Transferido a ' . $servicioDestino->nombre;
-        $turno->save();
+        // Marcar el turno original como "atendido" con observación de transferencia
+        // Calcular duración desde que se llamó
+        $duracion = 0;
+        if ($turno->fecha_llamado) {
+            $duracion = now()->diffInSeconds($turno->fecha_llamado);
+        }
+        
+        $turno->update([
+            'estado' => 'atendido',
+            'fecha_atencion' => now(),
+            'fecha_finalizacion' => now(),
+            'duracion_atencion' => $duracion,
+            'observaciones' => 'Transferido a ' . $servicioDestino->nombre
+        ]);
 
         // Crear un NUEVO turno en el servicio destino pero con el MISMO código y número
         // para que el paciente mantenga su ticket original
