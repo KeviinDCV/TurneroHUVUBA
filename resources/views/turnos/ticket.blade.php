@@ -10,44 +10,97 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('components.favicon')
     <style>
+        /* ESTILOS PARA IMPRESIÓN (EPSON TM-T20III) */
         @media print {
-            body {
+            /* MÁRGENES Y PAGINACIÓN CERO */
+            @page {
+                size: 80mm auto; /* 80mm de ancho, alto automático */
+                margin: 0;
+            }
+
+            /* RESETEAR HTML/BODY */
+            html, body {
+                width: 80mm;
                 margin: 0;
                 padding: 0;
                 background: white;
+                visibility: hidden; /* Ocultar todo por defecto */
             }
-            .no-print {
+
+            /* OCULTAR ELEMENTOS DE INTERFAZ */
+            .no-print, nav, footer, header {
                 display: none !important;
             }
+
+            /* VISIBILIDAD DEL TICKET */
+            .ticket, .ticket * {
+                visibility: visible; /* Mostrar solo el ticket */
+            }
+
+            /* POSICIONAMIENTO DEL TICKET PARA IMPRESIÓN */
             .ticket {
-                width: 80mm;
-                margin: 0;
-                padding: 5mm;
-                box-shadow: none;
-                border: none;
-                font-size: 12px;
-                position: relative;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 78mm !important; /* Usar casi todo el ancho */
+                max-width: 78mm !important;
+                margin: 0 !important;
+                padding: 0 !important; /* Eliminar padding del contenedor, manejarlo internamente si es necesario */
+                box-shadow: none !important;
+                border: none !important;
+                font-family: 'Courier New', monospace; /* Fuente monoespaciada para alineación */
+                font-size: 16px;
+                line-height: 1.2;
+                display: block;
+                color: black !important; /* Forzar negro puro */
+                page-break-after: always; /* Corte de papel al final */
             }
+
+            /* AJUSTES ESPECÍFICOS DE IMPRESIÓN */
             .logo-print {
-                height: 40px !important;
+                height: 50px !important; /* Logo más grande en impresión */
+                filter: grayscale(100%) contrast(150%); /* Optimizar para blanco y negro */
+                margin-bottom: 5px !important;
             }
+            
             .turno-number {
-                font-size: 28px !important;
+                font-size: 4em !important; /* Gigante para el número */
+                font-weight: 900 !important;
+                color: black !important;
+                margin: 5px 0 !important;
             }
+            
+            /* Textos auxiliares */
+            .text-xs, .text-sm {
+                font-size: 12px !important;
+                color: black !important;
+            }
+
+            .font-bold {
+                font-weight: bold !important;
+            }
+
+            /* Ocultar separadores visuales complejos pero mantener divisiones simples */
+            .border-dashed {
+                border-style: solid !important;
+                border-width: 1px !important;
+                border-color: black !important;
+                margin: 10px 0 !important;
+            }
+            
             .qr-small {
-                position: absolute !important;
-                top: 5mm !important;
-                right: 5mm !important;
+                display: none !important; /* No imprimir QR */
             }
         }
 
+        /* ESTILOS PARA VISUALIZACIÓN EN PANTALLA */
         .ticket {
             width: 80mm;
             max-width: 300px;
             background: white;
             font-family: 'Courier New', monospace;
             line-height: 1.3;
-            border: 2px dashed #ccc;
+            border: 2px dashed #064b9e; /* Borde visual ayuda al diseño */
         }
 
         .turno-number {
