@@ -693,7 +693,7 @@
 
         /* Texto de turnos con límites estrictos y mejor escalado */
         .turno-numero {
-            font-size: clamp(1.2rem, 2.8vw, 2.8rem);
+            font-size: clamp(1.5rem, 3vw, 3.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -705,7 +705,7 @@
         }
 
         .turno-caja {
-            font-size: clamp(1.2rem, 2.8vw, 2.8rem);
+            font-size: clamp(1.5rem, 3vw, 3.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -726,27 +726,41 @@
             border-collapse: collapse !important;
         }
 
-        /* Columna izquierda - Código del turno (más espacio para códigos largos como CID-001) */
+        /* Columna izquierda - Código del turno */
         .turno-numero {
+            font-size: clamp(1.5rem, 3vw, 3.5rem);
             display: table-cell !important;
-            width: 60% !important;
+            width: 55% !important;
             text-align: left !important;
             padding-left: 0.75rem !important;
             vertical-align: middle !important;
             overflow: visible !important;
             white-space: nowrap !important;
+            
+            line-height: 1;
+            max-height: 100%;
+            max-width: 100%;
+            transform-origin: left center;
         }
 
-        /* Columna derecha - CAJA (reducida para dar espacio al código) */
+        /* Columna derecha - CAJA */
         .turno-caja {
+            font-size: clamp(1.5rem, 3vw, 3.5rem);
             display: table-cell !important;
-            width: 40% !important;
+            width: 45% !important;
             text-align: right !important;
             padding-right: 0.75rem !important;
             vertical-align: middle !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
             white-space: nowrap !important;
+            
+            line-height: 1;
+            max-height: 100%;
+            max-width: 100%;
+            transform-origin: right center;
+            margin-left: auto !important;
+            margin-right: 0 !important;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -1071,7 +1085,7 @@
             </div>
 
             <!-- Right Side - Patient Queue -->
-            <div class="bg-hospital-blue-light p-8 col-span-2 responsive-queue-section responsive-container">
+            <div class="bg-hospital-blue-light p-2 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
                 <div class="space-y-3 overflow-hidden" id="patient-queue">
                     <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
@@ -1863,36 +1877,36 @@
 
             if (!numeroElement || !cajaElement) return;
 
-            // Obtener el ancho disponible para cada columna
-            const numeroContainer = numeroElement.parentElement;
-            const cajaContainer = cajaElement.parentElement;
-            const numeroMaxWidth = numeroContainer.offsetWidth - 15; // Más margen para códigos largos
-            const cajaMaxWidth = cajaContainer.offsetWidth - 15;
+            // Usar clientWidth para detectar el ancho visible actual de la celda
+            // Agregar un pequeño margen de seguridad (5px) para evitar bordes muy justos
+            const numeroMaxWidth = numeroElement.clientWidth - 5; 
+            const cajaMaxWidth = cajaElement.clientWidth - 5;
 
-            // Empezar con el tamaño base del CSS
-            let fontSize = Math.min(
-                parseFloat(window.getComputedStyle(numeroElement).fontSize),
-                parseFloat(window.getComputedStyle(cajaElement).fontSize)
-            );
-            const minFontSize = 14; // Tamaño mínimo para asegurar que el texto completo se vea
-
-            // SOLO aplicar tamaño de fuente - NO tocar posicionamiento
-            numeroElement.style.fontSize = fontSize + 'px';
-            cajaElement.style.fontSize = fontSize + 'px';
-
-            // NO tocar margins, text-align, ni justify-content
-            // Dejar que el CSS se encargue de la posición
-
-            // Reducir hasta que ambos quepan
-            while ((numeroElement.scrollWidth > numeroMaxWidth || cajaElement.scrollWidth > cajaMaxWidth) && fontSize > minFontSize) {
-                fontSize -= 2; // Reducir de 2 en 2 para ser más eficiente
-
-                // SOLO cambiar tamaño de fuente - NO tocar posicionamiento
+            // Resetear tamaño para obtener el fontSize base computado inicialmente (del CSS)
+            numeroElement.style.fontSize = ''; 
+            cajaElement.style.fontSize = '';
+            
+            // Obtener el tamaño de fuente actual aplicado por CSS
+            let currentFontSizeNum = parseFloat(window.getComputedStyle(numeroElement).fontSize);
+            let currentFontSizeCaja = parseFloat(window.getComputedStyle(cajaElement).fontSize);
+            
+            // Usar el menor de los dos como punto de partida para mantener consistencia visual si se desea,
+            // o ajustarlos independientemente. Aquí los ajustaremos independientemente para maximizar espacio.
+            
+            // Ajustar NUMERO
+            let fontSize = currentFontSizeNum;
+            const minFontSize = 14;
+            
+            while (numeroElement.scrollWidth > numeroMaxWidth && fontSize > minFontSize) {
+                fontSize -= 0.5; // Reducción más fina (0.5px) para mejor ajuste
                 numeroElement.style.fontSize = fontSize + 'px';
+            }
+            
+            // Ajustar CAJA
+            fontSize = currentFontSizeCaja;
+            while (cajaElement.scrollWidth > cajaMaxWidth && fontSize > minFontSize) {
+                fontSize -= 0.5; // Reducción más fina (0.5px) para mejor ajuste
                 cajaElement.style.fontSize = fontSize + 'px';
-
-                // NO tocar margins, text-align, ni justify-content
-                // Dejar que el CSS se encargue de la posición
             }
         }
 
@@ -1959,14 +1973,15 @@
 
                 turnoElement.className = clases;
 
-                // Badge de estado fuera del contenedor relativo para mejor control
+                // Badge de estado dentro de la tarjeta, en la esquina superior derecha
+                // Ajustado con top negativo para compensar el padding del contenedor padre (pt-3) y quedar al borde
                 const estadoBadge = esAtendido ?
-                    '<div style="position: absolute; top: -34px; right: 8px; z-index: 10;"><span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">✓ ATENDIDO</span></div>' :
+                    '<div style="position: absolute; top: -8px; right: 8px; z-index: 10;"><span class="bg-green-500 text-white px-2 py-0.5 rounded-b text-[9px] font-bold shadow-sm tracking-wider uppercase border-x border-b border-white/20">ATENDIDO</span></div>' :
                     '';
 
                 turnoElement.innerHTML = `
-                    <div style="position: relative;">
-                        <div class="turno-container">
+                    <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center;">
+                        <div class="turno-container" style="width: 100%;">
                             <div class="turno-numero font-bold">${turno.codigo_completo}</div>
                             <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                         </div>
