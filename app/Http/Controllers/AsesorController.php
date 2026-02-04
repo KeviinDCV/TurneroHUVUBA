@@ -1673,5 +1673,121 @@ class AsesorController extends Controller
         ]);
     }
 
+    /**
+     * Rellamar el turno actual (volver a emitir sonido en TV sin cambiar estado)
+     */
+    public function rellamarTurno(Request $request)
+    {
+        $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
+
+        // Si no hay caja en sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+
+        if (!$user->esAsesor() || !$cajaId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado o sin caja asignada'], 403);
+        }
+
+        // Validar que se proporcione turno_id O codigo_completo
+        $request->validate([
+            'turno_id' => 'nullable|integer|exists:turnos,id',
+            'codigo_completo' => 'nullable|string'
+        ]);
+
+        // Buscar turno por ID o por código completo
+        if ($request->has('turno_id') && $request->turno_id) {
+            $turno = Turno::find($request->turno_id);
+        } elseif ($request->has('codigo_completo') && $request->codigo_completo) {
+            // Parsear código completo (formato: "CP-001")
+            $datos = Turno::parsearCodigoCompleto($request->codigo_completo);
+
+            if (!$datos) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Formato de código completo inválido'
+                ]);
+            }
+
+            $turno = Turno::where('codigo', $datos['codigo'])
+                ->where('numero', $datos['numero'])
+                ->where('asesor_id', $user->id)
+                ->delDia()
+                ->first();
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar turno_id o codigo_completo'
+            ]);
+        }
+
+        if (!$turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Turno no encontrado'
+            ]);
+        }
+
+        // Verificar que el turno pertenece al asesor
+        if ($turno->asesor_id != $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permisos para gestionar este turno'
+            ], 403);
+        }
+
+        // Verificar que el turno esté en estado llamado
+        if ($turno->estado !== 'llamado') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo se pueden rellamar turnos que estén en estado llamado'
+            ], 400);
+        }
+
+        // Actualizar fecha_llamado para que el TV lo detecte como nuevo
+        $turno->fecha_llamado = Carbon::now();
+        $turno->save();
+
+        // Cargar relaciones necesarias para el broadcaster
+        $turno->load('servicio', 'caja');
+
+        // Log para debugging
+        \Log::info('Rellamando turno actual', [
+            'turno_id' => $turno->id,
+            'codigo_completo' => $turno->codigo_completo,
+            'estado' => $turno->estado,
+            'fecha_llamado' => $turno->fecha_llamado,
+            'caja_id' => $turno->caja_id,
+            'asesor_id' => $turno->asesor_id
+        ]);
+
+        // Transmitir el evento al televisor (sin cambiar estado)
+        $broadcastResult = TurneroBroadcaster::notificarTurnoLlamado($turno);
+
+        // Log del resultado del broadcast
+        \Log::info('Resultado del broadcast (rellamar)', [
+            'turno_id' => $turno->id,
+            'broadcast_exitoso' => $broadcastResult
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Turno {$turno->codigo_completo} rellamado - sonará en el televisor",
+            'turno' => [
+                'id' => $turno->id,
+                'codigo_completo' => $turno->codigo_completo,
+                'servicio' => $turno->servicio->nombre,
+                'prioridad' => $turno->prioridad
+            ]
+        ]);
+    }
 
 }

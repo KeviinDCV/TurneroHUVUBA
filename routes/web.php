@@ -209,6 +209,7 @@ Route::middleware(['auth', 'asesor.role', 'update.user.activity', 'clean.expired
     Route::get('/api/turno/{turno}/estado', [AsesorController::class, 'verificarEstadoTurno'])->name('api.turno.estado');
     Route::get('/asesor/historial-turnos', [AsesorController::class, 'historialTurnos'])->name('asesor.historial-turnos');
     Route::post('/asesor/volver-llamar-turno', [AsesorController::class, 'volverLlamarTurno'])->name('asesor.volver-llamar-turno');
+    Route::post('/asesor/rellamar-turno', [AsesorController::class, 'rellamarTurno'])->name('asesor.rellamar-turno');
     Route::get('/asesor/turnos-aplazados', [AsesorController::class, 'getTurnosAplazados'])->name('asesor.turnos-aplazados');
     Route::post('/asesor/transferir-turno', [AsesorController::class, 'transferirTurno'])->name('asesor.transferir-turno');
     Route::get('/api/asesor/servicios-activos', [AsesorController::class, 'getServiciosActivos'])->name('api.asesor.servicios-activos');

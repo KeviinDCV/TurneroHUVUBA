@@ -490,7 +490,15 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="action-buttons flex justify-center gap-4 mb-8">
+                <div class="action-buttons flex justify-center gap-4 mb-8 flex-wrap">
+                    <button
+                        id="btn-rellamar"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
+                        style="display: none;"
+                        title="Volver a llamar el turno en el televisor"
+                    >
+                        VOLVER A LLAMAR
+                    </button>
                     <button
                         id="btn-atender"
                         class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg transition-colors duration-200"
@@ -685,6 +693,7 @@
         const codigoInput = document.getElementById('codigo-turno');
         const numeroInput = document.getElementById('numero-turno');
         const btnLlamarEspecifico = document.getElementById('btn-llamar-especifico');
+        const btnRellamar = document.getElementById('btn-rellamar');
         const btnAtender = document.getElementById('btn-atender');
         const btnAplazar = document.getElementById('btn-aplazar');
         const btnTransferir = document.getElementById('btn-transferir');
@@ -1016,6 +1025,7 @@
             turnoActualElement.textContent = turno.codigo_completo;
             servicioActualElement.textContent = turno.servicio;
 
+            btnRellamar.style.display = 'block';
             btnAtender.style.display = 'block';
             btnAplazar.style.display = 'block';
             btnTransferir.style.display = 'block';
@@ -1055,6 +1065,7 @@
             servicioActualElement.textContent = 'SERVICIO';
             tiempoAtencionElement.textContent = '00:00 min';
 
+            btnRellamar.style.display = 'none';
             btnAtender.style.display = 'none';
             btnAplazar.style.display = 'none';
             btnTransferir.style.display = 'none';
@@ -1106,6 +1117,43 @@
 
         // Configurar eventos iniciales
         configurarEventosServiciosDesplegables();
+
+        // Event listener para el botón "Volver a llamar"
+        btnRellamar.addEventListener('click', async function() {
+            if (!turnoActual) return;
+
+            // Deshabilitar botón temporalmente para evitar múltiples clics
+            btnRellamar.disabled = true;
+            btnRellamar.textContent = 'LLAMANDO...';
+
+            try {
+                const response = await fetch('{{ route("asesor.rellamar-turno") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        codigo_completo: turnoActual.codigo_completo
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    mostrarModal('Éxito', data.message || 'Turno llamado nuevamente en el televisor', 'success');
+                } else {
+                    mostrarModal('Error', data.message || 'No se pudo volver a llamar el turno', 'error');
+                }
+            } catch (error) {
+                console.error('Error al rellamar turno:', error);
+                mostrarModal('Error', 'Error de conexión al intentar rellamar el turno', 'error');
+            } finally {
+                // Rehabilitar botón
+                btnRellamar.disabled = false;
+                btnRellamar.textContent = 'VOLVER A LLAMAR';
+            }
+        });
 
         btnAtender.addEventListener('click', async function() {
             if (!turnoActual) return;
@@ -1262,37 +1310,45 @@
                 let acciones = '';
                 if (turno.estado === 'llamado') {
                     acciones = `
-                        <button onclick="marcarAtendidoDesdeHistorial('${turno.codigo_completo}')"
-                                class="historial-action-btn px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">
-                            Atender
-                        </button>
-                        <button onclick="aplazarTurnoDesdeHistorial('${turno.codigo_completo}')"
-                                class="historial-action-btn px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600">
-                            Aplazar
-                        </button>
-                        <button onclick="abrirModalTransferir('${turno.codigo_completo}')"
-                                class="historial-action-btn px-2 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600">
-                            Transferir
-                        </button>
+                        <div class="grid grid-cols-2 gap-1 w-full">
+                            <button onclick="rellamarTurnoDesdeHistorial('${turno.codigo_completo}')"
+                                    class="historial-action-btn px-1 py-1 bg-blue-500 text-white text-[10px] rounded hover:bg-blue-600 w-full flex items-center justify-center transition-colors" title="Volver a llamar">
+                                Rellamar
+                            </button>
+                            <button onclick="marcarAtendidoDesdeHistorial('${turno.codigo_completo}')"
+                                    class="historial-action-btn px-1 py-1 bg-green-500 text-white text-[10px] rounded hover:bg-green-600 w-full flex items-center justify-center transition-colors" title="Marcar como atendido">
+                                Atender
+                            </button>
+                            <button onclick="aplazarTurnoDesdeHistorial('${turno.codigo_completo}')"
+                                    class="historial-action-btn px-1 py-1 bg-orange-500 text-white text-[10px] rounded hover:bg-orange-600 w-full flex items-center justify-center transition-colors" title="Aplazar turno">
+                                Aplazar
+                            </button>
+                            <button onclick="abrirModalTransferir('${turno.codigo_completo}')"
+                                    class="historial-action-btn px-1 py-1 bg-purple-500 text-white text-[10px] rounded hover:bg-purple-600 w-full flex items-center justify-center transition-colors" title="Transferir turno">
+                                Transferir
+                            </button>
+                        </div>
                     `;
                 } else {
                     acciones = `
-                        <span class="text-xs text-gray-500">-</span>
+                        <div class="flex justify-center items-center h-full">
+                            <span class="text-xs text-gray-500">-</span>
+                        </div>
                     `;
                 }
 
                 return `
                     <div class="historial-grid text-sm bg-white border-b border-gray-200 hover:bg-gray-50">
-                        <div class="grid-item p-3 border-r border-gray-200 font-medium">${turno.codigo_completo}</div>
-                        <div class="grid-item p-3 border-r border-gray-200">${turno.servicio?.nombre || 'N/A'}</div>
-                        <div class="grid-item p-3 border-r border-gray-200">
+                        <div class="grid-item p-3 border-r border-gray-200 font-medium flex items-center">${turno.codigo_completo}</div>
+                        <div class="grid-item p-3 border-r border-gray-200 flex items-center">${turno.servicio?.nombre || 'N/A'}</div>
+                        <div class="grid-item p-3 border-r border-gray-200 flex items-center">
                             <span class="px-2 py-1 rounded-full text-xs font-medium ${estadoColor}">
                                 ${turno.estado.toUpperCase()}
                             </span>
                         </div>
-                        <div class="grid-item p-3 border-r border-gray-200">${horaLlamado}</div>
-                        <div class="grid-item p-3 border-r border-gray-200 font-mono">${tiempoTranscurrido}</div>
-                        <div class="grid-item p-3 flex items-center justify-center space-x-1 flex-wrap">
+                        <div class="grid-item p-3 border-r border-gray-200 flex items-center">${horaLlamado}</div>
+                        <div class="grid-item p-3 border-r border-gray-200 font-mono flex items-center">${tiempoTranscurrido}</div>
+                        <div class="grid-item p-2 flex items-center justify-center">
                             ${acciones}
                         </div>
                     </div>
@@ -1310,6 +1366,36 @@
                     </div>
                 </div>
             `;
+        }
+
+        // Rellamar turno desde historial (volver a emitir sonido en TV)
+        function rellamarTurnoDesdeHistorial(codigoCompleto) {
+            console.log('🔊 Rellamando turno desde historial:', codigoCompleto);
+
+            fetch('/asesor/rellamar-turno', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    codigo_completo: codigoCompleto
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('🔊 Turno rellamado exitosamente');
+                    mostrarModal('Éxito', data.message || 'Turno llamado nuevamente en el televisor', 'success');
+                } else {
+                    console.error('❌ Error al rellamar turno:', data.message);
+                    mostrarModal('Error', data.message || 'No se pudo volver a llamar el turno', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error en petición:', error);
+                mostrarModal('Error', 'Error de conexión al intentar rellamar el turno', 'error');
+            });
         }
 
         // Marcar turno como atendido desde historial
