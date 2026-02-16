@@ -700,73 +700,39 @@
             justify-content: center;
         }
 
-        /* Texto de turnos con límites estrictos y mejor escalado */
-        .turno-numero {
-            font-size: clamp(2.5rem, 5vw, 5.5rem);
-            line-height: 1;
-            max-height: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            max-width: 100%;
-            display: block;
-            text-align: left;
-            transform-origin: left center;
-        }
-
-        .turno-caja {
-            font-size: clamp(2.5rem, 5vw, 5.5rem);
-            line-height: 1;
-            max-height: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            max-width: 100%;
-            display: block;
-            text-align: center !important;
-            transform-origin: center center;
-            padding-right: 3rem !important;
-        }
-
-        /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
+        /* LAYOUT FLEXBOX - DOS COLUMNAS */
         .turno-container {
-            display: table !important;
+            display: flex !important;
             width: 100% !important;
-            table-layout: fixed !important;
-            border-collapse: collapse !important;
+            align-items: center !important;
+            justify-content: space-between !important;
         }
 
-        /* Columna izquierda - Código del turno */
+        /* Columna izquierda - Código del turno (toma el espacio disponible) */
         .turno-numero {
             font-size: clamp(2.5rem, 5vw, 5.5rem);
-            display: table-cell !important;
-            width: 60% !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
             text-align: left !important;
             padding-left: 0.75rem !important;
-            vertical-align: middle !important;
-            overflow: visible !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
             white-space: nowrap !important;
-            
             line-height: 1;
             max-height: 100%;
-            max-width: 100%;
-            transform-origin: left center;
         }
 
-        /* Columna derecha - CAJA */
+        /* Columna derecha - CAJA (siempre muestra completo, nunca se corta) */
         .turno-caja {
             font-size: clamp(2.5rem, 5vw, 5.5rem);
-            display: table-cell !important;
-            width: 40% !important;
-            text-align: center !important;
-            padding-right: 3rem !important;
-            vertical-align: middle !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
+            flex: 0 0 auto !important;
             white-space: nowrap !important;
-            
+            text-align: right !important;
+            padding-right: 1rem !important;
+            padding-left: 0.5rem !important;
+            overflow: visible !important;
             line-height: 1;
             max-height: 100%;
-            max-width: 100%;
-            transform-origin: center center;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */
@@ -936,13 +902,16 @@
             box-sizing: border-box;
         }
 
-        /* Contenedores de texto dentro de cada turno */
-        .responsive-queue-section .turno-numero,
-        .responsive-queue-section .turno-caja {
-            width: 100%;
-            max-width: 100%;
+        /* Contenedores de texto dentro de cada turno - respetar layout flexbox */
+        .responsive-queue-section .turno-numero {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
             box-sizing: border-box;
-            padding: 0 0.2rem;
+        }
+
+        .responsive-queue-section .turno-caja {
+            flex: 0 0 auto !important;
+            box-sizing: border-box;
         }
 
         /* Asegurar que los grids dentro de turnos no se desborden */
@@ -1880,38 +1849,38 @@
         function ajustarTamanoFuenteFila(turnoElement) {
             const numeroElement = turnoElement.querySelector('.turno-numero');
             const cajaElement = turnoElement.querySelector('.turno-caja');
+            const container = turnoElement.querySelector('.turno-container');
 
-            if (!numeroElement || !cajaElement) return;
+            if (!numeroElement || !cajaElement || !container) return;
 
-            // Usar clientWidth para detectar el ancho visible actual de la celda
-            // Agregar un pequeño margen de seguridad (5px) para evitar bordes muy justos
-            const numeroMaxWidth = numeroElement.clientWidth - 5; 
-            const cajaMaxWidth = cajaElement.clientWidth - 5;
+            // Con flexbox: el contenedor tiene un ancho fijo.
+            // CAJA siempre se muestra completo (flex-shrink: 0).
+            // El NUMERO toma el espacio restante y se ajusta si es necesario.
+            const containerWidth = container.clientWidth;
 
-            // Resetear tamaño para obtener el fontSize base computado inicialmente (del CSS)
+            // Resetear tamaño para obtener medidas frescas
             numeroElement.style.fontSize = ''; 
             cajaElement.style.fontSize = '';
             
-            // Obtener el tamaño de fuente actual aplicado por CSS
-            let currentFontSizeNum = parseFloat(window.getComputedStyle(numeroElement).fontSize);
-            let currentFontSizeCaja = parseFloat(window.getComputedStyle(cajaElement).fontSize);
-            
-            // Usar el menor de los dos como punto de partida para mantener consistencia visual si se desea,
-            // o ajustarlos independientemente. Aquí los ajustaremos independientemente para maximizar espacio.
-            
-            // Ajustar NUMERO
-            let fontSize = currentFontSizeNum;
+            // Obtener tamaño de fuente base
+            let baseFontSize = parseFloat(window.getComputedStyle(numeroElement).fontSize);
             const minFontSize = 14;
             
-            while (numeroElement.scrollWidth > numeroMaxWidth && fontSize > minFontSize) {
-                fontSize -= 0.5; // Reducción más fina (0.5px) para mejor ajuste
+            // Calcular cuánto espacio ocupa CAJA (siempre se respeta su tamaño)
+            const cajaWidth = cajaElement.scrollWidth;
+            
+            // Espacio disponible para el número = contenedor - caja - padding
+            const maxNumeroWidth = containerWidth - cajaWidth - 15;
+            
+            // Ajustar NUMERO si excede su espacio disponible
+            let fontSize = baseFontSize;
+            while (numeroElement.scrollWidth > maxNumeroWidth && fontSize > minFontSize) {
+                fontSize -= 0.5;
                 numeroElement.style.fontSize = fontSize + 'px';
             }
             
-            // Ajustar CAJA
-            fontSize = currentFontSizeCaja;
-            while (cajaElement.scrollWidth > cajaMaxWidth && fontSize > minFontSize) {
-                fontSize -= 0.5; // Reducción más fina (0.5px) para mejor ajuste
+            // Igualar tamaño de CAJA al NUMERO para apariencia consistente
+            if (fontSize < baseFontSize) {
                 cajaElement.style.fontSize = fontSize + 'px';
             }
         }
