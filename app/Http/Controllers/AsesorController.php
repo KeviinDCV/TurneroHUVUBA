@@ -1513,8 +1513,6 @@ class AsesorController extends Controller
 
         $turnosAplazados = Turno::whereIn('servicio_id', $serviciosIds)
             ->where('estado', 'aplazado')
-            ->where('asesor_id', $user->id)
-            ->where('caja_id', $cajaId)
             ->delDia()
             ->with('servicio')
             ->orderBy('prioridad', 'desc')
@@ -1600,7 +1598,7 @@ class AsesorController extends Controller
 
             $turno = Turno::where('codigo', $datos['codigo'])
                 ->where('numero', $datos['numero'])
-                ->where('asesor_id', $user->id)
+                ->where('estado', 'aplazado')
                 ->delDia()
                 ->first();
         } else {
@@ -1617,20 +1615,28 @@ class AsesorController extends Controller
             ]);
         }
 
-        // Verificar que el turno pertenece al asesor
-        if ($turno->asesor_id != $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No tiene permisos para gestionar este turno'
-            ], 403);
-        }
-
         // Verificar que el turno esté aplazado
         if ($turno->estado !== 'aplazado') {
             return response()->json([
                 'success' => false,
                 'message' => 'Solo se pueden volver a llamar turnos aplazados'
             ], 400);
+        }
+
+        // Verificar que el asesor tenga el servicio del turno asignado
+        if (!$user->servicios()->where('servicios.id', $turno->servicio_id)->exists()) {
+            // También verificar si tiene asignado el servicio padre
+            $servicio = Servicio::find($turno->servicio_id);
+            $tieneAcceso = false;
+            if ($servicio && $servicio->servicio_padre_id) {
+                $tieneAcceso = $user->servicios()->where('servicios.id', $servicio->servicio_padre_id)->exists();
+            }
+            if (!$tieneAcceso) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tiene permisos para gestionar este turno'
+                ], 403);
+            }
         }
 
         // Marcar como llamado nuevamente (esto establece fecha_llamado y estado='llamado')

@@ -293,7 +293,9 @@ class Turno extends Model
         $this->update([
             'estado' => 'aplazado',
             'fecha_llamado' => null,
-            'duracion_atencion' => $duracion
+            'duracion_atencion' => $duracion,
+            'asesor_id' => null,
+            'caja_id' => null
         ]);
 
         return $duracion;
