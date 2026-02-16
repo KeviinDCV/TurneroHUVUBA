@@ -1338,16 +1338,19 @@ function estadisticasUsuarioModal() {
         loading: false,
         usuarioId: null,
         usuarioNombre: '',
-        fechaInicio: new Date().toISOString().split('T')[0],
-        fechaFin: new Date().toISOString().split('T')[0],
+        fechaInicio: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })(),
+        fechaFin: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })(),
 
         init() {
             window.addEventListener('open-estadisticas-modal', (event) => {
                 const { userId, nombreUsuario } = event.detail;
                 this.usuarioId = userId;
                 this.usuarioNombre = nombreUsuario;
-                this.fechaInicio = new Date().toISOString().split('T')[0];
-                this.fechaFin = new Date().toISOString().split('T')[0];
+                // Usar fecha LOCAL (no UTC) para evitar desfase de zona horaria
+                const hoy = new Date();
+                const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+                this.fechaInicio = fechaLocal;
+                this.fechaFin = fechaLocal;
                 this.isOpen = true;
                 this.cargarEstadisticas();
             });
@@ -1378,8 +1381,9 @@ function estadisticasUsuarioModal() {
                     break;
             }
             
-            this.fechaInicio = fechaInicio.toISOString().split('T')[0];
-            this.fechaFin = fechaFin.toISOString().split('T')[0];
+            // Usar fecha LOCAL (no UTC) para evitar desfase de zona horaria
+            this.fechaInicio = fechaInicio.getFullYear() + '-' + String(fechaInicio.getMonth()+1).padStart(2,'0') + '-' + String(fechaInicio.getDate()).padStart(2,'0');
+            this.fechaFin = fechaFin.getFullYear() + '-' + String(fechaFin.getMonth()+1).padStart(2,'0') + '-' + String(fechaFin.getDate()).padStart(2,'0');
             this.cargarEstadisticas();
         },
 

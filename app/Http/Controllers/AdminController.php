@@ -751,10 +751,14 @@ class AdminController extends Controller
     private function getTurnosPorAsesorData()
     {
         // Obtener turnos atendidos del día actual agrupados por asesor
+        // Buscar por fecha_creacion O fecha_atencion para capturar todos los turnos del día
         $turnosAtendidos = Turno::select('users.nombre_usuario as asesor_usuario', DB::raw('COUNT(*) as total_atendidos'))
             ->join('users', 'turnos.asesor_id', '=', 'users.id')
             ->where('turnos.estado', 'atendido')
-            ->whereDate('turnos.fecha_creacion', Carbon::today())
+            ->where(function($q) {
+                $q->whereDate('turnos.fecha_creacion', Carbon::today())
+                  ->orWhereDate('turnos.fecha_atencion', Carbon::today());
+            })
             ->whereNotNull('turnos.asesor_id')
             ->groupBy('users.id', 'users.nombre_usuario')
             ->orderBy('total_atendidos', 'desc')
@@ -829,9 +833,14 @@ class AdminController extends Controller
             : Carbon::today()->endOfDay();
 
         // Obtener turnos del usuario en el rango de fechas
+        // Buscar por fecha_creacion O fecha_atencion para capturar todos los turnos
+        // que el asesor manejó en el período, incluyendo transferencias y edge cases
         $turnos = Turno::with(['servicio', 'caja'])
             ->where('asesor_id', $userId)
-            ->whereBetween('fecha_creacion', [$fechaInicio, $fechaFin])
+            ->where(function($q) use ($fechaInicio, $fechaFin) {
+                $q->whereBetween('fecha_creacion', [$fechaInicio, $fechaFin])
+                  ->orWhereBetween('fecha_atencion', [$fechaInicio, $fechaFin]);
+            })
             ->orderBy('fecha_creacion', 'desc')
             ->get();
 
