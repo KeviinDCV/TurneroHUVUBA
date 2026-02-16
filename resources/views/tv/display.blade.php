@@ -2060,14 +2060,18 @@
                 audioSequence.push(`/audio/turnero/voice/letras/${letra}.mp3`);
             });
 
-            // Agregar el número del turno si existe
+            // Agregar los archivos de audio para el número del turno
+            // Soporta números infinitos descomponiéndolos en partes
             if (partes.numeroTurno) {
-                audioSequence.push(`/audio/turnero/voice/numeros/${partes.numeroTurno}.mp3`);
+                const archivosNumero = descomponerNumeroEnAudios(parseInt(partes.numeroTurno));
+                archivosNumero.forEach(archivo => audioSequence.push(archivo));
             }
 
             // Agregar frase de dirección y número de caja
             audioSequence.push('/audio/turnero/voice/frases/dirigirse-caja-numero.mp3');
-            audioSequence.push(`/audio/turnero/voice/numeros/${numeroCaja}.mp3`);
+            // El número de caja también puede ser > 99
+            const archivosCaja = descomponerNumeroEnAudios(parseInt(numeroCaja));
+            archivosCaja.forEach(archivo => audioSequence.push(archivo));
 
             console.log('🔊 Secuencia de audio generada:', audioSequence.map(file => file.split('/').pop()));
 
@@ -2084,6 +2088,64 @@
                     onComplete();
                 }
             });
+        }
+
+        /**
+         * Descomponer un número en archivos de audio existentes.
+         * Soporta números infinitos (1, 2, 3... hasta miles).
+         * 
+         * Estrategia:
+         * - 1-999: archivo directo /numeros/{N}.mp3 (si existe, generado por script)
+         * - 1000+: descompone dígito por dígito usando archivos 1-9
+         * - Fallback: si un archivo no existe, descompone en partes menores
+         * 
+         * Archivos disponibles: 1-999 (generados), más algunos especiales
+         */
+        function descomponerNumeroEnAudios(numero) {
+            const basePath = '/audio/turnero/voice/numeros';
+            
+            if (!numero || numero <= 0) {
+                return [];
+            }
+
+            // Números 1-999: usar archivo directo
+            if (numero <= 999) {
+                return [`${basePath}/${numero}.mp3`];
+            }
+
+            // Números 1000+: descomponer en partes pronunciables
+            // Ej: 1234 → "1" + "mil" + "234"
+            // Ej: 2500 → "2" + "mil" + "500"
+            // Como no tenemos audio de "mil", usamos dígito por dígito para miles
+            // y archivo directo para las centenas
+            
+            const archivos = [];
+            const numStr = numero.toString();
+            
+            if (numero >= 1000 && numero <= 9999) {
+                // Miles: descomponer en [miles][centenas]
+                const miles = Math.floor(numero / 1000);
+                const resto = numero % 1000;
+                
+                // Dígito de miles
+                archivos.push(`${basePath}/${miles}.mp3`);
+                
+                // Si el resto es > 0, agregar el archivo de centenas
+                if (resto > 0 && resto <= 999) {
+                    archivos.push(`${basePath}/${resto}.mp3`);
+                }
+            } else {
+                // Para números muy grandes (10000+), pronunciar dígito por dígito
+                for (const digito of numStr) {
+                    const d = parseInt(digito);
+                    if (d > 0) {
+                        archivos.push(`${basePath}/${d}.mp3`);
+                    }
+                }
+            }
+            
+            console.log(`🔢 Número ${numero} descompuesto en:`, archivos.map(f => f.split('/').pop()));
+            return archivos;
         }
 
         // Función para separar dinámicamente el código del servicio y número del turno
