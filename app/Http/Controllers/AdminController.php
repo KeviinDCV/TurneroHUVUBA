@@ -844,7 +844,10 @@ class AdminController extends Controller
             ->orderBy('fecha_creacion', 'desc')
             ->get();
 
-        $turnosAtendidos = $turnos->where('estado', 'atendido');
+        // IMPORTANTE: ->values() re-indexa las claves para que JSON serialice como array []
+        // Sin values(), las claves no-secuenciales (0,2,5,8...) generan un objeto {} en JSON
+        // y en JavaScript {}.length === undefined, causando "No hay turnos atendidos"
+        $turnosAtendidos = $turnos->where('estado', 'atendido')->values();
 
         // Estadísticas generales
         $estadisticas = [
@@ -903,7 +906,7 @@ class AdminController extends Controller
 
         $totalMinutosCanal = $canalesNoPresenciales->sum('duracion_minutos');
 
-        // Detalle de turnos (últimos 20)
+        // Detalle de turnos (últimos 20) - values() asegura array JSON
         $turnosDetalle = $turnosAtendidos->take(20)->map(function ($turno) {
             return [
                 'codigo' => $turno->codigo_completo,
@@ -954,7 +957,7 @@ class AdminController extends Controller
                 'tiempo_total_horas' => round($totalMinutosCanal / 60, 2),
                 'detalle' => $canalesDetalle,
             ],
-            'turnos_detalle' => $turnosDetalle,
+            'turnos_detalle' => $turnosDetalle->values(),
         ]);
     }
 
