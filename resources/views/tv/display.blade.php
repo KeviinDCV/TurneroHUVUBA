@@ -316,6 +316,10 @@
                 grid-template-columns: 1fr 2fr 1fr !important;
             }
 
+            .responsive-header > div:first-child {
+                overflow: visible !important;
+            }
+
             .responsive-header > div:first-child h1 {
                 font-size: 1.5rem !important;
             }
@@ -555,6 +559,11 @@
         /* Clases responsive dinámicas */
         .responsive-header {
             height: var(--header-height);
+            overflow: visible !important;
+        }
+
+        .responsive-header > div:first-child {
+            overflow: visible !important;
         }
 
         .responsive-ticker {
@@ -716,7 +725,7 @@
             transform-origin: right center;
             margin-left: auto !important;
             margin-right: 0 !important;
-            padding-right: 3rem !important;
+            padding-right: 5rem !important;
         }
 
         /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
@@ -750,7 +759,7 @@
             display: table-cell !important;
             width: 45% !important;
             text-align: right !important;
-            padding-right: 3rem !important;
+            padding-right: 5rem !important;
             vertical-align: middle !important;
             overflow: visible !important;
             text-overflow: clip !important;
@@ -1030,10 +1039,10 @@
         <!-- Header Section -->
         <div class="grid grid-cols-6 responsive-header responsive-container">
             <!-- Left Header - Apoyo Diagnostico y Hora -->
-            <div class="bg-hospital-blue-light p-4 flex flex-col justify-center col-span-2">
-                <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-2">UBA</h1>
+            <div class="bg-hospital-blue-light p-4 flex flex-col justify-center col-span-2" style="overflow: visible !important;">
+                <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-1">UBA</h1>
                 <!-- Hora de Colombia (UTC-5) -->
-                <p class="text-2xl text-hospital-blue font-semibold" id="current-time">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
+                <p class="text-2xl text-hospital-blue font-semibold" id="current-time" style="white-space: nowrap; overflow: visible;">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
             </div>
 
             <!-- Center Header - Hospital Info con Logo -->

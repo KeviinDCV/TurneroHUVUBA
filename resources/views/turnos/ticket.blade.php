@@ -143,9 +143,21 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
     <!-- Auto-print script -->
     <script>
+        // Auto-redirect al menú después de imprimir
+        function volverAlMenu() {
+            window.location.href = '{{ route('turnos.menu') }}';
+        }
+
+        // Escuchar evento afterprint para redirigir automáticamente
+        window.addEventListener('afterprint', function() {
+            setTimeout(volverAlMenu, 1000);
+        });
+
         // Auto-print después de 2 segundos
         setTimeout(function() {
             window.print();
+            // Fallback: si afterprint no se dispara, redirigir después de 5 segundos
+            setTimeout(volverAlMenu, 5000);
         }, 2000);
 
         // Vibración si está disponible
