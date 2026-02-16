@@ -1021,8 +1021,25 @@ class AsesorController extends Controller
             ]);
         }
 
-        // Verificar que el turno esté asignado al asesor actual
-        if ($turno->asesor_id != $user->id) {
+        // Verificar que el asesor tenga relación con el turno
+        // Permitir transferir si: el turno está asignado al asesor, O si el asesor
+        // tiene asignado el servicio del turno (para casos donde asesor_id es null)
+        $puedeTransferir = ($turno->asesor_id == $user->id);
+        
+        if (!$puedeTransferir) {
+            // Verificar si el asesor tiene asignado el servicio del turno
+            $serviciosAsesor = $user->servicios->pluck('id')->toArray();
+            $servicioTurno = $turno->servicio_id;
+            
+            // Verificar servicio directo o servicio padre
+            $servicio = Servicio::find($servicioTurno);
+            if ($servicio) {
+                $puedeTransferir = in_array($servicioTurno, $serviciosAsesor) 
+                    || ($servicio->servicio_padre_id && in_array($servicio->servicio_padre_id, $serviciosAsesor));
+            }
+        }
+
+        if (!$puedeTransferir) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tiene permisos para transferir este turno'
