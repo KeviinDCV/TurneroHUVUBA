@@ -185,7 +185,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.9rem, 1.8vw, 1.3rem) !important;
+                font-size: clamp(1.1rem, 2.2vw, 1.6rem) !important;
                 line-height: 1.15 !important;
             }
 
@@ -217,7 +217,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.95rem, 1.9vw, 1.4rem) !important;
+                font-size: clamp(1.15rem, 2.3vw, 1.7rem) !important;
                 line-height: 1.18 !important;
             }
 
@@ -249,7 +249,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.8rem, 1.6vw, 1.2rem) !important;
+                font-size: clamp(1rem, 2vw, 1.5rem) !important;
                 line-height: 1.12 !important;
             }
 
@@ -330,7 +330,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1rem, 2.25vw, 1.5rem) !important;
+                font-size: clamp(1.2rem, 2.5vw, 1.8rem) !important;
             }
 
             /* Reducir padding en turnos para pantallas pequeñas */
@@ -367,7 +367,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.125rem, 2vw, 1.5rem) !important;
+                font-size: clamp(1.3rem, 2.4vw, 1.8rem) !important;
             }
         }
 
@@ -385,7 +385,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.85rem, 1.7vw, 1.25rem) !important;
+                font-size: clamp(1.05rem, 2.1vw, 1.55rem) !important;
                 line-height: 1.14 !important;
             }
 
@@ -417,7 +417,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1rem, 2vw, 1.4rem) !important;
+                font-size: clamp(1.2rem, 2.4vw, 1.7rem) !important;
             }
 
             /* Reducir padding para aprovechar mejor el espacio */
@@ -447,7 +447,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.9rem, 1.8vw, 1.2rem) !important;
+                font-size: clamp(1.1rem, 2.2vw, 1.5rem) !important;
                 line-height: 1.2 !important;
             }
 
@@ -543,7 +543,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.75rem, 1.5vw, 1.125rem) !important;
+                font-size: clamp(0.9rem, 1.8vw, 1.35rem) !important;
             }
 
             /* Reducir espaciado al mínimo */
@@ -705,7 +705,7 @@
         }
 
         .turno-caja {
-            font-size: clamp(1.5rem, 3vw, 3.5rem);
+            font-size: clamp(1.8rem, 3.5vw, 4rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -716,6 +716,7 @@
             transform-origin: right center;
             margin-left: auto !important;
             margin-right: 0 !important;
+            padding-right: 1.5rem !important;
         }
 
         /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
@@ -745,11 +746,11 @@
 
         /* Columna derecha - CAJA */
         .turno-caja {
-            font-size: clamp(1.5rem, 3vw, 3.5rem);
+            font-size: clamp(1.8rem, 3.5vw, 4rem);
             display: table-cell !important;
             width: 45% !important;
             text-align: right !important;
-            padding-right: 0.75rem !important;
+            padding-right: 1.5rem !important;
             vertical-align: middle !important;
             overflow: visible !important;
             text-overflow: clip !important;
@@ -771,7 +772,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.9rem, 1.8vw, 1.3rem) !important;
+                font-size: clamp(1.1rem, 2.2vw, 1.6rem) !important;
                 line-height: 1.2 !important;
             }
 
@@ -793,7 +794,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.85rem, 1.6vw, 1.2rem) !important;
+                font-size: clamp(1.05rem, 2vw, 1.5rem) !important;
                 line-height: 1.15 !important;
             }
 
@@ -827,7 +828,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.9rem, 1.7vw, 1.25rem) !important;
+                font-size: clamp(1.1rem, 2.1vw, 1.55rem) !important;
                 line-height: 1.18 !important;
             }
 
@@ -852,7 +853,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.875rem, 1.75vw, 1.25rem) !important;
+                font-size: clamp(1rem, 2vw, 1.45rem) !important;
             }
 
             .responsive-queue-section .p-4 {
@@ -870,7 +871,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.75rem, 1.5vw, 1rem) !important;
+                font-size: clamp(0.9rem, 1.8vw, 1.2rem) !important;
             }
 
             .responsive-queue-section .p-4 {
@@ -962,7 +963,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.85rem, 1.6vw, 1.15rem) !important;
+                font-size: clamp(1.05rem, 2vw, 1.45rem) !important;
                 line-height: 1.15 !important;
             }
 
@@ -990,7 +991,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.8rem, 1.5vw, 1.1rem) !important;
+                font-size: clamp(1rem, 1.9vw, 1.35rem) !important;
                 line-height: 1.12 !important;
             }
 
