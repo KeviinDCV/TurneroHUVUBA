@@ -185,8 +185,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.1rem, 2.2vw, 1.6rem) !important;
-                line-height: 1.15 !important;
+                font-size: clamp(1.3rem, 3.5vw, 2.8rem) !important;
+                line-height: 1.05 !important;
             }
 
             .responsive-queue-section > div > div {
@@ -217,8 +217,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.15rem, 2.3vw, 1.7rem) !important;
-                line-height: 1.18 !important;
+                font-size: clamp(1.4rem, 3.8vw, 3rem) !important;
+                line-height: 1.08 !important;
             }
 
             .responsive-queue-section > div > div {
@@ -249,8 +249,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1rem, 2vw, 1.5rem) !important;
-                line-height: 1.12 !important;
+                font-size: clamp(1.1rem, 3.2vw, 2.4rem) !important;
+                line-height: 1.02 !important;
             }
 
             .responsive-queue-section > div > div {
@@ -330,7 +330,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.2rem, 2.5vw, 1.8rem) !important;
+                font-size: clamp(1.5rem, 4vw, 3rem) !important;
             }
 
             /* Reducir padding en turnos para pantallas pequeñas */
@@ -367,7 +367,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.3rem, 2.4vw, 1.8rem) !important;
+                font-size: clamp(1.75rem, 3.5vw, 3.5rem) !important;
             }
         }
 
@@ -385,8 +385,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.05rem, 2.1vw, 1.55rem) !important;
-                line-height: 1.14 !important;
+                font-size: clamp(1.2rem, 3.3vw, 2.6rem) !important;
+                line-height: 1.04 !important;
             }
 
             .responsive-queue-section > div > div {
@@ -417,7 +417,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.2rem, 2.4vw, 1.7rem) !important;
+                font-size: clamp(1.5rem, 3.8vw, 3.2rem) !important;
             }
 
             /* Reducir padding para aprovechar mejor el espacio */
@@ -447,8 +447,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.1rem, 2.2vw, 1.5rem) !important;
-                line-height: 1.2 !important;
+                font-size: clamp(1.3rem, 3.5vw, 2.8rem) !important;
+                line-height: 1.1 !important;
             }
 
             /* Reducir espaciado entre turnos */
@@ -543,7 +543,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.9rem, 1.8vw, 1.35rem) !important;
+                font-size: clamp(1rem, 2.5vw, 2rem) !important;
             }
 
             /* Reducir espaciado al mínimo */
@@ -772,8 +772,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.1rem, 2.2vw, 1.6rem) !important;
-                line-height: 1.2 !important;
+                font-size: clamp(1.4rem, 3.2vw, 2.8rem) !important;
+                line-height: 1.1 !important;
             }
 
             .responsive-queue-section .p-4 {
@@ -794,8 +794,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.05rem, 2vw, 1.5rem) !important;
-                line-height: 1.15 !important;
+                font-size: clamp(1.3rem, 3vw, 2.5rem) !important;
+                line-height: 1.05 !important;
             }
 
             .responsive-queue-section .p-4 {
@@ -828,8 +828,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.1rem, 2.1vw, 1.55rem) !important;
-                line-height: 1.18 !important;
+                font-size: clamp(1.4rem, 3.3vw, 2.9rem) !important;
+                line-height: 1.08 !important;
             }
 
             /* Optimizar espacio vertical */
@@ -853,7 +853,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(1rem, 2vw, 1.45rem) !important;
+                font-size: clamp(1.25rem, 3vw, 2.5rem) !important;
             }
 
             .responsive-queue-section .p-4 {
@@ -871,7 +871,7 @@
             }
 
             .turno-caja {
-                font-size: clamp(0.9rem, 1.8vw, 1.2rem) !important;
+                font-size: clamp(1rem, 2.5vw, 2rem) !important;
             }
 
             .responsive-queue-section .p-4 {
@@ -963,8 +963,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1.05rem, 2vw, 1.45rem) !important;
-                line-height: 1.15 !important;
+                font-size: clamp(1.2rem, 3.2vw, 2.6rem) !important;
+                line-height: 1.05 !important;
             }
 
             .responsive-queue-section > div > div {
@@ -991,8 +991,8 @@
             }
 
             .turno-caja {
-                font-size: clamp(1rem, 1.9vw, 1.35rem) !important;
-                line-height: 1.12 !important;
+                font-size: clamp(1.1rem, 3vw, 2.4rem) !important;
+                line-height: 1.02 !important;
             }
 
             .responsive-queue-section > div > div {
