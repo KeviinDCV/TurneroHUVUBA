@@ -693,7 +693,7 @@
 
         /* Texto de turnos con límites estrictos y mejor escalado */
         .turno-numero {
-            font-size: clamp(2rem, 4vw, 4.5rem);
+            font-size: clamp(2.5rem, 5vw, 5.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -705,7 +705,7 @@
         }
 
         .turno-caja {
-            font-size: clamp(2rem, 4vw, 4.5rem);
+            font-size: clamp(2.5rem, 5vw, 5.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -729,7 +729,7 @@
 
         /* Columna izquierda - Código del turno */
         .turno-numero {
-            font-size: clamp(2rem, 4vw, 4.5rem);
+            font-size: clamp(2.5rem, 5vw, 5.5rem);
             display: table-cell !important;
             width: 55% !important;
             text-align: left !important;
@@ -746,7 +746,7 @@
 
         /* Columna derecha - CAJA */
         .turno-caja {
-            font-size: clamp(2rem, 4vw, 4.5rem);
+            font-size: clamp(2.5rem, 5vw, 5.5rem);
             display: table-cell !important;
             width: 45% !important;
             text-align: right !important;
@@ -1175,14 +1175,14 @@
         
         <!-- Contenido del Modal -->
         <div class="relative flex items-center justify-center h-full p-8" style="z-index: 10000;">
-            <div class="hospital-building text-white rounded-lg enhanced-shadow p-16 max-w-4xl w-full mx-auto opacity-0 transform scale-90 transition-all duration-300" id="modalContent">
+            <div class="hospital-building text-white rounded-lg enhanced-shadow p-20 max-w-6xl w-full mx-auto opacity-0 transform scale-90 transition-all duration-300" id="modalContent">
                 <!-- Información del Turno - Solo turno y caja -->
                 <div class="text-center">
-                    <div class="mb-8">
-                        <div class="text-8xl font-bold tracking-wider mb-4" id="modalTurnoNumero">A001</div>
+                    <div class="mb-10">
+                        <div class="font-bold tracking-wider mb-4" style="font-size: clamp(6rem, 12vw, 14rem);" id="modalTurnoNumero">A001</div>
                     </div>
-                    <div class="border-t border-white border-opacity-30 pt-8">
-                        <div class="text-5xl font-bold" id="modalTurnoCaja">CAJA 1</div>
+                    <div class="border-t-2 border-white border-opacity-30 pt-10">
+                        <div class="font-bold" style="font-size: clamp(4rem, 8vw, 10rem);" id="modalTurnoCaja">CAJA 1</div>
                     </div>
                 </div>
             </div>
