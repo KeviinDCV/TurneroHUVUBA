@@ -551,17 +551,26 @@ class AdminController extends Controller
             switch ($option) {
                 case 'pending':
                     // Eliminar solo turnos pendientes y aplazados del día actual
-                    $deletedCount = Turno::whereDate('fecha_creacion', Carbon::today())
+                    // Usar Eloquent para que se disparen eventos del modelo (historial)
+                    $turnosAEliminar = Turno::whereDate('fecha_creacion', Carbon::today())
                         ->whereIn('estado', ['pendiente', 'aplazado'])
-                        ->delete();
+                        ->get();
+                    $deletedCount = $turnosAEliminar->count();
+                    foreach ($turnosAEliminar as $turno) {
+                        $turno->delete();
+                    }
 
                     $message = "Se eliminaron {$deletedCount} turnos pendientes y aplazados del día actual.";
                     break;
 
                 case 'today':
                     // Eliminar todos los turnos del día actual
-                    $deletedCount = Turno::whereDate('fecha_creacion', Carbon::today())
-                        ->delete();
+                    // Usar Eloquent para que se disparen eventos del modelo (historial)
+                    $turnosAEliminar = Turno::whereDate('fecha_creacion', Carbon::today())->get();
+                    $deletedCount = $turnosAEliminar->count();
+                    foreach ($turnosAEliminar as $turno) {
+                        $turno->delete();
+                    }
 
                     $message = "Se eliminaron {$deletedCount} turnos del día actual (todos los estados).";
                     break;
@@ -576,9 +585,13 @@ class AdminController extends Controller
                         ], 404);
                     }
 
-                    $deletedCount = Turno::whereDate('fecha_creacion', Carbon::today())
+                    $turnosAEliminar = Turno::whereDate('fecha_creacion', Carbon::today())
                         ->where('servicio_id', $serviceId)
-                        ->delete();
+                        ->get();
+                    $deletedCount = $turnosAEliminar->count();
+                    foreach ($turnosAEliminar as $turno) {
+                        $turno->delete();
+                    }
 
                     $message = "Se eliminaron {$deletedCount} turnos del servicio '{$servicio->nombre}' del día actual.";
                     break;

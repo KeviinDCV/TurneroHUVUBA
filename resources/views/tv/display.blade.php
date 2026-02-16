@@ -721,11 +721,9 @@
             white-space: nowrap;
             max-width: 100%;
             display: block;
-            text-align: right !important;
-            transform-origin: right center;
-            margin-left: auto !important;
-            margin-right: 0 !important;
-            padding-right: 8rem !important;
+            text-align: center !important;
+            transform-origin: center center;
+            padding-right: 3rem !important;
         }
 
         /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
@@ -740,7 +738,7 @@
         .turno-numero {
             font-size: clamp(2.5rem, 5vw, 5.5rem);
             display: table-cell !important;
-            width: 55% !important;
+            width: 60% !important;
             text-align: left !important;
             padding-left: 0.75rem !important;
             vertical-align: middle !important;
@@ -757,9 +755,9 @@
         .turno-caja {
             font-size: clamp(2.5rem, 5vw, 5.5rem);
             display: table-cell !important;
-            width: 45% !important;
-            text-align: right !important;
-            padding-right: 8rem !important;
+            width: 40% !important;
+            text-align: center !important;
+            padding-right: 3rem !important;
             vertical-align: middle !important;
             overflow: visible !important;
             text-overflow: clip !important;
@@ -768,9 +766,7 @@
             line-height: 1;
             max-height: 100%;
             max-width: 100%;
-            transform-origin: right center;
-            margin-left: auto !important;
-            margin-right: 0 !important;
+            transform-origin: center center;
         }
 
         /* Ajustes específicos para diferentes alturas de pantalla */

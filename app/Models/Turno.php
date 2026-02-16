@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class Turno extends Model
@@ -302,14 +303,24 @@ class Turno extends Model
     }
 
     // Método estático para generar el siguiente número de turno
-    // Numeración única para todos los turnos (normal y prioritario)
+    // Numeración única por CÓDIGO (no por servicio_id) para evitar saltos
+    // cuando múltiples servicios comparten el mismo código
     public static function siguienteNumero($servicioId, $prioridad = 3, $fecha = null)
     {
         $fecha = $fecha ?: Carbon::today();
 
-        // Buscar el último turno del día para este servicio (sin importar prioridad)
-        $ultimoTurno = static::where('servicio_id', $servicioId)
+        // Obtener el código del servicio para buscar por código compartido
+        $servicio = Servicio::find($servicioId);
+        if (!$servicio) {
+            throw new \Exception('Servicio no encontrado para generar número de turno');
+        }
+
+        // Buscar el último turno del día por CÓDIGO (no por servicio_id)
+        // Esto asegura que todos los servicios/subservicios que comparten
+        // el mismo código (ej: "K") usen una secuencia numérica única
+        $ultimoTurno = static::where('codigo', $servicio->codigo)
             ->whereDate('fecha_creacion', $fecha)
+            ->lockForUpdate() // Prevenir condiciones de carrera
             ->orderBy('numero', 'desc')
             ->first();
 
@@ -317,29 +328,32 @@ class Turno extends Model
     }
 
     // Método estático para crear un nuevo turno
+    // Envuelto en transacción con lockForUpdate para evitar números duplicados
     public static function crear($servicioId, $prioridad = 3)
     {
-        $servicio = Servicio::find($servicioId);
-        if (!$servicio) {
-            throw new \Exception('Servicio no encontrado');
-        }
+        return DB::transaction(function () use ($servicioId, $prioridad) {
+            $servicio = Servicio::find($servicioId);
+            if (!$servicio) {
+                throw new \Exception('Servicio no encontrado');
+            }
 
-        // Validar que la prioridad esté entre 1 y 5
-        if ($prioridad < 1 || $prioridad > 5) {
-            $prioridad = 3; // Por defecto C (media)
-        }
+            // Validar que la prioridad esté entre 1 y 5
+            if ($prioridad < 1 || $prioridad > 5) {
+                $prioridad = 3; // Por defecto C (media)
+            }
 
-        // Generar número según el tipo de turno (normal o prioritario)
-        $numero = static::siguienteNumero($servicioId, $prioridad);
+            // Generar número según el código compartido del servicio
+            $numero = static::siguienteNumero($servicioId, $prioridad);
 
-        return static::create([
-            'codigo' => $servicio->codigo,
-            'numero' => $numero,
-            'servicio_id' => $servicioId,
-            'prioridad' => $prioridad,
-            'fecha_creacion' => now(),
-            'estado' => 'pendiente'
-        ]);
+            return static::create([
+                'codigo' => $servicio->codigo,
+                'numero' => $numero,
+                'servicio_id' => $servicioId,
+                'prioridad' => $prioridad,
+                'fecha_creacion' => now(),
+                'estado' => 'pendiente'
+            ]);
+        });
     }
 
     // Método estático para convertir tipo de prioridad a número
