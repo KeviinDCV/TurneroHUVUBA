@@ -1170,8 +1170,8 @@
 
     <!-- Modal de Notificación de Nuevo Turno -->
     <div id="turnoNotificationModal" class="fixed inset-0 hidden" style="z-index: 9999;">
-        <!-- Overlay con efecto de desenfoque -->
-        <div class="absolute inset-0 bg-black bg-opacity-80"></div>
+        <!-- Overlay con fondo blanco -->
+        <div class="absolute inset-0 bg-white bg-opacity-95"></div>
         
         <!-- Contenido del Modal -->
         <div class="relative flex items-center justify-center h-full p-8" style="z-index: 10000;">
