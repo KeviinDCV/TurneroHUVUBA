@@ -716,7 +716,7 @@
             transform-origin: right center;
             margin-left: auto !important;
             margin-right: 0 !important;
-            padding-right: 1.5rem !important;
+            padding-right: 3rem !important;
         }
 
         /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
@@ -750,7 +750,7 @@
             display: table-cell !important;
             width: 45% !important;
             text-align: right !important;
-            padding-right: 1.5rem !important;
+            padding-right: 3rem !important;
             vertical-align: middle !important;
             overflow: visible !important;
             text-overflow: clip !important;
