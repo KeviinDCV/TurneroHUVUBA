@@ -693,7 +693,7 @@
 
         /* Texto de turnos con límites estrictos y mejor escalado */
         .turno-numero {
-            font-size: clamp(1.5rem, 3vw, 3.5rem);
+            font-size: clamp(2rem, 4vw, 4.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -705,7 +705,7 @@
         }
 
         .turno-caja {
-            font-size: clamp(1.8rem, 3.5vw, 4rem);
+            font-size: clamp(2rem, 4vw, 4.5rem);
             line-height: 1;
             max-height: 100%;
             overflow: hidden;
@@ -729,7 +729,7 @@
 
         /* Columna izquierda - Código del turno */
         .turno-numero {
-            font-size: clamp(1.5rem, 3vw, 3.5rem);
+            font-size: clamp(2rem, 4vw, 4.5rem);
             display: table-cell !important;
             width: 55% !important;
             text-align: left !important;
@@ -746,7 +746,7 @@
 
         /* Columna derecha - CAJA */
         .turno-caja {
-            font-size: clamp(1.8rem, 3.5vw, 4rem);
+            font-size: clamp(2rem, 4vw, 4.5rem);
             display: table-cell !important;
             width: 45% !important;
             text-align: right !important;
