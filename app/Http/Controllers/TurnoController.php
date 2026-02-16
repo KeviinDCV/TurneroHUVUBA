@@ -98,6 +98,35 @@ class TurnoController extends Controller
                 ]);
             }
 
+            // Protección contra doble clic: verificar si ya se creó un turno
+            // para este servicio en los últimos 5 segundos desde la misma IP
+            $turnoReciente = Turno::where('servicio_id', $servicioParaTurno)
+                ->where('estado', 'pendiente')
+                ->where('fecha_creacion', '>=', now()->subSeconds(5))
+                ->whereNull('observaciones') // No contar transferencias
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($turnoReciente) {
+                \Log::warning('⚠️ Turno duplicado prevenido (doble clic)', [
+                    'servicio_id' => $servicioParaTurno,
+                    'turno_existente' => $turnoReciente->codigo_completo,
+                    'ip' => $request->ip(),
+                ]);
+                // Redirigir al turno ya creado en vez de crear uno nuevo
+                return response()->json([
+                    'success' => true,
+                    'message' => "Turno ya generado: {$turnoReciente->codigo_completo}",
+                    'turno' => [
+                        'id' => $turnoReciente->id,
+                        'codigo_completo' => $turnoReciente->codigo_completo,
+                        'servicio' => $servicio->nombre_completo,
+                        'numero' => $turnoReciente->numero
+                    ],
+                    'redirect_url' => route('turnos.ticket', $turnoReciente->id)
+                ]);
+            }
+
             // Si no requiere priorización, crear turno con prioridad por defecto
             $turno = Turno::crear($servicioParaTurno, 3); // Prioridad C por defecto
 
@@ -145,6 +174,36 @@ class TurnoController extends Controller
 
             // Convertir tipo a número (normal=3, alta=5)
             $prioridad = Turno::tipoAPrioridad($prioridadTipo);
+
+            // Protección contra doble clic: verificar si ya se creó un turno
+            // para este servicio en los últimos 5 segundos
+            $turnoReciente = Turno::where('servicio_id', $servicioId)
+                ->where('estado', 'pendiente')
+                ->where('fecha_creacion', '>=', now()->subSeconds(5))
+                ->whereNull('observaciones') // No contar transferencias
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($turnoReciente) {
+                $servicio = Servicio::find($servicioId);
+                \Log::warning('⚠️ Turno con prioridad duplicado prevenido (doble clic)', [
+                    'servicio_id' => $servicioId,
+                    'turno_existente' => $turnoReciente->codigo_completo,
+                    'ip' => $request->ip(),
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => "Turno ya generado: {$turnoReciente->codigo_completo}",
+                    'turno' => [
+                        'id' => $turnoReciente->id,
+                        'codigo_completo' => $turnoReciente->codigo_completo,
+                        'servicio' => $servicio->nombre_completo,
+                        'numero' => $turnoReciente->numero,
+                        'prioridad' => $turnoReciente->prioridad >= 4 ? 'Prioritario' : 'Normal'
+                    ],
+                    'redirect_url' => route('turnos.ticket', $turnoReciente->id)
+                ]);
+            }
 
             // Crear el turno
             $turno = Turno::crear($servicioId, $prioridad);

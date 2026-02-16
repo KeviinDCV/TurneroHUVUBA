@@ -254,6 +254,27 @@
         let servicioSeleccionadoId = null;
         let servicioSeleccionadoNombre = '';
 
+        // Protección contra doble clic
+        let procesandoSolicitud = false;
+
+        function bloquearBotones() {
+            procesandoSolicitud = true;
+            document.querySelectorAll('.btn-service, .btn-prioridad-normal, .btn-prioridad-alta').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.pointerEvents = 'none';
+            });
+        }
+
+        function desbloquearBotones() {
+            procesandoSolicitud = false;
+            document.querySelectorAll('.btn-service, .btn-prioridad-normal, .btn-prioridad-alta').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+            });
+        }
+
         // Función para navegar a subservicios
         function navegarASubservicios(servicioId) {
             if (navigator.vibrate) navigator.vibrate(30);
@@ -262,6 +283,8 @@
 
         // Función para seleccionar un servicio principal (sin subservicios)
         function seleccionarServicio(servicioId, nombreServicio) {
+            if (procesandoSolicitud) return; // Protección doble clic
+            bloquearBotones();
             if (navigator.vibrate) navigator.vibrate(30);
 
             fetch('{{ route('turnos.seleccionar') }}', {
@@ -281,27 +304,33 @@
                     if (data.requiere_priorizacion) {
                         servicioSeleccionadoId = data.servicio_id;
                         servicioSeleccionadoNombre = data.servicio_nombre;
+                        desbloquearBotones();
                         mostrarPrioridadModal(data.servicio_nombre);
                     } else {
                         // Redirigir al ticket del turno
                         if (data.redirect_url) {
                             window.location.href = data.redirect_url;
                         } else {
+                            desbloquearBotones();
                             mostrarModal(data.message);
                         }
                     }
                 } else {
+                    desbloquearBotones();
                     mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                desbloquearBotones();
                 mostrarModal('Error de conexión');
             });
         }
 
         // Función para seleccionar un subservicio
         function seleccionarSubservicio(subservicioId, nombreSubservicio) {
+            if (procesandoSolicitud) return; // Protección doble clic
+            bloquearBotones();
             if (navigator.vibrate) navigator.vibrate(30);
 
             fetch('{{ route('turnos.seleccionar') }}', {
@@ -321,21 +350,25 @@
                     if (data.requiere_priorizacion) {
                         servicioSeleccionadoId = data.servicio_id;
                         servicioSeleccionadoNombre = data.servicio_nombre;
+                        desbloquearBotones();
                         mostrarPrioridadModal(data.servicio_nombre);
                     } else {
                         // Redirigir al ticket del turno
                         if (data.redirect_url) {
                             window.location.href = data.redirect_url;
                         } else {
+                            desbloquearBotones();
                             mostrarModal(data.message);
                         }
                     }
                 } else {
+                    desbloquearBotones();
                     mostrarModal(data.message || 'Error al procesar la solicitud');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                desbloquearBotones();
                 mostrarModal('Error de conexión');
             });
         }
@@ -355,9 +388,12 @@
 
         // Seleccionar prioridad y crear turno
         function seleccionarPrioridad(prioridad) {
+            if (procesandoSolicitud) return; // Protección doble clic
+            bloquearBotones();
             if (navigator.vibrate) navigator.vibrate(30);
             
             if (!servicioSeleccionadoId) {
+                desbloquearBotones();
                 mostrarModal('Error: No hay servicio seleccionado');
                 return;
             }
@@ -382,15 +418,18 @@
                     if (data.redirect_url) {
                         window.location.href = data.redirect_url;
                     } else {
+                        desbloquearBotones();
                         mostrarModal(data.message);
                     }
                 } else {
+                    desbloquearBotones();
                     mostrarModal(data.message || 'Error al generar el turno');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 cerrarPrioridadModal();
+                desbloquearBotones();
                 mostrarModal('Error de conexión');
             });
         }

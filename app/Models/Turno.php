@@ -409,6 +409,9 @@ class Turno extends Model
 
     /**
      * Buscar un turno por su código completo
+     * Cuando hay duplicados (por transferencias), prioriza:
+     * 1. Turnos pendientes o llamados (activos)
+     * 2. Turno más reciente
      * 
      * @param string $codigoCompleto
      * @return Turno|null
@@ -421,9 +424,23 @@ class Turno extends Model
             return null;
         }
         
+        // Primero buscar turnos activos (pendiente o llamado) - más relevantes
+        $turnoActivo = static::where('codigo', $datos['codigo'])
+            ->where('numero', $datos['numero'])
+            ->delDia()
+            ->whereIn('estado', ['pendiente', 'llamado'])
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($turnoActivo) {
+            return $turnoActivo;
+        }
+
+        // Si no hay activos, retornar el más reciente
         return static::where('codigo', $datos['codigo'])
             ->where('numero', $datos['numero'])
             ->delDia()
+            ->orderBy('id', 'desc')
             ->first();
     }
 }
