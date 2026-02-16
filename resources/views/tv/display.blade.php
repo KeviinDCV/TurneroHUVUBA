@@ -725,7 +725,7 @@
             transform-origin: right center;
             margin-left: auto !important;
             margin-right: 0 !important;
-            padding-right: 5rem !important;
+            padding-right: 8rem !important;
         }
 
         /* LAYOUT DE TABLA - DOS COLUMNAS DEFINIDAS */
@@ -759,7 +759,7 @@
             display: table-cell !important;
             width: 45% !important;
             text-align: right !important;
-            padding-right: 5rem !important;
+            padding-right: 8rem !important;
             vertical-align: middle !important;
             overflow: visible !important;
             text-overflow: clip !important;
@@ -1039,10 +1039,10 @@
         <!-- Header Section -->
         <div class="grid grid-cols-6 responsive-header responsive-container">
             <!-- Left Header - Apoyo Diagnostico y Hora -->
-            <div class="bg-hospital-blue-light p-4 flex flex-col justify-center col-span-2" style="overflow: visible !important;">
-                <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-1">UBA</h1>
+            <div class="bg-hospital-blue-light p-4 flex flex-col justify-center items-end col-span-2" style="overflow: visible !important; padding-right: 2rem;">
+                <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-1" style="text-align: right;">UBA</h1>
                 <!-- Hora de Colombia (UTC-5) -->
-                <p class="text-2xl text-hospital-blue font-semibold" id="current-time" style="white-space: nowrap; overflow: visible;">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
+                <p class="text-2xl text-hospital-blue font-semibold" id="current-time" style="white-space: nowrap; overflow: visible; text-align: right;">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
             </div>
 
             <!-- Center Header - Hospital Info con Logo -->
@@ -1074,7 +1074,7 @@
         <!-- Main Content -->
         <div class="grid grid-cols-6 responsive-main responsive-container">
             <!-- Left Side - Multimedia Content -->
-            <div class="bg-hospital-blue-light p-6 flex flex-col col-span-4 responsive-multimedia-section responsive-container">
+            <div class="bg-hospital-blue-light p-3 flex flex-col col-span-4 responsive-multimedia-section responsive-container">
                 <!-- Espacio para videos/fotos - Ahora ocupa todo el espacio disponible -->
                 <div class="flex-1 bg-white rounded-lg enhanced-border enhanced-shadow flex items-center justify-center relative overflow-hidden" id="multimedia-container">
                     <!-- Contenido multimedia dinámico -->
