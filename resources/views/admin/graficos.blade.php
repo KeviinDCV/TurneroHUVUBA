@@ -1378,38 +1378,13 @@ function cargarDistribucionServiciosHistorico() {
                 chartsHistorico.servicios.destroy();
             }
 
-            // Monochromatic hospital-blue theme with subtle variations
-            const generateBlueShades = (count) => {
-                const baseColor = colors.primary; // #064b9e
-                const shades = [];
+            // Paleta multicolor variada
+            const palette = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
+                '#ec4899', '#06b6d4', '#6366f1', '#84cc16', '#f97316'
+            ];
 
-                for (let i = 0; i < count; i++) {
-                    // Create variations by adjusting opacity and lightness
-                    const opacity = 1 - (i * 0.15); // Decrease opacity gradually
-                    const lightness = Math.min(1, 0.7 + (i * 0.1)); // Slight lightness variation
-
-                    if (i === 0) {
-                        shades.push(baseColor); // First item uses pure hospital blue
-                    } else {
-                        // Create rgba variations of hospital blue
-                        const rgb = hexToRgb(baseColor);
-                        shades.push(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
-                    }
-                }
-                return shades;
-            };
-
-            // Helper function to convert hex to rgb
-            const hexToRgb = (hex) => {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : null;
-            };
-
-            const chartColors = generateBlueShades(data.labels.length);
+            const chartColors = data.labels.map((_, i) => palette[i % palette.length]);
 
             chartsHistorico.servicios = new Chart(ctx, {
                 type: 'pie',
@@ -1449,16 +1424,20 @@ function cargarDistribucionEstadosHistorico() {
                 chartsHistorico.estados.destroy();
             }
 
-            // Monochromatic hospital-blue theme with minimal semantic colors
+            // Colores semánticos para estados
             const estadoColors = {
-                'pendiente': colors.primary,   // Hospital blue - pending status
-                'llamado': '#4a90e2',          // Light hospital blue - in progress/called
-                'atendido': '#2563eb',         // Blue - completed successfully (maintaining monochromatic theme)
-                'aplazado': '#7bb3f0',         // Lighter hospital blue - postponed/delayed
-                'cancelado': colors.danger     // Red - cancelled/failed (essential semantic)
+                'pendiente': '#f59e0b',   // Amber (Pending)
+                'llamado': '#3b82f6',     // Blue (Called)
+                'atendido': '#10b981',    // Green (Completed)
+                'aplazado': '#d97706',    // Darker Amber (Deferred)
+                'cancelado': '#ef4444',   // Red (Cancelled)
+                'ausente': '#6b7280'      // Gray (Absent)
             };
 
-            const chartColors = data.labels.map(estado => estadoColors[estado] || colors.primary);
+            const chartColors = data.labels.map(estado => {
+                const key = estado ? estado.toLowerCase() : '';
+                return estadoColors[key] || colors.primary;
+            });
 
             chartsHistorico.estados = new Chart(ctx, {
                 type: 'bar',
@@ -1510,8 +1489,8 @@ function cargarHorasPicoHistorico() {
                     datasets: [{
                         label: 'Turnos por Hora',
                         data: data.data,
-                        backgroundColor: colors.primary,
-                        borderColor: colors.primary,
+                        backgroundColor: '#3b82f6', // Azul claro para todas las horas
+                        borderColor: '#3b82f6',
                         borderWidth: 1
                     }]
                 },
