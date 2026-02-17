@@ -175,11 +175,7 @@
     </div>
 
     <!-- Instrucciones -->
-    <div class="absolute bottom-16 left-0 right-0 text-center animate-slide-in" style="animation-delay: 0.3s; animation-fill-mode: both;">
-        <p class="text-lg text-gray-600">
-            Toque el servicio que necesita
-        </p>
-    </div>
+
 
     <!-- Firma -->
     <div class="absolute bottom-4 right-4">
