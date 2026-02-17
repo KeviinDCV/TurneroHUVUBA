@@ -117,29 +117,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
     </div>
 
-    <!-- Action Buttons -->
-    <div class="no-print fixed bottom-6 left-0 right-0 flex justify-center space-x-4">
-        <button
-            onclick="window.print()"
-            class="px-6 py-3 text-white rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl pulse"
-            style="background-color: #064b9e;"
-        >
-            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-            </svg>
-            Imprimir Ticket
-        </button>
-
-        <button
-            onclick="window.location.href='{{ route('turnos.menu') }}'"
-            class="px-6 py-3 bg-gray-600 text-white rounded-lg shadow-lg transition-all duration-200 hover:bg-gray-700 hover:shadow-xl"
-        >
-            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            Volver al Menú
-        </button>
-    </div>
+    <!-- Los botones de Imprimir y Volver se eliminaron porque la impresion y redireccion son automaticas -->
 
     <!-- Auto-print script -->
     <script>
