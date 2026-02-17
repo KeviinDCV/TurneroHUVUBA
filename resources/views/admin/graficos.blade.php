@@ -569,33 +569,22 @@ function construirURL(baseURL, params) {
 
 // Función para crear gráfico de dona
 function crearGraficoDona(ctx, data, titulo) {
-    // Generate hospital blue variations for consistent branding
-    const generateHospitalBlueShades = (count) => {
-        const baseColor = colors.primary; // #064b9e
-        const shades = [];
+    // Paleta de colores variada y distinguible
+    const palette = [
+        '#3b82f6', // Blue
+        '#ef4444', // Red
+        '#10b981', // Green
+        '#f59e0b', // Yellow/Orange
+        '#8b5cf6', // Purple
+        '#ec4899', // Pink
+        '#06b6d4', // Cyan
+        '#6366f1', // Indigo
+        '#84cc16', // Lime
+        '#f97316'  // Orange
+    ];
 
-        for (let i = 0; i < count; i++) {
-            if (i === 0) {
-                shades.push(baseColor); // Pure hospital blue for first item
-            } else {
-                // Create variations by adjusting opacity
-                const opacity = 1 - (i * 0.15);
-                const rgb = hexToRgb(baseColor);
-                shades.push(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Math.max(0.3, opacity)})`);
-            }
-        }
-        return shades;
-    };
-
-    // Helper function to convert hex to rgb
-    const hexToRgb = (hex) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : null;
-    };
+    // Asegurarse de tener suficientes colores repitiendo la paleta si es necesario
+    const backgroundColors = data.labels.map((_, i) => palette[i % palette.length]);
 
     return new Chart(ctx, {
         type: 'doughnut',
@@ -603,8 +592,7 @@ function crearGraficoDona(ctx, data, titulo) {
             labels: data.labels,
             datasets: [{
                 data: data.data,
-                // Hospital blue monochromatic theme for consistency
-                backgroundColor: generateHospitalBlueShades(data.labels.length),
+                backgroundColor: backgroundColors,
                 borderWidth: 2,
                 borderColor: '#ffffff'
             }]
@@ -622,7 +610,29 @@ function crearGraficoDona(ctx, data, titulo) {
 }
 
 // Función para crear gráfico de barras
-function crearGraficoBarras(ctx, data, titulo, color = colors.primary) {
+function crearGraficoBarras(ctx, data, titulo, useVariedColors = false) {
+    let backgroundColors, borderColors;
+    
+    // Si se pasa un color específico (string) en lugar de un booleano, usar ese color
+    if (typeof useVariedColors === 'string') {
+        backgroundColors = useVariedColors + '80';
+        borderColors = useVariedColors;
+    } 
+    // Si es true, usar paleta variada
+    else if (useVariedColors === true) {
+        const palette = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
+            '#ec4899', '#06b6d4', '#6366f1', '#84cc16', '#f97316'
+        ];
+        backgroundColors = data.labels.map((_, i) => palette[i % palette.length] + '80'); // 50% opacity
+        borderColors = data.labels.map((_, i) => palette[i % palette.length]);
+    } 
+    // Por defecto usar azul primario
+    else {
+        backgroundColors = colors.primary + '80';
+        borderColors = colors.primary;
+    }
+
     return new Chart(ctx, {
         type: 'bar',
         data: {
@@ -630,8 +640,8 @@ function crearGraficoBarras(ctx, data, titulo, color = colors.primary) {
             datasets: [{
                 label: titulo,
                 data: data.data,
-                backgroundColor: color + '80',
-                borderColor: color,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
                 borderWidth: 1
             }]
         },
@@ -830,7 +840,7 @@ function cargarTurnosPorHora() {
             if (charts.turnosPorHora) {
                 charts.turnosPorHora.destroy();
             }
-            charts.turnosPorHora = crearGraficoBarras(ctx, data, 'Turnos por Hora', colors.primary);
+            charts.turnosPorHora = crearGraficoBarras(ctx, data, 'Turnos por Hora', true); // Varied colors
         })
         .catch(error => console.error('Error al cargar turnos por hora:', error));
 }
@@ -846,7 +856,7 @@ function cargarTurnosPorServicio() {
             if (charts.turnosPorServicio) {
                 charts.turnosPorServicio.destroy();
             }
-            charts.turnosPorServicio = crearGraficoBarras(ctx, data, 'Turnos por Servicio', colors.primary);
+            charts.turnosPorServicio = crearGraficoBarras(ctx, data, 'Turnos por Servicio', true); // Varied colors
         })
         .catch(error => console.error('Error al cargar turnos por servicio:', error));
 }
@@ -862,7 +872,7 @@ function cargarRendimientoAsesores() {
             if (charts.rendimientoAsesores) {
                 charts.rendimientoAsesores.destroy();
             }
-            charts.rendimientoAsesores = crearGraficoBarras(ctx, data, 'Turnos Atendidos', colors.primary);
+            charts.rendimientoAsesores = crearGraficoBarras(ctx, data, 'Turnos Atendidos', true); // Varied colors
         })
         .catch(error => console.error('Error al cargar rendimiento de asesores:', error));
 }
@@ -878,7 +888,7 @@ function cargarTiempoAtencion() {
             if (charts.tiempoAtencion) {
                 charts.tiempoAtencion.destroy();
             }
-            charts.tiempoAtencion = crearGraficoBarras(ctx, data, 'Tiempo Promedio (min)', colors.primary);
+            charts.tiempoAtencion = crearGraficoBarras(ctx, data, 'Tiempo Promedio (min)', true); // Varied colors
         })
         .catch(error => console.error('Error al cargar tiempo de atención:', error));
 }
