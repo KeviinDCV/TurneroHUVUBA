@@ -454,7 +454,7 @@ class AsesorController extends Controller
         $turnos = Turno::whereIn('servicio_id', $serviciosIds)
             ->where('estado', 'pendiente')
             ->delDia()
-            ->orderBy('numero', 'asc')
+            ->orderBy('fecha_creacion', 'asc')
             ->get();
 
         if ($turnos->isEmpty()) {
@@ -462,8 +462,8 @@ class AsesorController extends Controller
         }
 
         // Separar turnos en normales (prioridad < 4) y prioritarios (prioridad >= 4)
-        $turnosNormales = $turnos->filter(fn($t) => $t->prioridad < 4)->sortBy('numero');
-        $turnosPrioritarios = $turnos->filter(fn($t) => $t->prioridad >= 4)->sortBy('numero');
+        $turnosNormales = $turnos->filter(fn($t) => $t->prioridad < 4)->sortBy('fecha_creacion');
+        $turnosPrioritarios = $turnos->filter(fn($t) => $t->prioridad >= 4)->sortBy('fecha_creacion');
 
         // Si solo hay un tipo, retornar el primero de ese tipo
         if ($turnosPrioritarios->isEmpty()) {
@@ -477,9 +477,9 @@ class AsesorController extends Controller
         $primerNormal = $turnosNormales->first();
         $primerPrioritario = $turnosPrioritarios->first();
 
-        // REGLA 1: Si el prioritario tiene número menor o igual al normal, 
+        // REGLA 1: Si el prioritario es más antiguo o igual al normal, 
         // llamarlo en su orden natural (no retrasarlo)
-        if ($primerPrioritario->numero <= $primerNormal->numero) {
+        if ($primerPrioritario->fecha_creacion <= $primerNormal->fecha_creacion) {
             return $primerPrioritario;
         }
 
@@ -1066,27 +1066,17 @@ class AsesorController extends Controller
 
         // Determinar el nuevo número según la posición
         if ($request->posicion === 'primero') {
-            // Obtener el número mínimo actual en el servicio destino y restar 1
-            $minNumero = Turno::where('servicio_id', $servicioDestino->id)
+            // Obtener la fecha de creación mínima en el servicio destino
+            $minFecha = Turno::where('servicio_id', $servicioDestino->id)
                 ->where('estado', 'pendiente')
                 ->delDia()
-                ->min('numero');
+                ->min('fecha_creacion');
             
-            // Si hay turnos, usar el mínimo - 1, si no, usar 0
-            $nuevoNumero = $minNumero ? ($minNumero - 1) : 0;
-            
-            // Si el número es menor o igual a 0, usar 0.5 (será el primero)
-            if ($nuevoNumero <= 0) {
-                $nuevoNumero = 0;
-            }
+            // Si hay turnos, usar esa fecha menos 1 segundo, si no, usar ahora
+            $nuevaFechaCreacion = $minFecha ? Carbon::parse($minFecha)->subSeconds(1) : now();
         } else {
-            // Posición último: obtener el número máximo y sumar 1
-            $maxNumero = Turno::where('servicio_id', $servicioDestino->id)
-                ->whereIn('estado', ['pendiente', 'aplazado'])
-                ->delDia()
-                ->max('numero');
-            
-            $nuevoNumero = $maxNumero ? ($maxNumero + 1) : 1;
+            // Posición último: usar fecha actual (ahora)
+            $nuevaFechaCreacion = now();
         }
 
         try {
@@ -1125,7 +1115,7 @@ class AsesorController extends Controller
             $nuevoTurno->numero = $turno->numero; // Mantener el número ORIGINAL
             $nuevoTurno->prioridad = $turno->prioridad; // Mantener la prioridad original
             $nuevoTurno->estado = 'pendiente';
-            $nuevoTurno->fecha_creacion = now();
+            $nuevoTurno->fecha_creacion = $nuevaFechaCreacion;
             $nuevoTurno->observaciones = 'Transferido desde ' . $servicioOriginal->nombre;
             $nuevoTurno->save();
 
