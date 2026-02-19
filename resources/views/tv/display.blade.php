@@ -2375,6 +2375,11 @@
                 video.autoplay = true;
                 video.muted = true;
                 video.loop = false;
+                video.playsInline = true; // Importante para rendimiento en móviles y algunos navegadores
+                video.preload = 'auto'; // Preargar metadatos y buffer
+                
+                // Manejo de errores para evitar bucles infinitos
+                let errorHandled = false;
 
                 video.onloadeddata = () => {
                     container.appendChild(video);
@@ -2388,15 +2393,20 @@
                 };
 
                 video.onended = () => {
+                    // Limpiar video para liberar memoria antes de pasar al siguiente
+                    video.src = "";
+                    video.load();
                     nextMedia();
                 };
 
                 video.onerror = () => {
+                    if (errorHandled) return;
+                    errorHandled = true;
                     console.error('Error al cargar video:', media.url);
                     // Intentar siguiente media después de un breve delay
                     setTimeout(() => {
                         nextMedia();
-                    }, 500);
+                    }, 1000); // Aumentar delay para evitar sobrecarga si falla repetidamente
                 };
             }
         }
