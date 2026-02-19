@@ -229,8 +229,11 @@ class TvConfigController extends Controller
         ini_set('memory_limit', '512M');
 
         try {
+            \Log::info('Inicio de storeMultimedia', ['hasFile' => $request->hasFile('archivo'), 'all' => $request->all()]);
+
             // Verificar si el archivo fue subido correctamente
             if (!$request->hasFile('archivo')) {
+                \Log::error('No se recibió archivo en storeMultimedia', ['files' => $request->allFiles()]);
                 return response()->json([
                     'success' => false,
                     'message' => 'No se recibió ningún archivo. Puede que el archivo sea demasiado grande para el servidor.'

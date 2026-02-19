@@ -532,7 +532,7 @@
             });
 
             // Configurar y enviar la petición
-            xhr.open('POST', '{{ route("admin.tv-config.multimedia.store") }}');
+            xhr.open('POST', '/tv-config/multimedia');
             xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
             xhr.timeout = 600000; // 10 minutos de timeout
             xhr.send(formData);
