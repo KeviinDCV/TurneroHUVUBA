@@ -272,9 +272,9 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($estadisticas['por_asesor'] as $asesor => $datos)
+                @foreach($estadisticas['por_asesor'] as $asesorId => $datos)
                 <tr>
-                    <td>{{ $asesor }}</td>
+                    <td>{{ $datos['nombre_completo'] ?? ($datos['nombre_usuario'] ?? 'N/A') }}</td>
                     <td class="text-center">{{ $datos['total'] }}</td>
                     <td class="text-center">{{ $datos['atendidos'] }}</td>
                     <td class="text-center">
@@ -309,7 +309,7 @@
                     <th>Estado</th>
                     <th>Prioridad</th>
                     <th>Fecha Creación</th>
-                    <th>Duración (min)</th>
+                    <th>Duración (mm:ss)</th>
                 </tr>
             </thead>
             <tbody>
@@ -328,7 +328,16 @@
                     </td>
                     <td>{{ $turno->fecha_creacion ? \Carbon\Carbon::parse($turno->fecha_creacion)->format('d/m/Y H:i') : 'N/A' }}</td>
                     <td class="text-center">
-                        {{ $turno->duracion_atencion ? round($turno->duracion_atencion / 60, 2) : 'N/A' }}
+                        @if($turno->duracion_atencion)
+                            @php
+                                $val = abs($turno->duracion_atencion);
+                                $min = floor($val / 60);
+                                $seg = $val % 60;
+                            @endphp
+                            {{ sprintf('%02d:%02d', $min, $seg) }}
+                        @else
+                            N/A
+                        @endif
                     </td>
                 </tr>
                 @endforeach
