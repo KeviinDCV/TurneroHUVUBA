@@ -113,7 +113,7 @@ class ReportesController extends Controller
                 'tiempo_promedio' => round($grupo->where('estado', 'atendido')->avg('duracion_atencion'), 2),
                 'tiempo_total' => round($grupo->where('estado', 'atendido')->sum('duracion_atencion'), 2)
             ];
-        });
+        })->sortByDesc('total');
 
         // Estadísticas DETALLADAS por asesor
         $porAsesor = $turnos->whereNotNull('asesor_id')->groupBy('asesor_id')->map(function ($grupo) use ($fechaInicio, $fechaFin) {
@@ -177,7 +177,7 @@ class ReportesController extends Controller
                     ];
                 })->toArray()
             ];
-        });
+        })->sortByDesc('atendidos');
 
         // Estadísticas por día
         $porDia = $turnos->groupBy(function ($turno) {
