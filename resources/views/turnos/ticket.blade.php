@@ -128,19 +128,15 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
         // Escuchar evento afterprint para redirigir automáticamente
         window.addEventListener('afterprint', function() {
-            setTimeout(volverAlMenu, 500); // Redirigir rápido después de imprimir
+            setTimeout(volverAlMenu, 1000);
         });
 
-        // Esperar a que la página cargue para evitar impresiones en blanco o fallidas
-        window.onload = function() {
-            // Un pequeño delay de 500ms para asegurar renderizado en pantalla
-            setTimeout(function() {
-                window.print();
-                
-                // Fallback: si afterprint no se dispara o cancelan la impresión
-                setTimeout(volverAlMenu, 4000);
-            }, 500);
-        };
+        // Auto-print después de 2 segundos
+        setTimeout(function() {
+            window.print();
+            // Fallback: si afterprint no se dispara, redirigir después de 5 segundos
+            setTimeout(volverAlMenu, 5000);
+        }, 2000);
 
         // Vibración si está disponible
         if (navigator.vibrate) {

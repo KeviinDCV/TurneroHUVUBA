@@ -1452,7 +1452,7 @@ function estadisticasUsuarioModal() {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <div>
-                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_atencion} <span class="text-sm font-normal text-gray-500">(mm:ss)</span></p>
+                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_atencion} min</p>
                                 <p class="text-xs text-gray-500">Tiempo Prom. Atención</p>
                             </div>
                         </div>
@@ -1463,7 +1463,7 @@ function estadisticasUsuarioModal() {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
                             <div>
-                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_total_atencion} <span class="text-sm font-normal text-gray-500">(mm:ss)</span></p>
+                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_total_atencion} min</p>
                                 <p class="text-xs text-gray-500">Tiempo Total</p>
                             </div>
                         </div>
@@ -1474,7 +1474,7 @@ function estadisticasUsuarioModal() {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                             </svg>
                             <div>
-                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_entre_turnos} <span class="text-sm font-normal text-gray-500">(mm:ss)</span></p>
+                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_entre_turnos} min</p>
                                 <p class="text-xs text-gray-500">Tiempo Entre Turnos</p>
                             </div>
                         </div>
@@ -1507,7 +1507,7 @@ function estadisticasUsuarioModal() {
                                 <tr>
                                     <th class="py-2 px-2 text-left">Actividad</th>
                                     <th class="py-2 px-2 text-left">Inicio</th>
-                                    <th class="py-2 px-2 text-left">Duración (mm:ss)</th>
+                                    <th class="py-2 px-2 text-left">Duración</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y">
@@ -1515,7 +1515,7 @@ function estadisticasUsuarioModal() {
                                     <tr class="hover:bg-gray-50">
                                         <td class="py-2 px-2">${a.actividad}</td>
                                         <td class="py-2 px-2">${a.inicio}</td>
-                                        <td class="py-2 px-2">${a.duracion_formateada}</td>
+                                        <td class="py-2 px-2">${a.duracion_minutos} min</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -1561,7 +1561,7 @@ function estadisticasUsuarioModal() {
                                     <th class="py-2 px-2 text-left">Código</th>
                                     <th class="py-2 px-2 text-left">Servicio</th>
                                     <th class="py-2 px-2 text-left">Hora</th>
-                                    <th class="py-2 px-2 text-left">Duración (mm:ss)</th>
+                                    <th class="py-2 px-2 text-left">Duración</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y bg-white">
@@ -1570,7 +1570,7 @@ function estadisticasUsuarioModal() {
                                         <td class="py-2 px-2 font-medium">${t.codigo}</td>
                                         <td class="py-2 px-2">${t.servicio}</td>
                                         <td class="py-2 px-2">${t.fecha_atencion}</td>
-                                        <td class="py-2 px-2">${t.duracion_formateada}</td>
+                                        <td class="py-2 px-2">${t.duracion_minutos} min</td>
                                     </tr>
                                 `).join('')}
                             </tbody>

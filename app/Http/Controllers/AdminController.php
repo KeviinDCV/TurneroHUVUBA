@@ -857,9 +857,9 @@ class AdminController extends Controller
             'turnos_aplazados' => $turnos->where('estado', 'aplazado')->count(),
             'turnos_cancelados' => $turnos->where('estado', 'cancelado')->count(),
             'tiempo_promedio_atencion' => $turnosAtendidos->count() > 0 
-                ? sprintf('%02d:%02d', floor($turnosAtendidos->avg('duracion_atencion') / 60), $turnosAtendidos->avg('duracion_atencion') % 60)
-                : '00:00',
-            'tiempo_total_atencion' => sprintf('%02d:%02d', floor($turnosAtendidos->sum('duracion_atencion') / 60), $turnosAtendidos->sum('duracion_atencion') % 60),
+                ? round($turnosAtendidos->avg('duracion_atencion') / 60, 2) 
+                : 0,
+            'tiempo_total_atencion' => round($turnosAtendidos->sum('duracion_atencion') / 60, 2),
         ];
 
         // Calcular tiempo promedio entre turnos
@@ -876,8 +876,8 @@ class AdminController extends Controller
             }
         }
         $estadisticas['tiempo_promedio_entre_turnos'] = count($tiemposEntreTurnos) > 0 
-            ? sprintf('%02d:%02d', floor(array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos)), (array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos) - floor(array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos))) * 60)
-            : '00:00';
+            ? round(array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos), 2) 
+            : 0;
 
         // Turnos por servicio
         $turnosPorServicio = $turnos->groupBy('servicio.nombre')->map(function ($grupo) {
@@ -923,9 +923,6 @@ class AdminController extends Controller
                 'duracion_minutos' => $turno->duracion_atencion 
                     ? round($turno->duracion_atencion / 60, 2) 
                     : 0,
-                'duracion_formateada' => $turno->duracion_atencion 
-                    ? sprintf('%02d:%02d', floor($turno->duracion_atencion / 60), $turno->duracion_atencion % 60)
-                    : '00:00',
                 'caja' => $turno->caja->numero_caja ?? 'N/A',
             ];
         });
@@ -936,9 +933,6 @@ class AdminController extends Controller
                 'inicio' => $actividad->inicio->format('d/m/Y H:i:s'),
                 'fin' => $actividad->fin ? $actividad->fin->format('d/m/Y H:i:s') : 'En curso',
                 'duracion_minutos' => $actividad->duracion_minutos ?? 0,
-                'duracion_formateada' => $actividad->duracion_minutos
-                    ? sprintf('%02d:%02d', floor($actividad->duracion_minutos), ($actividad->duracion_minutos - floor($actividad->duracion_minutos)) * 60)
-                    : '00:00',
                 'actividad' => $actividad->actividad,
             ];
         });
