@@ -857,9 +857,9 @@ class AdminController extends Controller
             'turnos_aplazados' => $turnos->where('estado', 'aplazado')->count(),
             'turnos_cancelados' => $turnos->where('estado', 'cancelado')->count(),
             'tiempo_promedio_atencion' => $turnosAtendidos->count() > 0 
-                ? round($turnosAtendidos->avg('duracion_atencion') / 60, 2) 
-                : 0,
-            'tiempo_total_atencion' => round($turnosAtendidos->sum('duracion_atencion') / 60, 2),
+                ? sprintf('%02d:%02d', floor($turnosAtendidos->avg('duracion_atencion') / 60), floor($turnosAtendidos->avg('duracion_atencion')) % 60) 
+                : '00:00',
+            'tiempo_total_atencion' => sprintf('%02d:%02d', floor($turnosAtendidos->sum('duracion_atencion') / 60), $turnosAtendidos->sum('duracion_atencion') % 60),
         ];
 
         // Calcular tiempo promedio entre turnos
@@ -870,14 +870,18 @@ class AdminController extends Controller
             $actual = $turnosOrdenados[$i];
             
             if ($anterior->fecha_finalizacion && $actual->fecha_llamado) {
-                $minutos = Carbon::parse($anterior->fecha_finalizacion)
-                    ->diffInMinutes(Carbon::parse($actual->fecha_llamado));
-                $tiemposEntreTurnos[] = $minutos;
+                $segundos = Carbon::parse($anterior->fecha_finalizacion)
+                    ->diffInSeconds(Carbon::parse($actual->fecha_llamado));
+                $tiemposEntreTurnos[] = $segundos;
             }
         }
-        $estadisticas['tiempo_promedio_entre_turnos'] = count($tiemposEntreTurnos) > 0 
-            ? round(array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos), 2) 
-            : 0;
+        
+        if (count($tiemposEntreTurnos) > 0) {
+            $promedioSegundos = array_sum($tiemposEntreTurnos) / count($tiemposEntreTurnos);
+            $estadisticas['tiempo_promedio_entre_turnos'] = sprintf('%02d:%02d', floor($promedioSegundos / 60), floor($promedioSegundos) % 60);
+        } else {
+            $estadisticas['tiempo_promedio_entre_turnos'] = '00:00';
+        }
 
         // Turnos por servicio
         $turnosPorServicio = $turnos->groupBy('servicio.nombre')->map(function ($grupo) {
@@ -921,8 +925,8 @@ class AdminController extends Controller
                     ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') 
                     : 'N/A',
                 'duracion_minutos' => $turno->duracion_atencion 
-                    ? round($turno->duracion_atencion / 60, 2) 
-                    : 0,
+                    ? sprintf('%02d:%02d', floor(abs($turno->duracion_atencion) / 60), abs($turno->duracion_atencion) % 60) 
+                    : '00:00',
                 'caja' => $turno->caja->numero_caja ?? 'N/A',
             ];
         });
