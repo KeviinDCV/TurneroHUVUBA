@@ -69,11 +69,13 @@ class TurnoHistorial extends Model
         return $this->belongsTo(Turno::class, 'turno_original_id');
     }
 
-    // Scopes
     public function scopeDelDia($query, $fecha = null)
     {
-        $fecha = $fecha ?: Carbon::today();
-        return $query->whereDate('fecha_creacion', $fecha);
+        $fecha = $fecha ? \Carbon\Carbon::parse($fecha) : Carbon::today();
+        $inicio = $fecha->copy()->startOfDay();
+        $fin = $fecha->copy()->endOfDay();
+        
+        return $query->whereBetween('fecha_creacion', [$inicio, $fin]);
     }
 
     public function scopePorServicio($query, $servicioId)

@@ -120,8 +120,11 @@ class Turno extends Model
 
     public function scopeDelDia($query, $fecha = null)
     {
-        $fecha = $fecha ?: Carbon::today();
-        return $query->whereDate('fecha_creacion', $fecha);
+        $fecha = $fecha ? \Carbon\Carbon::parse($fecha) : Carbon::today();
+        $inicio = $fecha->copy()->startOfDay();
+        $fin = $fecha->copy()->endOfDay();
+        
+        return $query->whereBetween('fecha_creacion', [$inicio, $fin]);
     }
 
     public function scopeDelServicio($query, $servicioId)
@@ -318,8 +321,11 @@ class Turno extends Model
         // Buscar el último turno del día por CÓDIGO (no por servicio_id)
         // Esto asegura que todos los servicios/subservicios que comparten
         // el mismo código (ej: "K") usen una secuencia numérica única
+        $inicio = $fecha->copy()->startOfDay();
+        $fin = $fecha->copy()->endOfDay();
+
         $ultimoTurno = static::where('codigo', $servicio->codigo)
-            ->whereDate('fecha_creacion', $fecha)
+            ->whereBetween('fecha_creacion', [$inicio, $fin])
             ->lockForUpdate() // Prevenir condiciones de carrera
             ->orderBy('numero', 'desc')
             ->first();
