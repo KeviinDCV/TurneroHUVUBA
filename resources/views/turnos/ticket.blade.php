@@ -131,12 +131,12 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
             setTimeout(volverAlMenu, 1000);
         });
 
-        // Auto-print inmediato (10ms para renderizado)
+        // Auto-print después de 2 segundos
         setTimeout(function() {
             window.print();
             // Fallback: si afterprint no se dispara, redirigir después de 5 segundos
             setTimeout(volverAlMenu, 5000);
-        }, 10);
+        }, 2000);
 
         // Vibración si está disponible
         if (navigator.vibrate) {
