@@ -916,13 +916,13 @@ class AdminController extends Controller
                 'codigo' => $turno->codigo_completo,
                 'servicio' => $turno->servicio->nombre ?? 'N/A',
                 'fecha_llamado' => $turno->fecha_llamado 
-                    ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') 
+                    ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y h:i:s A') 
                     : 'N/A',
                 'fecha_atencion' => $turno->fecha_atencion 
-                    ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') 
+                    ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y h:i:s A') 
                     : 'N/A',
                 'fecha_finalizacion' => $turno->fecha_finalizacion 
-                    ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') 
+                    ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y h:i:s A') 
                     : 'N/A',
                 'duracion_minutos' => $turno->duracion_atencion 
                     ? sprintf('%02d:%02d', floor(abs($turno->duracion_atencion) / 60), abs($turno->duracion_atencion) % 60) 
@@ -934,8 +934,8 @@ class AdminController extends Controller
         // Detalle de canales no presenciales
         $canalesDetalle = $canalesNoPresenciales->take(10)->map(function ($actividad) {
             return [
-                'inicio' => $actividad->inicio->format('d/m/Y H:i:s'),
-                'fin' => $actividad->fin ? $actividad->fin->format('d/m/Y H:i:s') : 'En curso',
+                'inicio' => $actividad->inicio->format('d/m/Y h:i:s A'),
+                'fin' => $actividad->fin ? $actividad->fin->format('d/m/Y h:i:s A') : 'En curso',
                 'duracion_minutos' => $actividad->duracion_minutos ?? 0,
                 'actividad' => $actividad->actividad,
             ];
