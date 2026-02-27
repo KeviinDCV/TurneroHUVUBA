@@ -1933,8 +1933,23 @@ class AsesorController extends Controller
         // Refrescar datos del usuario desde la BD (por si el admin cambió la config)
         $user->refresh();
 
+        // Detectar cambio de estado de auto-llamado (activación/desactivación)
+        $estabaActivo = session('auto_llamado_was_active', false);
+        $ahoraActivo = (bool) $user->auto_llamado_activo;
+
+        if ($ahoraActivo && !$estabaActivo) {
+            // Se acaba de ACTIVAR → resetear timer desde ahora (empieza de cero)
+            session(['auto_llamado_inicio_ts' => now()->timestamp]);
+            \Log::info('Auto-llamado ACTIVADO para usuario ' . $user->nombre_completo);
+        } elseif (!$ahoraActivo && $estabaActivo) {
+            // Se acaba de DESACTIVAR → limpiar el timer guardado
+            session()->forget('auto_llamado_inicio_ts');
+            \Log::info('Auto-llamado DESACTIVADO para usuario ' . $user->nombre_completo);
+        }
+        // Guardar estado actual para la próxima comparación
+        session(['auto_llamado_was_active' => $ahoraActivo]);
+
         // Buscar la última actividad de turno del asesor hoy
-        // (último turno que atendió, aplazó, o que fue llamado)
         $ultimoTurnoFinalizado = Turno::where('asesor_id', $user->id)
             ->whereIn('estado', ['atendido', 'aplazado'])
             ->delDia()
@@ -1948,9 +1963,6 @@ class AsesorController extends Controller
             ->first();
 
         // Determinar la última actividad:
-        // Si tiene turno llamado → está activo, no necesita auto-llamado
-        // Si tiene turno finalizado → usar su fecha_atencion como última actividad
-        // Si no tiene nada → usar el timestamp de sesión (NO fecha_asignacion, que se resetea al recargar)
         $ultimaActividad = null;
 
         if ($turnoLlamado) {
@@ -1958,15 +1970,12 @@ class AsesorController extends Controller
             $ultimaActividad = now()->timestamp;
         } elseif ($ultimoTurnoFinalizado && $ultimoTurnoFinalizado->fecha_atencion) {
             $ultimaActividad = Carbon::parse($ultimoTurnoFinalizado->fecha_atencion)->timestamp;
-            // Actualizar la sesión para mantenerla sincronizada
             session(['auto_llamado_inicio_ts' => $ultimaActividad]);
         } else {
             // No ha atendido turnos hoy - usar el timestamp persistente de sesión
-            // Este valor se establece al seleccionar la caja y NO cambia al recargar la página
             if (session()->has('auto_llamado_inicio_ts')) {
                 $ultimaActividad = session('auto_llamado_inicio_ts');
             } else {
-                // Primera vez (no debería pasar, pero por seguridad)
                 $ultimaActividad = now()->timestamp;
                 session(['auto_llamado_inicio_ts' => $ultimaActividad]);
             }

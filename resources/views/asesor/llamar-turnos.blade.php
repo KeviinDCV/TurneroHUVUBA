@@ -1876,11 +1876,11 @@
         let autoLlamadoActivo = {{ $user->auto_llamado_activo ? 'true' : 'false' }};
         let autoLlamadoMinutos = {{ $user->auto_llamado_minutos ?? 10 }};
         let autoLlamadoTimeoutMs = autoLlamadoMinutos * 60 * 1000;
-        const AUTO_LLAMADO_CHECK_MS = 60 * 1000; // Verificar cada 60 segundos
+        const AUTO_LLAMADO_CHECK_MS = 30 * 1000; // Verificar cada 30 segundos (más rápido para detectar cambios del admin)
         let ultimaActividadTurno = Date.now();
         let autoLlamadoTimerInterval = null;
         let autoLlamadoBadge = null;
-        let servidorDeltaMs = 0; // Diferencia entre reloj del servidor y del cliente
+        let servidorDeltaMs = 0;
 
         // Sincronizar estado de auto-llamado con el servidor
         function sincronizarAutoLlamadoStatus() {
@@ -1892,15 +1892,16 @@
                     // Calcular la diferencia entre el reloj del servidor y del cliente
                     servidorDeltaMs = (data.servidor_timestamp * 1000) - Date.now();
 
-                    // Actualizar configuración si cambió
-                    const configCambio = (autoLlamadoActivo !== data.auto_llamado_activo) ||
-                                         (autoLlamadoMinutos !== data.auto_llamado_minutos);
+                    // Detectar cambios de estado
+                    const anteriorActivo = autoLlamadoActivo;
+                    const anteriorMinutos = autoLlamadoMinutos;
 
                     autoLlamadoActivo = data.auto_llamado_activo;
                     autoLlamadoMinutos = data.auto_llamado_minutos;
                     autoLlamadoTimeoutMs = autoLlamadoMinutos * 60 * 1000;
 
-                    if (configCambio) {
+                    // Log solo si hubo cambio
+                    if (anteriorActivo !== autoLlamadoActivo || anteriorMinutos !== autoLlamadoMinutos) {
                         console.log(`⏱️ Auto-llamado config actualizada: activo=${autoLlamadoActivo}, minutos=${autoLlamadoMinutos}`);
                     }
 
@@ -1918,6 +1919,12 @@
                     }
 
                     actualizarBadgeAutoLlamado();
+
+                    // Si se acaba de activar, ejecutar auto-llamado inmediatamente
+                    if (autoLlamadoActivo && !anteriorActivo) {
+                        console.log('🔔 Auto-llamado recién activado por el admin');
+                        setTimeout(() => ejecutarAutoLlamado(), 1000);
+                    }
                 })
                 .catch(error => {
                     console.error('Error sincronizando auto-llamado:', error);
@@ -2053,14 +2060,14 @@
                 crearBadgeAutoLlamado();
             }
 
-            // Verificar y sincronizar cada 60 segundos
+            // Verificar y sincronizar cada 30 segundos
             autoLlamadoTimerInterval = setInterval(() => {
                 sincronizarAutoLlamadoStatus();
                 setTimeout(() => ejecutarAutoLlamado(), 2000);
             }, AUTO_LLAMADO_CHECK_MS);
 
-            // Actualizar badge cada 30 seg para countdown visual suave
-            setInterval(actualizarBadgeAutoLlamado, 30000);
+            // Actualizar badge cada 15 seg para countdown visual suave
+            setInterval(actualizarBadgeAutoLlamado, 15000);
         }
 
         // Inicializar historial al cargar la página
