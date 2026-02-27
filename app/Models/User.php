@@ -32,6 +32,8 @@ class User extends Authenticatable
         'estado_asesor',
         'actividad_canal_no_presencial',
         'inicio_canal_no_presencial',
+        'auto_llamado_activo',
+        'auto_llamado_minutos',
     ];
 
     /**

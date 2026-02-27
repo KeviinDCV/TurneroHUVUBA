@@ -120,6 +120,9 @@ class AsesorController extends Controller
         // Guardar la caja seleccionada en la sesión
         session(['caja_seleccionada' => $caja->id]);
 
+        // Iniciar el timer de auto-llamado desde este momento
+        session(['auto_llamado_inicio_ts' => now()->timestamp]);
+
         // Redirigir al dashboard del asesor
         return redirect()->route('asesor.dashboard');
     }
@@ -893,6 +896,9 @@ class AsesorController extends Controller
         //     'duracion_guardada' => $turno->fresh()->duracion_atencion
         // ]);
 
+        // Actualizar el inicio del timer de auto-llamado
+        session(['auto_llamado_inicio_ts' => now()->timestamp]);
+
         return response()->json([
             'success' => true,
             'message' => 'Turno marcado como atendido',
@@ -982,6 +988,9 @@ class AsesorController extends Controller
         // Aplazar turno usando la duración del cronómetro del frontend
         $duracionFrontend = $request->duracion; // Duración en segundos del cronómetro
         $turno->marcarComoAplazado($duracionFrontend);
+
+        // Actualizar el inicio del timer de auto-llamado
+        session(['auto_llamado_inicio_ts' => now()->timestamp]);
 
         return response()->json([
             'success' => true,
@@ -1786,6 +1795,190 @@ class AsesorController extends Controller
                 'servicio' => $turno->servicio->nombre,
                 'prioridad' => $turno->prioridad
             ]
+        ]);
+    }
+
+    /**
+     * Auto-llamar turno automáticamente cuando el asesor lleva tiempo sin turno.
+     * Este endpoint es llamado desde el frontend del asesor cuando tiene
+     * la opción auto_llamado_activo habilitada.
+     */
+    public function autoLlamarTurno(Request $request)
+    {
+        $user = Auth::user();
+        $cajaId = session('caja_seleccionada');
+
+        // Si no hay caja en sesión, intentar recuperarla de la base de datos
+        if (!$cajaId) {
+            $cajaAsignada = Caja::where('asesor_activo_id', $user->id)
+                ->where('estado', 'activa')
+                ->first();
+            
+            if ($cajaAsignada) {
+                session(['caja_seleccionada' => $cajaAsignada->id]);
+                $cajaId = $cajaAsignada->id;
+            }
+        }
+
+        if (!$user->esAsesor() || !$cajaId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado o sin caja asignada'], 403);
+        }
+
+        // Verificar que el usuario tenga auto_llamado_activo
+        if (!$user->auto_llamado_activo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Auto-llamado no está activado para este usuario'
+            ]);
+        }
+
+        // Verificar que el asesor no esté en canal no presencial
+        if ($user->estaEnCanalNoPresencial()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede auto-llamar mientras está en canal no presencial'
+            ]);
+        }
+
+        // Verificar que el asesor no esté en descanso
+        if ($user->estado_asesor === 'descanso') {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede auto-llamar mientras está en descanso'
+            ]);
+        }
+
+        // Verificar que no tenga un turno en proceso
+        $turnoEnProceso = Turno::where('asesor_id', $user->id)
+            ->where('estado', 'llamado')
+            ->delDia()
+            ->first();
+
+        if ($turnoEnProceso) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ya tiene un turno en proceso',
+                'turno_en_proceso' => $turnoEnProceso->codigo_completo
+            ]);
+        }
+
+        // Obtener TODOS los servicios asignados al asesor (activos, sin ocultar_turno)
+        $serviciosAsignados = $user->serviciosActivos()
+            ->where('ocultar_turno', false)
+            ->get();
+
+        if ($serviciosAsignados->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene servicios asignados con turnos disponibles'
+            ]);
+        }
+
+        // Recopilar todos los IDs de servicios (incluyendo subservicios)
+        $todosLosServiciosIds = [];
+        foreach ($serviciosAsignados as $servicio) {
+            $todosLosServiciosIds[] = $servicio->id;
+            
+            // Si es servicio padre, también incluir subservicios asignados
+            if ($servicio->subservicios->isNotEmpty()) {
+                $subserviciosIds = $servicio->subservicios()
+                    ->whereHas('usuarios', function($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    })
+                    ->where('ocultar_turno', false)
+                    ->pluck('id')
+                    ->toArray();
+                $todosLosServiciosIds = array_merge($todosLosServiciosIds, $subserviciosIds);
+            }
+        }
+
+        $todosLosServiciosIds = array_unique($todosLosServiciosIds);
+
+        // Buscar turno usando el algoritmo de peso proporcional existente
+        $turno = $this->buscarTurnoConPesoProporcional($todosLosServiciosIds);
+
+        if (!$turno) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay turnos pendientes en ningún servicio'
+            ]);
+        }
+
+        \Log::info('Auto-llamado de turno activado', [
+            'user_id' => $user->id,
+            'user_name' => $user->nombre_completo,
+            'caja_id' => $cajaId,
+            'turno_id' => $turno->id,
+            'turno_codigo' => $turno->codigo_completo,
+            'servicio' => $turno->servicio->nombre ?? 'N/A'
+        ]);
+
+        return $this->responderConTurno($turno, $cajaId, $user->id);
+    }
+
+    /**
+     * Obtener estado actual del auto-llamado para el asesor.
+     * Devuelve la configuración actualizada y la última actividad de turno real.
+     * Esto permite que el frontend se sincronice con cambios del admin y
+     * mantenga el conteo real incluso al recargar la página.
+     */
+    public function getAutoLlamadoStatus()
+    {
+        $user = Auth::user();
+
+        if (!$user->esAsesor()) {
+            return response()->json(['success' => false], 403);
+        }
+
+        // Refrescar datos del usuario desde la BD (por si el admin cambió la config)
+        $user->refresh();
+
+        // Buscar la última actividad de turno del asesor hoy
+        // (último turno que atendió, aplazó, o que fue llamado)
+        $ultimoTurnoFinalizado = Turno::where('asesor_id', $user->id)
+            ->whereIn('estado', ['atendido', 'aplazado'])
+            ->delDia()
+            ->orderBy('fecha_atencion', 'desc')
+            ->first();
+
+        // También verificar si tiene un turno llamado actualmente
+        $turnoLlamado = Turno::where('asesor_id', $user->id)
+            ->where('estado', 'llamado')
+            ->delDia()
+            ->first();
+
+        // Determinar la última actividad:
+        // Si tiene turno llamado → está activo, no necesita auto-llamado
+        // Si tiene turno finalizado → usar su fecha_atencion como última actividad
+        // Si no tiene nada → usar el timestamp de sesión (NO fecha_asignacion, que se resetea al recargar)
+        $ultimaActividad = null;
+
+        if ($turnoLlamado) {
+            // Tiene turno en proceso - no aplica auto-llamado
+            $ultimaActividad = now()->timestamp;
+        } elseif ($ultimoTurnoFinalizado && $ultimoTurnoFinalizado->fecha_atencion) {
+            $ultimaActividad = Carbon::parse($ultimoTurnoFinalizado->fecha_atencion)->timestamp;
+            // Actualizar la sesión para mantenerla sincronizada
+            session(['auto_llamado_inicio_ts' => $ultimaActividad]);
+        } else {
+            // No ha atendido turnos hoy - usar el timestamp persistente de sesión
+            // Este valor se establece al seleccionar la caja y NO cambia al recargar la página
+            if (session()->has('auto_llamado_inicio_ts')) {
+                $ultimaActividad = session('auto_llamado_inicio_ts');
+            } else {
+                // Primera vez (no debería pasar, pero por seguridad)
+                $ultimaActividad = now()->timestamp;
+                session(['auto_llamado_inicio_ts' => $ultimaActividad]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'auto_llamado_activo' => (bool) $user->auto_llamado_activo,
+            'auto_llamado_minutos' => (int) ($user->auto_llamado_minutos ?? 10),
+            'ultima_actividad_timestamp' => $ultimaActividad,
+            'servidor_timestamp' => now()->timestamp,
+            'tiene_turno_en_proceso' => $turnoLlamado ? true : false,
         ]);
     }
 

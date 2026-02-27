@@ -1038,6 +1038,9 @@
             // Iniciar contador de tiempo
             actualizarTiempo();
             intervalTiempo = setInterval(actualizarTiempo, 1000);
+
+            // Resetear timer de auto-llamado
+            resetAutoLlamadoTimer();
         }
 
         function actualizarTiempo() {
@@ -1075,6 +1078,9 @@
             btnTransferir.textContent = 'TRANSFERIR';
             btnTransferir.classList.remove('bg-purple-800');
             btnTransferir.classList.add('bg-purple-600');
+
+            // Resetear timer de auto-llamado (empieza a contar 10 min desde ahora)
+            resetAutoLlamadoTimer();
         }
 
         // Event listeners
@@ -1864,6 +1870,199 @@
                 });
         }
 
+        // ==========================================
+        // AUTO-LLAMADO DE TURNOS (configurable, persistente)
+        // ==========================================
+        let autoLlamadoActivo = {{ $user->auto_llamado_activo ? 'true' : 'false' }};
+        let autoLlamadoMinutos = {{ $user->auto_llamado_minutos ?? 10 }};
+        let autoLlamadoTimeoutMs = autoLlamadoMinutos * 60 * 1000;
+        const AUTO_LLAMADO_CHECK_MS = 60 * 1000; // Verificar cada 60 segundos
+        let ultimaActividadTurno = Date.now();
+        let autoLlamadoTimerInterval = null;
+        let autoLlamadoBadge = null;
+        let servidorDeltaMs = 0; // Diferencia entre reloj del servidor y del cliente
+
+        // Sincronizar estado de auto-llamado con el servidor
+        function sincronizarAutoLlamadoStatus() {
+            fetch('{{ route("api.asesor.auto-llamado-status") }}')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+
+                    // Calcular la diferencia entre el reloj del servidor y del cliente
+                    servidorDeltaMs = (data.servidor_timestamp * 1000) - Date.now();
+
+                    // Actualizar configuración si cambió
+                    const configCambio = (autoLlamadoActivo !== data.auto_llamado_activo) ||
+                                         (autoLlamadoMinutos !== data.auto_llamado_minutos);
+
+                    autoLlamadoActivo = data.auto_llamado_activo;
+                    autoLlamadoMinutos = data.auto_llamado_minutos;
+                    autoLlamadoTimeoutMs = autoLlamadoMinutos * 60 * 1000;
+
+                    if (configCambio) {
+                        console.log(`⏱️ Auto-llamado config actualizada: activo=${autoLlamadoActivo}, minutos=${autoLlamadoMinutos}`);
+                    }
+
+                    // Actualizar última actividad desde el servidor (timestamp real de BD)
+                    if (data.ultima_actividad_timestamp) {
+                        ultimaActividadTurno = (data.ultima_actividad_timestamp * 1000) - servidorDeltaMs;
+                    }
+
+                    // Gestionar badge según estado
+                    if (autoLlamadoActivo && !autoLlamadoBadge) {
+                        crearBadgeAutoLlamado();
+                    } else if (!autoLlamadoActivo && autoLlamadoBadge) {
+                        autoLlamadoBadge.remove();
+                        autoLlamadoBadge = null;
+                    }
+
+                    actualizarBadgeAutoLlamado();
+                })
+                .catch(error => {
+                    console.error('Error sincronizando auto-llamado:', error);
+                });
+        }
+
+        // Resetear timer de auto-llamado (se llama al llamar, atender, aplazar, etc.)
+        function resetAutoLlamadoTimer() {
+            ultimaActividadTurno = Date.now();
+            console.log('⏱️ Auto-llamado: timer reseteado');
+            actualizarBadgeAutoLlamado();
+        }
+
+        // Crear badge visual para indicar auto-llamado activo
+        function crearBadgeAutoLlamado() {
+            if (autoLlamadoBadge) return;
+
+            const badge = document.createElement('div');
+            badge.id = 'auto-llamado-badge';
+            badge.style.cssText = `
+                position: fixed;
+                top: 12px;
+                right: 12px;
+                z-index: 9999;
+                background: linear-gradient(135deg, #f97316, #ea580c);
+                color: white;
+                padding: 8px 14px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+                transition: all 0.3s ease;
+            `;
+            badge.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span id="auto-llamado-countdown">Auto-llamado activo</span>
+            `;
+            document.body.appendChild(badge);
+            autoLlamadoBadge = badge;
+        }
+
+        // Actualizar el badge con el tiempo restante
+        function actualizarBadgeAutoLlamado() {
+            if (!autoLlamadoActivo || !autoLlamadoBadge) return;
+
+            const countdownEl = document.getElementById('auto-llamado-countdown');
+            if (!countdownEl) return;
+
+            if (turnoActual) {
+                countdownEl.textContent = 'Auto-llamado (en curso)';
+                autoLlamadoBadge.style.background = 'linear-gradient(135deg, #6b7280, #4b5563)';
+                return;
+            }
+
+            const tiempoTranscurrido = Date.now() - ultimaActividadTurno;
+            const tiempoRestante = Math.max(0, autoLlamadoTimeoutMs - tiempoTranscurrido);
+            const minutosRestantes = Math.ceil(tiempoRestante / 60000);
+
+            if (tiempoRestante <= 0) {
+                countdownEl.textContent = 'Llamando...';
+                autoLlamadoBadge.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            } else {
+                countdownEl.textContent = `Auto-llamado en ${minutosRestantes} min`;
+                autoLlamadoBadge.style.background = 'linear-gradient(135deg, #f97316, #ea580c)';
+            }
+        }
+
+        // Ejecutar auto-llamado
+        function ejecutarAutoLlamado() {
+            if (!autoLlamadoActivo) return;
+
+            if (turnoActual) {
+                actualizarBadgeAutoLlamado();
+                return;
+            }
+
+            const tiempoTranscurrido = Date.now() - ultimaActividadTurno;
+
+            if (tiempoTranscurrido < autoLlamadoTimeoutMs) {
+                actualizarBadgeAutoLlamado();
+                return;
+            }
+
+            console.log(`🚨 Auto-llamado: ${autoLlamadoMinutos} minutos sin turno, llamando automáticamente...`);
+
+            fetch('{{ route("asesor.auto-llamar-turno") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(async (response) => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Respuesta no válida del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Auto-llamado exitoso:', data.turno);
+                    actualizarInterfazTurno(data.turno);
+                    mostrarModal('Auto-llamado', `Se ha llamado automáticamente el turno ${data.turno.codigo_completo}`);
+                    actualizarEstadisticasServicios();
+                    resetAutoLlamadoTimer();
+                } else {
+                    console.log('ℹ️ Auto-llamado no ejecutado:', data.message);
+                    if (data.message && data.message.includes('No hay turnos')) {
+                        resetAutoLlamadoTimer();
+                    }
+                }
+                actualizarBadgeAutoLlamado();
+            })
+            .catch(error => {
+                console.error('❌ Error en auto-llamado:', error);
+                actualizarBadgeAutoLlamado();
+            });
+        }
+
+        // Iniciar sistema de auto-llamado
+        function iniciarAutoLlamado() {
+            // Siempre sincronizar al inicio para obtener la última actividad real
+            sincronizarAutoLlamadoStatus();
+
+            if (autoLlamadoActivo) {
+                console.log(`⏱️ Sistema de auto-llamado ACTIVADO (${autoLlamadoMinutos} min timeout)`);
+                crearBadgeAutoLlamado();
+            }
+
+            // Verificar y sincronizar cada 60 segundos
+            autoLlamadoTimerInterval = setInterval(() => {
+                sincronizarAutoLlamadoStatus();
+                setTimeout(() => ejecutarAutoLlamado(), 2000);
+            }, AUTO_LLAMADO_CHECK_MS);
+
+            // Actualizar badge cada 30 seg para countdown visual suave
+            setInterval(actualizarBadgeAutoLlamado, 30000);
+        }
+
         // Inicializar historial al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Inicializando historial de turnos...');
@@ -1876,6 +2075,9 @@
 
             // Recargar historial cada 5 segundos para ver el tiempo en tiempo real
             setInterval(cargarHistorialTurnos, 5000);
+
+            // Iniciar auto-llamado (siempre, para detectar si el admin lo activa después)
+            iniciarAutoLlamado();
         });
     </script>
 </body>

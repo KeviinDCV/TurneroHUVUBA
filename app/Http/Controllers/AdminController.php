@@ -192,6 +192,8 @@ class AdminController extends Controller
             'correo_electronico' => $validated['correo_electronico'] ?? null,
             'nombre_usuario' => $validated['nombre_usuario'],
             'rol' => $validated['rol'],
+            'auto_llamado_activo' => $request->has('auto_llamado_activo') ? true : false,
+            'auto_llamado_minutos' => max(1, min(60, intval($request->input('auto_llamado_minutos', 10)))),
         ];
 
         // Actualizar contraseña si el campo está presente (incluso si está vacío)

@@ -282,7 +282,18 @@
                                 </template>
                                 <template x-for="(user, index) in users" :key="index">
                                     <tr class="hover:bg-gray-50">
-                                        <td class="py-3 px-4 whitespace-nowrap" x-text="user.nombre_completo"></td>
+                                        <td class="py-3 px-4 whitespace-nowrap">
+                                            <div class="flex items-center gap-1.5">
+                                                <span x-text="user.nombre_completo"></span>
+                                                <template x-if="user.auto_llamado_activo">
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700" title="Auto-llamado activo">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                        </svg>
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </td>
                                         <td class="py-3 px-4 whitespace-nowrap" x-text="user.cedula"></td>
                                         <td class="py-3 px-4 whitespace-nowrap" x-text="user.correo_electronico"></td>
                                         <td class="py-3 px-4 whitespace-nowrap" x-text="user.nombre_usuario"></td>
@@ -461,6 +472,41 @@
                                 </div>
                             </div>
 
+                            <!-- Auto-llamado de turnos -->
+                            <div class="mt-6 p-4 rounded-lg border-2" :class="userData.auto_llamado_activo ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2" :class="userData.auto_llamado_activo ? 'text-orange-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div>
+                                            <span class="text-sm font-semibold" :class="userData.auto_llamado_activo ? 'text-orange-800' : 'text-gray-700'">Auto-llamado de turnos</span>
+                                            <p class="text-xs text-gray-500 mt-0.5">Si el asesor no llama turnos, se le asignará uno automáticamente</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" x-model="userData.auto_llamado_activo" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                                    </label>
+                                </div>
+                                <!-- Configuración de minutos (visible solo cuando está activo) -->
+                                <div x-show="userData.auto_llamado_activo" x-transition class="mt-3 pt-3 border-t border-orange-200">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-orange-700">Tiempo de inactividad:</label>
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                x-model="userData.auto_llamado_minutos"
+                                                min="1"
+                                                max="60"
+                                                class="w-16 px-2 py-1 text-center border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                            >
+                                            <span class="text-sm text-orange-600 font-medium">minutos</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Campos de contraseña (condicionales) -->
                             <div x-show="showPassword" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- Contraseña -->
@@ -589,7 +635,9 @@
                     nombre_usuario: '',
                     rol: '',
                     password: '',
-                    password_confirmation: ''
+                    password_confirmation: '',
+                    auto_llamado_activo: false,
+                    auto_llamado_minutos: 10
                 },
                 showPassword: false,
                 loading: false,
@@ -623,7 +671,9 @@
                         nombre_usuario: '',
                         rol: '',
                         password: '',
-                        password_confirmation: ''
+                        password_confirmation: '',
+                        auto_llamado_activo: false,
+                        auto_llamado_minutos: 10
                     };
                     this.showPassword = false;
                     this.errors = {};
@@ -641,7 +691,9 @@
                                 nombre_usuario: data.nombre_usuario,
                                 rol: data.rol,
                                 password: '',
-                                password_confirmation: ''
+                                password_confirmation: '',
+                                auto_llamado_activo: data.auto_llamado_activo ? true : false,
+                                auto_llamado_minutos: data.auto_llamado_minutos || 10
                             };
                             this.loading = false;
                         })
@@ -662,6 +714,12 @@
                     formData.append('correo_electronico', this.userData.correo_electronico);
                     formData.append('nombre_usuario', this.userData.nombre_usuario);
                     formData.append('rol', this.userData.rol);
+
+                    // Añadir auto_llamado
+                    if (this.userData.auto_llamado_activo) {
+                        formData.append('auto_llamado_activo', '1');
+                    }
+                    formData.append('auto_llamado_minutos', this.userData.auto_llamado_minutos || 10);
 
                     // Añadir contraseña solo si se ha cambiado
                     if (this.userData.password) {
