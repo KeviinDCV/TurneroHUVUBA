@@ -68,15 +68,16 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
             window.print();
         };
 
-        // Redirigir al menú después de imprimir
+        // Fallback: si afterprint no se dispara (ej: kiosk mode), redirigir después de 5s
+        let fallbackTimer = setTimeout(function() {
+            window.location.href = '{{ route('turnos.menu') }}';
+        }, 5000);
+
+        // Redirigir al menú después de imprimir (cancela el fallback)
         window.addEventListener('afterprint', function() {
+            clearTimeout(fallbackTimer);
             window.location.href = '{{ route('turnos.menu') }}';
         });
-
-        // Fallback: si afterprint no se dispara (ej: kiosk mode), redirigir después de 3s
-        setTimeout(function() {
-            window.location.href = '{{ route('turnos.menu') }}';
-        }, 3000);
     </script>
 </body>
 </html>

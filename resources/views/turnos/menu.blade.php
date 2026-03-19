@@ -296,6 +296,12 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // Si es duplicado, mostrar mensaje sin redirigir al ticket
+                    if (data.duplicado) {
+                        desbloquearBotones();
+                        mostrarModal(data.message);
+                        return;
+                    }
                     // Verificar si requiere priorización
                     if (data.requiere_priorizacion) {
                         servicioSeleccionadoId = data.servicio_id;
@@ -342,6 +348,12 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // Si es duplicado, mostrar mensaje sin redirigir al ticket
+                    if (data.duplicado) {
+                        desbloquearBotones();
+                        mostrarModal(data.message);
+                        return;
+                    }
                     // Verificar si requiere priorización
                     if (data.requiere_priorizacion) {
                         servicioSeleccionadoId = data.servicio_id;
@@ -410,6 +422,12 @@
                 cerrarPrioridadModal();
                 
                 if (data.success) {
+                    // Si es duplicado, mostrar mensaje sin redirigir al ticket
+                    if (data.duplicado) {
+                        desbloquearBotones();
+                        mostrarModal(data.message);
+                        return;
+                    }
                     // Redirigir al ticket del turno
                     if (data.redirect_url) {
                         window.location.href = data.redirect_url;
