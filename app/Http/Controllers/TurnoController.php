@@ -99,10 +99,10 @@ class TurnoController extends Controller
             }
 
             // Protección contra doble clic: verificar si ya se creó un turno
-            // para este servicio en los últimos 30 segundos (cubre ciclo completo de impresión)
+            // para este servicio en los últimos 3 segundos (solo doble-clic real)
             $turnoReciente = Turno::where('servicio_id', $servicioParaTurno)
                 ->where('estado', 'pendiente')
-                ->where('fecha_creacion', '>=', now()->subSeconds(30))
+                ->where('fecha_creacion', '>=', now()->subSeconds(3))
                 ->whereNull('observaciones') // No contar transferencias
                 ->orderBy('id', 'desc')
                 ->first();
@@ -177,10 +177,10 @@ class TurnoController extends Controller
             $prioridad = Turno::tipoAPrioridad($prioridadTipo);
 
             // Protección contra doble clic: verificar si ya se creó un turno
-            // para este servicio en los últimos 30 segundos (cubre ciclo completo de impresión)
+            // para este servicio en los últimos 3 segundos (solo doble-clic real)
             $turnoReciente = Turno::where('servicio_id', $servicioId)
                 ->where('estado', 'pendiente')
-                ->where('fecha_creacion', '>=', now()->subSeconds(30))
+                ->where('fecha_creacion', '>=', now()->subSeconds(3))
                 ->whereNull('observaciones') // No contar transferencias
                 ->orderBy('id', 'desc')
                 ->first();
