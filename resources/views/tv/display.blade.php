@@ -32,6 +32,12 @@
             100% { opacity: 1; transform: translateY(0); }
         }
 
+        /* Indicador de reconexión */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
         /* Clase para mostrar un nuevo turno */
         .new-turn {
             animation: simple-fade-in 0.5s ease forwards, highlight 1.5s ease 0.5s forwards;
@@ -1377,6 +1383,100 @@
         let ultimoTurnoId = null; // ID del último turno para detectar nuevos
         let sincronizacionActiva = true; // Control de sincronización
 
+        // ============================================
+        // SISTEMA DE RESILIENCIA DE RED 24/7
+        // ============================================
+        let networkOnline = navigator.onLine; // Estado actual de la red
+        let erroresConsecutivosRed = 0; // Contador de errores consecutivos de fetch
+        let pollingTimerId = null; // ID del setTimeout de polling (para cancelar/reiniciar)
+        const POLLING_BASE_MS = 1000; // Intervalo base de polling (1 segundo)
+        const POLLING_MAX_MS = 30000; // Máximo intervalo de polling cuando hay errores (30 segs)
+        let pollingActualMs = POLLING_BASE_MS; // Intervalo actual de polling
+
+        // Fetch con timeout para evitar requests colgados
+        function fetchConTimeout(url, opciones = {}, timeoutMs = 10000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            return fetch(url, {
+                ...opciones,
+                signal: controller.signal,
+                cache: 'no-cache'
+            }).finally(() => clearTimeout(timeoutId));
+        }
+
+        // Calcular intervalo de polling con backoff exponencial
+        function calcularIntervaloPolling() {
+            if (erroresConsecutivosRed === 0) return POLLING_BASE_MS;
+            // 1s → 2s → 4s → 8s → 16s → 30s (máx)
+            const backoff = Math.min(POLLING_BASE_MS * Math.pow(2, erroresConsecutivosRed), POLLING_MAX_MS);
+            return backoff;
+        }
+
+        // Registrar éxito de red (resetear backoff)
+        function registrarExitoRed() {
+            const teniaErrores = erroresConsecutivosRed > 0;
+            erroresConsecutivosRed = 0;
+            pollingActualMs = POLLING_BASE_MS;
+            networkOnline = true;
+            actualizarIndicadorConexion(true);
+            if (teniaErrores) {
+                console.log('✅ Conexión restaurada - polling cada', pollingActualMs, 'ms');
+            }
+        }
+
+        // Registrar error de red (aplicar backoff)
+        function registrarErrorRed() {
+            erroresConsecutivosRed++;
+            pollingActualMs = calcularIntervaloPolling();
+            console.warn(`⚠️ Error de red #${erroresConsecutivosRed} - próximo intento en ${pollingActualMs}ms`);
+            if (erroresConsecutivosRed >= 3) {
+                actualizarIndicadorConexion(false);
+            }
+        }
+
+        // Indicador visual de conexión (pequeño, no intrusivo)
+        function actualizarIndicadorConexion(conectado) {
+            let indicador = document.getElementById('indicador-conexion');
+            if (!indicador) {
+                indicador = document.createElement('div');
+                indicador.id = 'indicador-conexion';
+                indicador.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:9999;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;transition:all 0.5s ease;pointer-events:none;';
+                document.body.appendChild(indicador);
+            }
+            if (conectado) {
+                indicador.style.background = 'rgba(34,197,94,0.15)';
+                indicador.style.color = '#16a34a';
+                indicador.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>';
+                // Ocultar después de 5 segundos si está conectado
+                setTimeout(() => { indicador.style.opacity = '0'; }, 5000);
+            } else {
+                indicador.style.background = 'rgba(239,68,68,0.15)';
+                indicador.style.color = '#dc2626';
+                indicador.style.opacity = '1';
+                indicador.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;animation:pulse 1.5s infinite;"></span> Reconectando...';
+            }
+        }
+
+        // Detectar cambios de estado de la red del navegador
+        window.addEventListener('online', function() {
+            console.log('🌐 Navegador reporta: ONLINE');
+            networkOnline = true;
+            // Sincronización inmediata al recuperar red
+            erroresConsecutivosRed = 0;
+            pollingActualMs = POLLING_BASE_MS;
+            actualizarIndicadorConexion(true);
+            // Forzar un ciclo de polling inmediato
+            if (pollingTimerId) clearTimeout(pollingTimerId);
+            if (window.cicloPolling) window.cicloPolling();
+        });
+
+        window.addEventListener('offline', function() {
+            console.log('🌐 Navegador reporta: OFFLINE');
+            networkOnline = false;
+            actualizarIndicadorConexion(false);
+        });
+
         // Sistema de cola de audio
         let colaAudio = []; // Cola de turnos pendientes de reproducir
         let reproduciendoAudio = false; // Estado de reproducción actual
@@ -1418,15 +1518,19 @@
             }
         }
 
-        // Limpiar turnos reproducidos antiguos (más de 1 hora)
+        // Limpiar turnos reproducidos antiguos (más de 1 hora) - NO limpiar la sesión actual
         function limpiarTurnosAntiguos() {
             try {
                 const keys = Object.keys(localStorage);
                 const ahora = Date.now();
                 const unaHora = 60 * 60 * 1000;
+                const claveActual = sessionId ? ('turnos_reproducidos_' + sessionId) : null;
 
                 keys.forEach(key => {
                     if (key.startsWith('turnos_reproducidos_tv_session_')) {
+                        // NUNCA limpiar la sesión actual
+                        if (claveActual && key === claveActual) return;
+
                         const timestamp = parseInt(key.split('_')[3]);
                         if (ahora - timestamp > unaHora) {
                             localStorage.removeItem(key);
@@ -1643,8 +1747,11 @@
 
         // Actualizar configuración del TV desde el servidor
         function updateTvConfig() {
-            fetch('/api/tv-config')
-                .then(response => response.json())
+            fetchConTimeout('/api/tv-config')
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
                     // Verificar si la configuración ha cambiado
                     if (data.ticker_message !== currentConfig.ticker_message ||
@@ -1699,7 +1806,7 @@
         const MAX_MULTIMEDIA_ERRORS = 3;
         
         function loadMultimedia() {
-            fetch('/api/multimedia')
+            fetchConTimeout('/api/multimedia')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1765,9 +1872,15 @@
 
             actualizarIndicadorSync('sincronizando');
 
-            fetch('/api/turnos-llamados')
-                .then(response => response.json())
+            fetchConTimeout('/api/turnos-llamados')
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
+                    // ✅ Éxito de red - resetear backoff
+                    registrarExitoRed();
+
                     const newTurnos = data.turnos || [];
 
                     // SINCRONIZACIÓN COMPLETA: Reemplazar completamente la lista local
@@ -1791,8 +1904,6 @@
                         if (!turnosReproducidos.has(turnoKey)) {
                             turnosNuevos.push(turno);
                             console.log('🔊 Nuevo turno para reproducir:', turno.codigo_completo, 'fecha_llamado:', turno.fecha_llamado);
-                        } else {
-                            console.log('🔇 Turno ya reproducido (misma fecha_llamado):', turno.codigo_completo, 'key:', turnoKey);
                         }
                     });
 
@@ -1840,7 +1951,12 @@
                     actualizarIndicadorSync('sincronizado');
                 })
                 .catch(error => {
-                    console.error('❌ Error de sincronización:', error);
+                    // ❌ Error de red - aplicar backoff
+                    registrarErrorRed();
+                    // No loguear AbortError (timeout) en exceso
+                    if (error.name !== 'AbortError') {
+                        console.error('❌ Error de sincronización:', error);
+                    }
                     actualizarIndicadorSync('error');
                 });
         }
@@ -2184,8 +2300,11 @@
             }
 
             // Hacer primera sincronización y marcar turnos existentes como ya reproducidos
-            fetch('/api/turnos-llamados')
-                .then(response => response.json())
+            fetchConTimeout('/api/turnos-llamados')
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
                     const turnosExistentes = data.turnos || [];
 
@@ -2225,8 +2344,16 @@
             // Sincronización inicial
             sincronizacionInicial();
 
-            // Aumentamos la frecuencia de polling para actualizaciones en tiempo real
-            setInterval(updateQueue, 1000); // Actualizar cada 1 segundo para mejor tiempo real
+            // Polling auto-regenerativo: usa setTimeout recursivo en vez de setInterval
+            // Esto evita que se acumulen requests si uno tarda mucho,
+            // y aplica backoff exponencial cuando hay errores de red
+            function cicloPolling() {
+                updateQueue();
+                pollingTimerId = setTimeout(cicloPolling, pollingActualMs);
+            }
+            // Hacer cicloPolling accesible para el listener de 'online'
+            window.cicloPolling = cicloPolling;
+            cicloPolling();
         }
 
         // Función auxiliar para comparar arrays de multimedia
@@ -2482,7 +2609,14 @@
                 // Solo hacer sincronización suave si no hay audio reproduciéndose
                 if (!reproduciendoAudio) {
                     console.log('👁️ Página visible - sincronización suave');
-                    updateQueue(); // Solo actualizar datos, no limpiar cola
+                    // Forzar re-sync inmediato
+                    if (pollingTimerId) clearTimeout(pollingTimerId);
+                    erroresConsecutivosRed = 0;
+                    pollingActualMs = POLLING_BASE_MS;
+                    updateQueue();
+                    if (window.cicloPolling) {
+                        pollingTimerId = setTimeout(window.cicloPolling, pollingActualMs);
+                    }
                 } else {
                     console.log('👁️ Página visible - audio en curso, omitiendo sincronización');
                 }
@@ -2496,7 +2630,10 @@
             if (sincronizacionActiva && !reproduciendoAudio) {
                 console.log('🎯 Página enfocada - sincronización suave');
                 setTimeout(() => {
-                    updateQueue(); // Solo actualizar datos, no limpiar cola
+                    // Resetear errores y forzar re-sync
+                    erroresConsecutivosRed = 0;
+                    pollingActualMs = POLLING_BASE_MS;
+                    updateQueue();
                 }, 500);
             } else if (reproduciendoAudio) {
                 console.log('🎯 Página enfocada - audio en curso, omitiendo sincronización');
@@ -2553,10 +2690,7 @@
             // 4. Heartbeat para mantener la conexión activa
             keepAliveInterval = setInterval(function() {
                 // Enviar una pequeña petición para mantener la conexión activa
-                fetch('/api/tv-config', {
-                    method: 'GET',
-                    cache: 'no-cache'
-                }).catch(() => {
+                fetchConTimeout('/api/tv-config', {}, 5000).catch(() => {
                     // Ignorar errores, es solo para mantener activa la conexión
                 });
 
@@ -3103,28 +3237,66 @@
         // Esto evita problemas acumulativos del navegador en uso 24/7
         const HORAS_PARA_RECARGA = 4;
         const tiempoRecargaMs = HORAS_PARA_RECARGA * 60 * 60 * 1000;
+        const tiempoInicioSistema = Date.now();
         
-        console.log(`⏰ Auto-recarga programada en ${HORAS_PARA_RECARGA} horas`);
+        console.log(`⏰ Auto-recarga programada cada ${HORAS_PARA_RECARGA} horas`);
         
-        setTimeout(function() {
-            console.log('🔄 Ejecutando auto-recarga preventiva (4 horas)...');
-            
-            // Solo recargar si no hay audio reproduciéndose
-            if (!reproduciendoAudio && colaAudio.length === 0) {
-                window.location.reload();
-            } else {
-                // Si hay audio en proceso, esperar 1 minuto y reintentar
-                console.log('⏳ Audio en proceso, esperando para recargar...');
-                setTimeout(function() {
+        // Verificar periódicamente si ya pasaron las 4 horas (más robusto que un solo setTimeout)
+        setInterval(function() {
+            const tiempoTranscurrido = Date.now() - tiempoInicioSistema;
+            if (tiempoTranscurrido >= tiempoRecargaMs) {
+                console.log('🔄 Ejecutando auto-recarga preventiva (4 horas)...');
+                
+                // Solo recargar si no hay audio reproduciéndose
+                if (!reproduciendoAudio && colaAudio.length === 0) {
                     window.location.reload();
-                }, 60000);
+                } else {
+                    // Si hay audio en proceso, reintentar en 1 minuto
+                    console.log('⏳ Audio en proceso, reintentando recarga en 1 minuto...');
+                }
             }
-        }, tiempoRecargaMs);
+        }, 60000); // Verificar cada minuto
         
         // Log de inicio del sistema de monitoreo
         console.log('🔊 Sistema de monitoreo de audio 24/7 iniciado');
         console.log('   - Max errores antes de recarga:', MAX_ERRORES_ANTES_RECARGA);
         console.log('   - Auto-recarga preventiva cada:', HORAS_PARA_RECARGA, 'horas');
+        console.log('   - Polling resiliente con backoff exponencial activado');
+        console.log('   - Fetch con timeout de 10s activado');
+        console.log('   - Detección de estado de red (online/offline) activada');
+
+        // ============================================
+        // WATCHDOG: Detecta si el polling murió y lo reinicia
+        // ============================================
+        let ultimoPollingExitoso = Date.now();
+        
+        // El updateQueue original actualiza este timestamp en cada éxito
+        const _registrarExitoRedOriginal = registrarExitoRed;
+        registrarExitoRed = function() {
+            ultimoPollingExitoso = Date.now();
+            _registrarExitoRedOriginal();
+        };
+
+        setInterval(function() {
+            const tiempoSinPolling = Date.now() - ultimoPollingExitoso;
+            
+            // Si han pasado más de 2 minutos sin un polling exitoso (y hay red), algo murió
+            if (tiempoSinPolling > 120000 && navigator.onLine) {
+                console.warn('🐕 WATCHDOG: Polling muerto detectado (' + Math.round(tiempoSinPolling/1000) + 's sin éxito). Reiniciando...');
+                erroresConsecutivosRed = 0;
+                pollingActualMs = POLLING_BASE_MS;
+                if (pollingTimerId) clearTimeout(pollingTimerId);
+                if (window.cicloPolling) window.cicloPolling();
+            }
+            
+            // Si han pasado más de 10 minutos sin polling exitoso, forzar recarga
+            if (tiempoSinPolling > 600000 && navigator.onLine) {
+                console.error('🐕 WATCHDOG: Sin conexión por más de 10 minutos con red disponible. Recargando...');
+                if (!reproduciendoAudio) {
+                    window.location.reload();
+                }
+            }
+        }, 30000); // Cada 30 segundos
     </script>
 </body>
 </html>
