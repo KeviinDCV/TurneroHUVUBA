@@ -63,20 +63,35 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
     </div>
 
     <script>
-        // Imprimir INMEDIATAMENTE al cargar (sin delay)
+        // Imprimir cuando la página cargue completamente
+        let printed = false;
+        
+        function intentarImprimir() {
+            if (printed) return;
+            printed = true;
+            try {
+                window.print();
+            } catch(e) {
+                console.error('Error al imprimir:', e);
+            }
+        }
+        
         window.onload = function() {
-            window.print();
+            // Pequeño delay para asegurar que todo esté renderizado
+            setTimeout(intentarImprimir, 200);
         };
 
-        // Fallback: si afterprint no se dispara (ej: kiosk mode), redirigir después de 5s
+        // Fallback más largo para servidores lentos (15s)
         let fallbackTimer = setTimeout(function() {
             window.location.href = '{{ route('turnos.menu') }}';
-        }, 5000);
+        }, 15000);
 
         // Redirigir al menú después de imprimir (cancela el fallback)
         window.addEventListener('afterprint', function() {
             clearTimeout(fallbackTimer);
-            window.location.href = '{{ route('turnos.menu') }}';
+            setTimeout(function() {
+                window.location.href = '{{ route('turnos.menu') }}';
+            }, 500);
         });
     </script>
 </body>
