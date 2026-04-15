@@ -302,9 +302,11 @@
         const baseUrl = window.location.origin;
 
         // ============================================
-        // FETCH CON TIMEOUT
+        // FETCH CON TIMEOUT Y AUTO-REINTENTO
         // ============================================
-        function fetchConTimeout(url, opciones = {}, timeoutMs = 15000) {
+        let reintentoAutomatico = false; // Flag para saber si ya se reintentó automáticamente
+
+        function fetchConTimeout(url, opciones = {}, timeoutMs = 25000) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             return fetch(url, { ...opciones, signal: controller.signal })
@@ -480,6 +482,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         // PROCESAMIENTO DE RESPUESTA DEL SERVIDOR
         // ============================================
         function procesarRespuestaTurno(data) {
+            reintentoAutomatico = false; // Reset flag en respuesta exitosa
             if (data.success) {
                 if (data.duplicado) {
                     ocultarLoading();
@@ -512,11 +515,26 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         }
 
         function manejarErrorFetch(error) {
-            ocultarLoading();
-            if (error.name === 'AbortError') {
-                // Timeout - ofrecer reintentar
+            if (error.name === 'AbortError' || error.message === 'Failed to fetch') {
+                // Si hay una solicitud guardada y aún no se reintentó, reintentar automáticamente una vez
+                if (!reintentoAutomatico && ultimaSolicitud) {
+                    reintentoAutomatico = true;
+                    console.log('⏳ Timeout del servidor, reintentando automáticamente...');
+                    mostrarLoading('Reintentando...', 'El servidor está tardando, un momento por favor');
+                    // Desbloquear para que el reintento funcione
+                    procesandoSolicitud = false;
+                    setTimeout(() => {
+                        ultimaSolicitud();
+                    }, 500);
+                    return;
+                }
+                // Ya se reintentó una vez, mostrar error al usuario
+                reintentoAutomatico = false;
+                ocultarLoading();
                 mostrarError('El servidor está tardando demasiado. ¿Desea intentar de nuevo?');
             } else {
+                reintentoAutomatico = false;
+                ocultarLoading();
                 mostrarError('Error de conexión con el servidor. ¿Desea intentar de nuevo?');
             }
         }

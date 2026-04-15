@@ -5,13 +5,15 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class UpdateUserActivity
 {
     /**
      * Handle an incoming request.
-     * Actualiza la actividad del usuario autenticado
+     * Actualiza la actividad del usuario autenticado.
+     * Throttled: solo actualiza la BD una vez por minuto por usuario.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
@@ -24,15 +26,16 @@ class UpdateUserActivity
             $user = Auth::user();
             $currentSessionId = session()->getId();
 
-
-
             // Verificar si la sesión actual coincide con la almacenada
             if ($user->session_id === $currentSessionId) {
-                // Actualizar solo la actividad, mantener la misma sesión
-                $user->update([
-                    'last_activity' => now(),
-                    'last_ip' => $request->ip()
-                ]);
+                // Throttle: solo actualizar la actividad una vez por minuto por usuario
+                $cacheKey = 'user_activity_' . $user->id;
+                if (Cache::add($cacheKey, true, 60)) {
+                    $user->update([
+                        'last_activity' => now(),
+                        'last_ip' => $request->ip()
+                    ]);
+                }
             } else {
                 // Si no hay session_id almacenado, es un login reciente, actualizar la sesión
                 if (empty($user->session_id)) {

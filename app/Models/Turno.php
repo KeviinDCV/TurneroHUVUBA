@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -197,6 +198,9 @@ class Turno extends Model
             'caja_id' => $cajaId,
             'asesor_id' => $asesorId
         ]);
+
+        // Invalidar cache de turnos para que la TV se actualice inmediatamente
+        Cache::forget('tv_turnos_llamados');
     }
 
     public function marcarComoAtendido($duracionFrontend = null)
@@ -264,6 +268,9 @@ class Turno extends Model
             ]);
         }
 
+        // Invalidar cache de turnos para que la TV se actualice inmediatamente
+        Cache::forget('tv_turnos_llamados');
+
         return $duracion;
     }
 
@@ -302,6 +309,9 @@ class Turno extends Model
             'caja_id' => null
         ]);
 
+        // Invalidar cache de turnos para que la TV se actualice inmediatamente
+        Cache::forget('tv_turnos_llamados');
+
         return $duracion;
     }
 
@@ -313,7 +323,7 @@ class Turno extends Model
         $fecha = $fecha ?: Carbon::today();
 
         // Obtener el código del servicio para buscar por código compartido
-        $servicio = Servicio::find($servicioId);
+        $servicio = ($servicioId instanceof Servicio) ? $servicioId : Servicio::find($servicioId);
         if (!$servicio) {
             throw new \Exception('Servicio no encontrado para generar número de turno');
         }
@@ -335,10 +345,11 @@ class Turno extends Model
 
     // Método estático para crear un nuevo turno
     // Envuelto en transacción con lockForUpdate para evitar números duplicados
+    // Acepta $servicioId como int o como instancia de Servicio para evitar queries redundantes
     public static function crear($servicioId, $prioridad = 3)
     {
         return DB::transaction(function () use ($servicioId, $prioridad) {
-            $servicio = Servicio::find($servicioId);
+            $servicio = ($servicioId instanceof Servicio) ? $servicioId : Servicio::find($servicioId);
             if (!$servicio) {
                 throw new \Exception('Servicio no encontrado');
             }
@@ -349,12 +360,13 @@ class Turno extends Model
             }
 
             // Generar número según el código compartido del servicio
-            $numero = static::siguienteNumero($servicioId, $prioridad);
+            // Pasar el objeto $servicio para evitar query redundante
+            $numero = static::siguienteNumero($servicio, $prioridad);
 
             return static::create([
                 'codigo' => $servicio->codigo,
                 'numero' => $numero,
-                'servicio_id' => $servicioId,
+                'servicio_id' => $servicio->id,
                 'prioridad' => $prioridad,
                 'fecha_creacion' => now(),
                 'estado' => 'pendiente'

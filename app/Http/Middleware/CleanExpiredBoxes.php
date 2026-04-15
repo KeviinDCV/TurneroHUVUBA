@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use App\Models\Caja;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -13,11 +14,31 @@ class CleanExpiredBoxes
 {
     /**
      * Handle an incoming request.
-     * Limpia automáticamente las cajas y sesiones expiradas
+     * Limpia automáticamente las cajas y sesiones expiradas.
+     * Throttled: solo ejecuta la limpieza cada 5 minutos para reducir carga de CPU.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
+    {
+        // Solo ejecutar la limpieza cada 5 minutos (300 segundos)
+        // Cache::add() retorna true solo si la clave NO existía, evitando race conditions
+        if (Cache::add('clean_expired_boxes_lock', true, 300)) {
+            try {
+                $this->cleanExpiredBoxes();
+            } catch (\Exception $e) {
+                // Si falla, liberar el lock para reintentar en la siguiente petición
+                Cache::forget('clean_expired_boxes_lock');
+            }
+        }
+
+        return $next($request);
+    }
+
+    /**
+     * Ejecuta la limpieza real de sesiones huérfanas y cajas expiradas.
+     */
+    protected function cleanExpiredBoxes(): void
     {
         // Limpiar usuarios con sesiones que ya no existen en la tabla sessions
         $usersWithOrphanSessions = User::whereNotNull('session_id')
@@ -54,7 +75,5 @@ class CleanExpiredBoxes
                 }
             }
         }
-
-        return $next($request);
     }
 }

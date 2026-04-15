@@ -129,7 +129,8 @@ class TurnoController extends Controller
             }
 
             // Si no requiere priorización, crear turno con prioridad por defecto
-            $turno = Turno::crear($servicioParaTurno, 3); // Prioridad C por defecto
+            // Pasar el objeto $servicio para evitar queries redundantes
+            $turno = Turno::crear($servicio, 3); // Prioridad C por defecto
 
             $nombreServicio = $servicio->nombre_completo;
             $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio}";
@@ -176,6 +177,15 @@ class TurnoController extends Controller
             // Convertir tipo a número (normal=3, alta=5)
             $prioridad = Turno::tipoAPrioridad($prioridadTipo);
 
+            // Obtener servicio una sola vez para reutilizar en todo el método
+            $servicio = Servicio::find($servicioId);
+            if (!$servicio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Servicio no encontrado'
+                ]);
+            }
+
             // Protección contra doble clic: verificar si ya se creó un turno
             // para este servicio en los últimos 3 segundos (solo doble-clic real)
             $turnoReciente = Turno::where('servicio_id', $servicioId)
@@ -186,7 +196,6 @@ class TurnoController extends Controller
                 ->first();
 
             if ($turnoReciente) {
-                $servicio = Servicio::find($servicioId);
                 \Log::warning('⚠️ Turno con prioridad duplicado prevenido (doble clic)', [
                     'servicio_id' => $servicioId,
                     'turno_existente' => $turnoReciente->codigo_completo,
@@ -207,11 +216,10 @@ class TurnoController extends Controller
                 ]);
             }
 
-            // Crear el turno
-            $turno = Turno::crear($servicioId, $prioridad);
+            // Crear el turno - pasar el objeto $servicio para evitar queries redundantes
+            $turno = Turno::crear($servicio, $prioridad);
 
             // Obtener información del servicio para el mensaje
-            $servicio = Servicio::find($servicioId);
             $nombreServicio = $servicio->nombre_completo;
 
             // Determinar texto de prioridad

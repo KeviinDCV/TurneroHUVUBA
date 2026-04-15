@@ -1389,7 +1389,7 @@
         let networkOnline = navigator.onLine; // Estado actual de la red
         let erroresConsecutivosRed = 0; // Contador de errores consecutivos de fetch
         let pollingTimerId = null; // ID del setTimeout de polling (para cancelar/reiniciar)
-        const POLLING_BASE_MS = 1000; // Intervalo base de polling (1 segundo)
+        const POLLING_BASE_MS = 3000; // Intervalo base de polling (3 segundos)
         const POLLING_MAX_MS = 30000; // Máximo intervalo de polling cuando hay errores (30 segs)
         let pollingActualMs = POLLING_BASE_MS; // Intervalo actual de polling
 
@@ -3112,8 +3112,8 @@
             loadMultimedia();
 
             // Establecer intervalos para actualizaciones periódicas adicionales
-            setInterval(updateTvConfig, 5000);
-            setInterval(loadMultimedia, 5000);
+            setInterval(updateTvConfig, 30000);
+            setInterval(loadMultimedia, 30000);
             // La actualización de turnos ahora se maneja en setupRealTimeListeners con intervalo más frecuente
 
             // Ajustar tamaño de fuente de elementos estáticos inmediatamente

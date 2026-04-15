@@ -7,6 +7,7 @@ use App\Models\Multimedia;
 use App\Models\Turno;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -48,6 +49,9 @@ class TvConfigController extends Controller
                 'ticker_speed' => $validated['ticker_speed'],
                 'ticker_enabled' => $request->has('ticker_enabled')
             ]);
+
+            // Invalidar cache de configuración del TV
+            Cache::forget('tv_config');
 
             // Si es una petición AJAX, devolver JSON
             if ($request->ajax() || $request->wantsJson()) {
@@ -289,6 +293,9 @@ class TvConfigController extends Controller
                 'tamaño' => $archivo->getSize()
             ]);
 
+            // Invalidar cache de multimedia del TV
+            Cache::forget('tv_multimedia');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Archivo subido correctamente',
@@ -326,6 +333,8 @@ class TvConfigController extends Controller
                     ->update(['orden' => $item['orden']]);
             }
 
+            Cache::forget('tv_multimedia');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Orden actualizado correctamente'
@@ -348,6 +357,8 @@ class TvConfigController extends Controller
             $multimedia = Multimedia::findOrFail($id);
             $multimedia->activo = !$multimedia->activo;
             $multimedia->save();
+
+            Cache::forget('tv_multimedia');
 
             return response()->json([
                 'success' => true,
@@ -380,6 +391,9 @@ class TvConfigController extends Controller
             // Eliminar registro de la base de datos
             $multimedia->delete();
 
+            // Invalidar cache de multimedia del TV
+            Cache::forget('tv_multimedia');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Archivo eliminado correctamente'
@@ -395,74 +409,84 @@ class TvConfigController extends Controller
 
     /**
      * Obtener la configuración actual para la página del TV
+     * Cacheado por 10 segundos para reducir carga en el servidor
      */
     public function getConfig()
     {
-        $tvConfig = TvConfig::getCurrentConfig();
+        $data = Cache::remember('tv_config', 10, function () {
+            $tvConfig = TvConfig::getCurrentConfig();
+            return [
+                'ticker_message' => $tvConfig->ticker_message,
+                'ticker_speed' => $tvConfig->ticker_speed,
+                'ticker_enabled' => $tvConfig->ticker_enabled
+            ];
+        });
 
-        return response()->json([
-            'ticker_message' => $tvConfig->ticker_message,
-            'ticker_speed' => $tvConfig->ticker_speed,
-            'ticker_enabled' => $tvConfig->ticker_enabled
-        ]);
+        return response()->json($data);
     }
 
     /**
      * Obtener multimedia activa para el TV
+     * Cacheado por 10 segundos para reducir carga en el servidor
      */
     public function getActiveMultimedia()
     {
-        $multimedia = Multimedia::getActiveOrdered();
+        $data = Cache::remember('tv_multimedia', 10, function () {
+            $multimedia = Multimedia::getActiveOrdered();
+            return [
+                'multimedia' => $multimedia->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'nombre' => $item->nombre,
+                        'url' => $item->url,
+                        'tipo' => $item->tipo,
+                        'duracion' => $item->duracion,
+                        'orden' => $item->orden
+                    ];
+                })
+            ];
+        });
 
-        return response()->json([
-            'multimedia' => $multimedia->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'nombre' => $item->nombre,
-                    'url' => $item->url,
-                    'tipo' => $item->tipo,
-                    'duracion' => $item->duracion,
-                    'orden' => $item->orden
-                ];
-            })
-        ]);
+        return response()->json($data);
     }
 
     /**
      * Obtener los últimos turnos llamados y atendidos para mostrar en el TV
+     * Cacheado por 2 segundos para reducir carga en el servidor
+     * (múltiples pantallas TV pueden hacer polling simultáneo)
      */
     public function getTurnosLlamados()
     {
-        // Obtener turnos llamados y atendidos del día actual (desde inicio del día hasta ahora)
-        // Los turnos solo desaparecerán a las 12:00 AM del día siguiente
-        // Limitado a 5 turnos para evitar desbordamiento visual en la pantalla TV
-        // Excluir turnos de servicios con ocultar_turno = true
-        $inicioDelDia = now()->startOfDay();
-        
-        $turnos = \App\Models\Turno::whereIn('estado', ['llamado', 'atendido'])
-            ->where('fecha_llamado', '>=', $inicioDelDia)
-            ->with(['servicio', 'caja'])
-            ->whereHas('servicio', function($query) {
-                $query->where('ocultar_turno', false);
-            })
-            ->orderBy('fecha_llamado', 'desc')
-            ->take(5) // Limitado a 5 turnos para la visualización en TV
-            ->get();
+        $data = Cache::remember('tv_turnos_llamados', 2, function () {
+            $inicioDelDia = now()->startOfDay();
+            
+            $turnos = Turno::whereIn('estado', ['llamado', 'atendido'])
+                ->where('fecha_llamado', '>=', $inicioDelDia)
+                ->with(['servicio', 'caja'])
+                ->whereHas('servicio', function($query) {
+                    $query->where('ocultar_turno', false);
+                })
+                ->orderBy('fecha_llamado', 'desc')
+                ->take(5)
+                ->get();
 
-        return response()->json([
-            'turnos' => $turnos->map(function ($turno) {
-                return [
-                    'id' => $turno->id,
-                    'codigo_completo' => $turno->codigo_completo,
-                    'caja' => $turno->caja ? $turno->caja->nombre : null,
-                    'numero_caja' => $turno->caja ? $turno->caja->numero_caja : null,
-                    'servicio' => $turno->servicio ? $turno->servicio->nombre : null,
-                    'estado' => $turno->estado,
-                    'fecha_llamado' => $turno->fecha_llamado ? $turno->fecha_llamado->format('Y-m-d H:i:s') : null,
-                    'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('Y-m-d H:i:s') : null,
-                    'duracion_atencion' => $turno->duracion_atencion
-                ];
-            })
-        ]);
+            return [
+                'turnos' => $turnos->map(function ($turno) {
+                    return [
+                        'id' => $turno->id,
+                        'codigo_completo' => $turno->codigo_completo,
+                        'caja' => $turno->caja ? $turno->caja->nombre : null,
+                        'numero_caja' => $turno->caja ? $turno->caja->numero_caja : null,
+                        'servicio' => $turno->servicio ? $turno->servicio->nombre : null,
+                        'estado' => $turno->estado,
+                        'fecha_llamado' => $turno->fecha_llamado ? $turno->fecha_llamado->format('Y-m-d H:i:s') : null,
+                        'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('Y-m-d H:i:s') : null,
+                        'duracion_atencion' => $turno->duracion_atencion
+                    ];
+                })
+            ];
+        });
+
+        return response()->json($data);
     }
 }

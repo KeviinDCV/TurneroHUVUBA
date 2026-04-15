@@ -1465,7 +1465,7 @@
             sincronizacionInicial();
 
             // Aumentamos la frecuencia de polling para actualizaciones en tiempo real
-            setInterval(updateQueue, 1000); // Actualizar cada 1 segundo para mejor tiempo real
+            setInterval(updateQueue, 3000); // Actualizar cada 3 segundos
         }
 
         // Función para habilitar audio después de interacción del usuario
@@ -1650,12 +1650,12 @@
             setupRealTimeListeners();
 
             // Configurar actualizaciones periódicas
-            setInterval(updateTvConfig, 5000); // Cada 5 segundos
-            setInterval(loadMultimedia, 10000); // Cada 10 segundos
+            setInterval(updateTvConfig, 30000); // Cada 30 segundos
+            setInterval(loadMultimedia, 30000); // Cada 30 segundos
 
             // Actualizar turno personal si existe
             if (turnoPersonalId) {
-                setInterval(actualizarTurnoPersonal, 2000); // Cada 2 segundos (más frecuente)
+                setInterval(actualizarTurnoPersonal, 5000); // Cada 5 segundos
                 // Actualización inicial
                 setTimeout(actualizarTurnoPersonal, 1000);
 
