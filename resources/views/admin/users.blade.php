@@ -496,9 +496,11 @@
                                         <div class="flex items-center gap-2">
                                             <input
                                                 type="number"
-                                                x-model="userData.auto_llamado_minutos"
+                                                x-model.number="userData.auto_llamado_minutos"
+                                                @change="userData.auto_llamado_minutos = Math.max(1, Math.min(60, parseInt(userData.auto_llamado_minutos) || 10))"
                                                 min="1"
                                                 max="60"
+                                                step="1"
                                                 class="w-16 px-2 py-1 text-center border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                                             >
                                             <span class="text-sm text-orange-600 font-medium">minutos</span>
@@ -693,7 +695,7 @@
                                 password: '',
                                 password_confirmation: '',
                                 auto_llamado_activo: data.auto_llamado_activo ? true : false,
-                                auto_llamado_minutos: data.auto_llamado_minutos || 10
+                                auto_llamado_minutos: parseInt(data.auto_llamado_minutos) || 10
                             };
                             this.loading = false;
                         })
@@ -719,7 +721,9 @@
                     if (this.userData.auto_llamado_activo) {
                         formData.append('auto_llamado_activo', '1');
                     }
-                    formData.append('auto_llamado_minutos', this.userData.auto_llamado_minutos || 10);
+                    // Asegurar que el valor sea un número entero válido entre 1 y 60
+                    const minutos = Math.max(1, Math.min(60, parseInt(this.userData.auto_llamado_minutos) || 10));
+                    formData.append('auto_llamado_minutos', minutos);
 
                     // Añadir contraseña solo si se ha cambiado
                     if (this.userData.password) {
