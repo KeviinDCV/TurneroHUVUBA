@@ -334,8 +334,18 @@ class Turno extends Model
         $inicio = $fecha->copy()->startOfDay();
         $fin = $fecha->copy()->endOfDay();
 
+        // IMPORTANTE: Excluir turnos provenientes de transferencias.
+        // Los turnos transferidos conservan el código y número del ticket original
+        // (incluso si el original es de otro código o de otro día), por lo que
+        // pueden tener números arbitrariamente altos. Si se incluyeran en este
+        // cálculo, contaminarían la secuencia y provocarían que los nuevos turnos
+        // se generen con números muy altos respecto a los turnos reales del día.
         $ultimoTurno = static::where('codigo', $servicio->codigo)
             ->whereBetween('fecha_creacion', [$inicio, $fin])
+            ->where(function ($q) {
+                $q->whereNull('observaciones')
+                  ->orWhere('observaciones', 'NOT LIKE', 'Transferido desde%');
+            })
             ->lockForUpdate() // Prevenir condiciones de carrera
             ->orderBy('numero', 'desc')
             ->first();
