@@ -325,6 +325,125 @@
                 margin-bottom: 0.5rem !important;
             }
         }
+
+        /* ============================================================
+           REFRESCO VISUAL — coherente con el login (solo estilo, no toca el JS)
+           ============================================================ */
+        :root {
+            --hospital-blue: #064b9e;
+            --hospital-blue-hover: #053d7a;
+            --hospital-blue-dark: #042b59;
+        }
+
+        /* Fondo general más suave */
+        body.bg-gray-100,
+        .h-screen.flex.bg-gray-100 {
+            background: linear-gradient(160deg, #eef3fb 0%, #e4ecf6 100%) !important;
+        }
+
+        /* Panel izquierdo: blanco con separación sutil */
+        .panel-left {
+            background: #ffffff !important;
+            border-right: 1px solid #e7edf6;
+            box-shadow: 0 0 40px -22px rgba(16, 24, 40, 0.18) !important;
+        }
+        .panel-left h2 { color: #0f172a; font-weight: 600; }
+
+        /* Inputs / select refinados (como en el login) */
+        .input-group input,
+        #select-servicio-destino {
+            border: 1.5px solid #d3dcea !important;
+            border-radius: 0.85rem !important;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+            transition: border-color .2s ease, box-shadow .2s ease;
+        }
+        .input-group input:focus,
+        #select-servicio-destino:focus {
+            border-color: var(--hospital-blue) !important;
+            box-shadow: 0 0 0 4px rgba(6, 75, 158, 0.12) !important;
+        }
+
+        /* Botones primarios azules (formulario + notificación) → píldora con degradado */
+        #btn-llamar-especifico,
+        #modal-close {
+            background: linear-gradient(135deg, var(--hospital-blue) 0%, var(--hospital-blue-hover) 100%) !important;
+            border-radius: 9999px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 10px 20px -8px rgba(6, 75, 158, 0.5);
+            transition: transform .2s ease, box-shadow .25s ease, filter .25s ease !important;
+        }
+        #btn-llamar-especifico:hover,
+        #modal-close:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.07);
+            box-shadow: 0 16px 26px -10px rgba(6, 75, 158, 0.55);
+        }
+
+        /* Botones "DISPONIBLE" de la tabla: compactos pero con el mismo lenguaje */
+        .btn-llamar-siguiente {
+            background: linear-gradient(135deg, var(--hospital-blue) 0%, var(--hospital-blue-hover) 100%) !important;
+            border-radius: 9999px !important;
+            font-weight: 600 !important;
+            letter-spacing: .02em;
+            box-shadow: 0 4px 10px -4px rgba(6, 75, 158, 0.5);
+            transition: transform .15s ease, filter .2s ease !important;
+        }
+        .btn-llamar-siguiente:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+        .btn-llamar-siguiente:disabled {
+            background: #e2e8f0 !important;
+            color: #94a3b8 !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+        }
+
+        /* Botones de acción del panel derecho: conservar color semántico, refinar */
+        #btn-rellamar, #btn-atender, #btn-aplazar, #btn-transferir {
+            font-weight: 600 !important;
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.35);
+        }
+
+        /* Confirmar transferencia (morado, tema de transferencia) → píldora */
+        #btn-confirmar-transferir {
+            border-radius: 9999px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 10px 20px -8px rgba(147, 51, 234, 0.45);
+        }
+        /* Botones secundarios (cancelar / cerrar) → píldora */
+        #btn-cancelar-transferir,
+        #btn-cerrar-modal-aplazados-footer {
+            border-radius: 9999px !important;
+            font-weight: 600 !important;
+        }
+
+        /* Tablas: contenedor flotante redondeado */
+        .services-table,
+        .historial-table {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 6px 18px -10px rgba(16, 24, 40, 0.18);
+            overflow: hidden;
+        }
+        /* Encabezado de tabla con degradado de marca */
+        .services-table > div:first-child,
+        .historial-table > div:first-child {
+            background: linear-gradient(135deg, var(--hospital-blue) 0%, var(--hospital-blue-hover) 100%) !important;
+            letter-spacing: .03em;
+        }
+        /* Hover sutil en filas de servicio */
+        .servicio-principal:hover { background: #f1f6fd !important; }
+
+        /* Panel derecho: degradado de marca (igual que el sidebar) */
+        .panel-right {
+            background: linear-gradient(160deg, #064b9e 0%, #053d7a 55%, #042b59 100%) !important;
+        }
+        #turno-actual { font-weight: 300; text-shadow: 0 2px 20px rgba(0, 0, 0, 0.18); }
+
+        /* Modales: esquinas más suaves */
+        #notification-modal > div,
+        #modal-aplazados > div,
+        #modal-transferir > div {
+            border-radius: 1.25rem !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 h-screen">
