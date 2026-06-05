@@ -68,14 +68,27 @@ class Caja extends Model
     }
 
     /**
-     * Verificar si la caja está ocupada por un asesor
+     * Verificar si la caja está ocupada por un asesor.
+     *
+     * La caja está ocupada mientras el asesor asignado siga activo. Nos basamos en
+     * last_activity del asesor (que el middleware UpdateUserActivity refresca en CADA
+     * petición del asesor, incluidas las del polling AJAX del dashboard), NO en
+     * fecha_asignacion (que solo se refresca al recargar la página por completo). Así
+     * esta verificación coincide con la liberación automática de CleanExpiredBoxes
+     * (30 min) y con lo que ve el administrador, en vez de mostrar como libres cajas
+     * que en realidad están en uso por un asesor activo.
      */
     public function estaOcupada()
     {
-        return !empty($this->asesor_activo_id) &&
-               !empty($this->session_id) &&
-               $this->fecha_asignacion &&
-               $this->fecha_asignacion->diffInMinutes(now()) < 15; // 15 minutos de timeout (consistente con middleware)
+        if (empty($this->asesor_activo_id) || empty($this->session_id)) {
+            return false;
+        }
+
+        $asesor = $this->asesorActivo;
+
+        return $asesor
+            && $asesor->last_activity
+            && $asesor->last_activity->gte(now()->subMinutes(30));
     }
 
     /**

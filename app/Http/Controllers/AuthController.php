@@ -75,11 +75,25 @@ class AuthController extends Controller
         if ($user && Hash::check($request->password, $user->password)) {
             $currentSessionId = session()->getId();
 
-            // Verificar si el usuario ya tiene una sesión activa diferente
+            // Si el usuario ya tenía una sesión previa distinta (por ejemplo, cerró el
+            // navegador sin pulsar "Cerrar Sesión"), NO lo bloqueamos: como acaba de
+            // autenticarse correctamente, esta nueva sesión REEMPLAZA a la anterior
+            // (sigue habiendo una sola sesión activa por usuario, la última gana).
+            // Invalidamos la sesión anterior y liberamos sus cajas para que pueda volver
+            // a seleccionarlas; el middleware UpdateUserActivity cerrará el otro
+            // dispositivo en su siguiente petición. Esto evita el falso "Sesión Activa
+            // Detectada" que dejaba al usuario fuera de su propia cuenta.
             if ($user->tieneSessionActiva() && $user->esDiferenteSession($currentSessionId)) {
-                return back()->withErrors([
-                    'session_active' => 'Esta cuenta ya tiene una sesión activa en otro dispositivo. Solo se permite una sesión por usuario.'
-                ])->withInput();
+                \DB::table('sessions')->where('id', $user->session_id)->delete();
+
+                \App\Models\Caja::where('asesor_activo_id', $user->id)->update([
+                    'asesor_activo_id' => null,
+                    'session_id' => null,
+                    'fecha_asignacion' => null,
+                    'ip_asesor' => null,
+                ]);
+
+                $user->limpiarSession();
             }
 
             Auth::login($user);
