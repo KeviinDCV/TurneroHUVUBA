@@ -44,19 +44,22 @@
 
 @section('content')
 
-    <div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto" x-data="asignacionData()">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Asignación de Servicios</h1>
-            <p class="text-gray-600">Gestiona la asignación de servicios a los usuarios asesores</p>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-7xl mx-auto" x-data="asignacionData()">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-2">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Operación</p>
+                <h1 class="text-2xl font-bold text-gray-900 mt-1">Asignación de Servicios</h1>
+            </div>
+            <p class="text-sm text-gray-500">Gestiona la asignación de servicios a los usuarios asesores</p>
         </div>
 
                 <!-- Selector de usuario -->
-                <div class="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
+                <div class="bg-gray-50 rounded-xl border border-gray-200 p-6 mb-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Seleccionar Usuario</h2>
                     <div class="max-w-md">
                         <label for="usuario_select" class="block text-sm font-medium text-gray-700 mb-2">Usuario Asesor</label>
                         <select id="usuario_select" x-model="selectedUserId" @change="loadUserServices()"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                             <option value="">Seleccionar usuario...</option>
                             @foreach($usuarios as $usuario)
                                 <option value="{{ $usuario->id }}">{{ $usuario->nombre_completo }} ({{ $usuario->cedula }})</option>
@@ -68,7 +71,7 @@
                 <!-- Contenedor de servicios (solo se muestra cuando hay un usuario seleccionado) -->
                 <div x-show="selectedUserId && !loading" x-transition class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Servicios Disponibles -->
-                    <div class="bg-white shadow-sm border border-gray-200">
+                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
                         <div class="p-4 border-b border-gray-200 bg-gray-50">
                             <h3 class="text-lg font-semibold text-gray-900">Servicios Disponibles</h3>
                             <p class="text-sm text-gray-600 mt-1">Servicios que pueden ser asignados al usuario</p>
@@ -82,7 +85,7 @@
                             </div>
                             <div class="space-y-2">
                                 <template x-for="servicio in serviciosDisponibles" :key="servicio.id">
-                                    <div class="service-item p-3 border border-gray-200 cursor-pointer hover:border-hospital-blue hover:bg-blue-50"
+                                    <div class="service-item p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-hospital-blue hover:bg-blue-50"
                                          @click="asignarServicio(servicio.id)">
                                         <div class="flex items-center justify-between">
                                             <div class="flex-1">
@@ -96,7 +99,7 @@
                                                     <span class="text-xs text-gray-400" x-show="servicio.codigo" x-text="'(' + servicio.codigo + ')'"></span>
                                                 </div>
                                             </div>
-                                            <button class="text-hospital-blue hover:text-hospital-blue-hover p-1 rounded hover:bg-blue-100">
+                                            <button class="text-hospital-blue hover:text-hospital-blue-hover p-1 rounded-lg hover:bg-blue-100">
                                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                 </svg>
@@ -109,7 +112,7 @@
                     </div>
 
                     <!-- Servicios Asignados -->
-                    <div class="bg-white shadow-sm border border-gray-200">
+                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
                         <div class="p-4 border-b border-gray-200 bg-hospital-blue text-white">
                             <h3 class="text-lg font-semibold">Servicios Asignados</h3>
                             <p class="text-sm opacity-90 mt-1">Servicios actualmente asignados al usuario</p>
@@ -123,7 +126,7 @@
                             </div>
                             <div class="space-y-2">
                                 <template x-for="servicio in serviciosAsignados" :key="servicio.id">
-                                    <div class="service-item p-3 border border-gray-200 cursor-pointer hover:border-red-400 hover:bg-red-50"
+                                    <div class="service-item p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-red-400 hover:bg-red-50"
                                          @click="desasignarServicio(servicio.id)">
                                         <div class="flex items-center justify-between">
                                             <div class="flex-1">
@@ -137,7 +140,7 @@
                                                     <span class="text-xs text-gray-400" x-show="servicio.codigo" x-text="'(' + servicio.codigo + ')'"></span>
                                                 </div>
                                             </div>
-                                            <button class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100">
+                                            <button class="text-red-600 hover:text-red-800 p-1 rounded-lg hover:bg-red-100">
                                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                                 </svg>
@@ -178,7 +181,7 @@
         >
             <div
                 @click.away="showModal = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-md"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -201,7 +204,7 @@
                     </div>
 
                     <div class="mt-6 flex justify-center">
-                        <button @click="showModal = false" class="px-4 py-2 bg-hospital-blue text-white rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                        <button @click="showModal = false" class="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
                             Entendido
                         </button>
                     </div>

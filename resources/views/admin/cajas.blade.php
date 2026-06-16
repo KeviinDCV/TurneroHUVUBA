@@ -4,10 +4,14 @@
 
 @section('content')
 
-            <div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-7xl mx-auto">
                 <div class="flex justify-between items-center mb-6" x-data="{ openModal: false }">
-                    <h1 class="text-2xl font-bold text-gray-800">Gestión de Cajas</h1>
-                    <button @click="openModal = true" class="bg-hospital-blue text-white px-4 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Administración</p>
+                        <h1 class="text-2xl font-bold text-gray-900 mt-1">Gestión de Cajas</h1>
+                    </div>
+                    <button @click="openModal = true" class="inline-flex items-center gap-2 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                         Nueva Caja
                     </button>
 
@@ -25,7 +29,7 @@
                     >
                         <div
                             @click.away="openModal = false"
-                            class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
+                            class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 transform scale-95"
                             x-transition:enter-end="opacity-100 transform scale-100"
@@ -66,7 +70,7 @@
                                                 id="nombre"
                                                 name="nombre"
                                                 value="{{ old('nombre') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 placeholder="Ej: Caja Principal"
                                                 required
                                             >
@@ -80,7 +84,7 @@
                                                 id="numero_caja"
                                                 name="numero_caja"
                                                 value="{{ old('numero_caja') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 placeholder="1"
                                                 min="1"
                                                 required
@@ -95,7 +99,7 @@
                                                 id="ubicacion"
                                                 name="ubicacion"
                                                 value="{{ old('ubicacion') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 placeholder="Ej: Primer piso - Área de facturación"
                                             >
                                         </div>
@@ -106,7 +110,7 @@
                                             <select
                                                 id="estado"
                                                 name="estado"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                                 <option value="activa" {{ old('estado') === 'activa' ? 'selected' : '' }}>Activa</option>
@@ -121,17 +125,17 @@
                                                 id="descripcion"
                                                 name="descripcion"
                                                 rows="3"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 placeholder="Descripción opcional de la caja..."
                                             >{{ old('descripcion') }}</textarea>
                                         </div>
                                     </div>
 
                                     <div class="mt-8 flex justify-end space-x-3">
-                                        <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
+                                        <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
                                             Cancelar
                                         </button>
-                                        <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                                        <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
                                             Guardar Caja
                                         </button>
                                     </div>
@@ -180,7 +184,7 @@
                 }">
                     <!-- Buscador -->
                     <div class="mb-6">
-                        <div class="flex items-center border border-gray-300 rounded-md overflow-hidden shadow-sm search-container">
+                        <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm search-container">
                             <div class="px-3 py-2 bg-gray-50">
                                 <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -206,7 +210,7 @@
                     <div class="overflow-x-auto flex justify-center">
                         <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
                             <thead>
-                                <tr class="bg-hospital-blue text-white">
+                                <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
                                     <th class="py-3 px-4 text-left font-semibold">NÚMERO</th>
                                     <th class="py-3 px-4 text-left font-semibold">NOMBRE</th>
                                     <th class="py-3 px-4 text-left font-semibold">UBICACIÓN</th>
@@ -289,7 +293,7 @@
         >
             <div
                 @click.away="isOpen = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -338,7 +342,7 @@
                                         type="text"
                                         id="edit_nombre"
                                         x-model="cajaData.nombre"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                         required
                                     >
                                 </div>
@@ -350,7 +354,7 @@
                                         type="number"
                                         id="edit_numero_caja"
                                         x-model="cajaData.numero_caja"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                         min="1"
                                         required
                                     >
@@ -363,7 +367,7 @@
                                         type="text"
                                         id="edit_ubicacion"
                                         x-model="cajaData.ubicacion"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                     >
                                 </div>
 
@@ -373,7 +377,7 @@
                                     <select
                                         id="edit_estado"
                                         x-model="cajaData.estado"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                         required
                                     >
                                         <option value="activa">Activa</option>
@@ -388,16 +392,16 @@
                                         id="edit_descripcion"
                                         x-model="cajaData.descripcion"
                                         rows="3"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                     ></textarea>
                                 </div>
                             </div>
 
                             <div class="mt-8 flex justify-end space-x-3">
-                                <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
+                                <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
                                     Cancelar
                                 </button>
-                                <button type="submit" :disabled="loading" class="bg-hospital-blue text-white px-6 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer disabled:opacity-50">
+                                <button type="submit" :disabled="loading" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer disabled:opacity-50">
                                     <span x-show="!loading">Guardar Cambios</span>
                                     <span x-show="loading">Guardando...</span>
                                 </button>
@@ -428,7 +432,7 @@
         >
             <div
                 @click.away="isOpen = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-md"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -451,10 +455,10 @@
                     </div>
 
                     <div class="mt-6 flex justify-center space-x-4">
-                        <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer">
+                        <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
                             Cancelar
                         </button>
-                        <button @click="deleteCaja()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors cursor-pointer">
+                        <button @click="deleteCaja()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer">
                             Eliminar
                         </button>
                     </div>

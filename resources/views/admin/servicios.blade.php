@@ -3,10 +3,14 @@
 @section('title', 'Gestión de Servicios')
 
 @section('content')
-                <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4" x-data="{ openModal: false }">
-                        <h1 class="text-xl md:text-2xl font-bold text-gray-800">Gestión de Servicios</h1>
-                        <button @click="openModal = true" class="bg-hospital-blue text-white px-4 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer w-full sm:w-auto">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Operación</p>
+                            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Gestión de Servicios</h1>
+                        </div>
+                        <button @click="openModal = true" class="inline-flex items-center justify-center gap-2 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer w-full sm:w-auto">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Nuevo Servicio
                         </button>
 
@@ -20,7 +24,7 @@
                              x-transition:leave-end="opacity-0"
                              class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
                              style="display: none;">
-                            <div @click.away="openModal = false" class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
+                            <div @click.away="openModal = false" class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
                                 <div class="p-6">
                                     <div class="flex items-center justify-between mb-4">
                                         <h3 class="text-lg font-medium text-gray-900">Crear Nuevo Servicio</h3>
@@ -38,19 +42,19 @@
                                             <div>
                                                 <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                                                 <input type="text" id="nombre" name="nombre" required
-                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                             </div>
 
                                             <div>
                                                 <label for="codigo" class="block text-sm font-medium text-gray-700 mb-1">Código</label>
                                                 <input type="text" id="codigo" name="codigo"
-                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                             </div>
 
                                             <div>
                                                 <label for="nivel" class="block text-sm font-medium text-gray-700 mb-1">Nivel *</label>
                                                 <select id="nivel" name="nivel" required x-model="nivel"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                                     <option value="servicio">Servicio</option>
                                                     <option value="subservicio">Subservicio</option>
                                                 </select>
@@ -60,7 +64,7 @@
                                             <div x-show="nivel === 'subservicio'">
                                                 <label for="servicio_padre_id" class="block text-sm font-medium text-gray-700 mb-1">Servicio Padre *</label>
                                                 <select id="servicio_padre_id" name="servicio_padre_id"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                                     <option value="">Seleccionar servicio padre</option>
                                                     @foreach($serviciosPrincipales as $servicioPadre)
                                                         <option value="{{ $servicioPadre->id }}">{{ $servicioPadre->nombre }}</option>
@@ -72,7 +76,7 @@
                                             <div>
                                                 <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                                                 <select id="estado" name="estado" required
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                                     <option value="activo">Activo</option>
                                                     <option value="inactivo">Inactivo</option>
                                                 </select>
@@ -81,7 +85,7 @@
                                             <div>
                                                 <label for="orden" class="block text-sm font-medium text-gray-700 mb-1">Orden</label>
                                                 <input type="number" id="orden" name="orden" min="0"
-                                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                                 <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
                                             </div>
                                         </div>
@@ -111,16 +115,16 @@
                                         <div class="mt-4">
                                             <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                                             <textarea id="descripcion" name="descripcion" rows="3"
-                                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
+                                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
                                         </div>
 
                                         <div class="flex justify-end space-x-3 mt-6">
                                             <button type="button" @click="openModal = false"
-                                                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors">
+                                                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
                                                 Cancelar
                                             </button>
                                             <button type="submit"
-                                                    class="px-4 py-2 bg-hospital-blue text-white rounded hover:bg-hospital-blue-hover transition-colors">
+                                                    class="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-hover transition-colors">
                                                 Crear Servicio
                                             </button>
                                         </div>
@@ -189,7 +193,7 @@
                     }">
                         <!-- Buscador -->
                         <div class="mb-6">
-                            <div class="flex items-center border border-gray-300 rounded-md overflow-hidden shadow-sm search-container">
+                            <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm search-container">
                                 <div class="px-3 py-2 bg-gray-50">
                                     <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -212,11 +216,11 @@
                         </div>
 
                         <!-- Tabla de Servicios -->
-                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
                             <div class="overflow-x-auto">
                                 <table class="w-full divide-y divide-gray-200">
                                 <thead>
-                                    <tr class="bg-hospital-blue text-white">
+                                    <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
                                         <th class="py-3 px-4 text-left font-semibold">SERVICIO</th>
                                         <th class="py-3 px-4 text-left font-semibold">NIVEL</th>
                                         <th class="py-3 px-4 text-left font-semibold hidden md:table-cell">CÓDIGO</th>
@@ -355,7 +359,7 @@
          class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
          style="display: none;"
          @edit-servicio.window="showEditModal = true; editingServicio = $event.detail">
-        <div @click.away="showEditModal = false" class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
+        <div @click.away="showEditModal = false" class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Editar Servicio</h3>
@@ -385,20 +389,20 @@
                             <label for="edit_nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                             <input type="text" id="edit_nombre" name="nombre" required
                                    x-model="editingServicio.nombre"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                         </div>
 
                         <div>
                             <label for="edit_codigo" class="block text-sm font-medium text-gray-700 mb-1">Código</label>
                             <input type="text" id="edit_codigo" name="codigo"
                                    x-model="editingServicio.codigo"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                         </div>
 
                         <div>
                             <label for="edit_nivel" class="block text-sm font-medium text-gray-700 mb-1">Nivel *</label>
                             <select id="edit_nivel" name="nivel" required x-model="editingServicio.nivel"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                 <option value="servicio">Servicio</option>
                                 <option value="subservicio">Subservicio</option>
                             </select>
@@ -408,7 +412,7 @@
                             <label for="edit_servicio_padre_id" class="block text-sm font-medium text-gray-700 mb-1">Servicio Padre *</label>
                             <select id="edit_servicio_padre_id" name="servicio_padre_id"
                                     x-model="editingServicio.servicio_padre_id"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                 <option value="">Seleccionar servicio padre</option>
                                 @foreach($serviciosPrincipales as $servicioPadre)
                                     <option value="{{ $servicioPadre->id }}">{{ $servicioPadre->nombre }}</option>
@@ -420,7 +424,7 @@
                         <div>
                             <label for="edit_estado" class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
                             <select id="edit_estado" name="estado" required x-model="editingServicio.estado"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                                 <option value="activo">Activo</option>
                                 <option value="inactivo">Inactivo</option>
                             </select>
@@ -430,7 +434,7 @@
                             <label for="edit_orden" class="block text-sm font-medium text-gray-700 mb-1">Orden</label>
                             <input type="number" id="edit_orden" name="orden" min="0"
                                    x-model="editingServicio.orden"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                             <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
                         </div>
                     </div>
@@ -476,16 +480,16 @@
                         <label for="edit_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                         <textarea id="edit_descripcion" name="descripcion" rows="3"
                                   x-model="editingServicio.descripcion"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
                     </div>
 
                     <div class="flex justify-end space-x-3 mt-6">
                         <button type="button" @click="showEditModal = false"
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors">
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
                             Cancelar
                         </button>
                         <button type="submit"
-                                class="px-4 py-2 bg-hospital-blue text-white rounded hover:bg-hospital-blue-hover transition-colors">
+                                class="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-hover transition-colors">
                             Actualizar Servicio
                         </button>
                     </div>
@@ -514,7 +518,7 @@
         >
             <div
                 @click.away="showDeleteModal = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-md"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -537,10 +541,10 @@
                     </div>
 
                     <div class="mt-6 flex justify-center space-x-4">
-                        <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer">
+                        <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
                             Cancelar
                         </button>
-                        <button @click="confirmDeleteServicio()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors cursor-pointer">
+                        <button @click="confirmDeleteServicio()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer">
                             Eliminar
                         </button>
                     </div>
@@ -568,7 +572,7 @@
         >
             <div
                 @click.away="showErrorModal = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-md"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -588,7 +592,7 @@
                     </div>
 
                     <div class="mt-6 flex justify-center">
-                        <button @click="showErrorModal = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer">
+                        <button @click="showErrorModal = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
                             Entendido
                         </button>
                     </div>

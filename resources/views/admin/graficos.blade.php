@@ -3,21 +3,22 @@
 @section('title', 'Gráficos y Estadísticas')
 @section('content')
 
-<div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Analytics Dashboard</h1>
-            <p class="text-sm text-gray-600 mt-1">Análisis de datos actuales e históricos del sistema de turnos</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Análisis</p>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Gráficos y estadísticas</h1>
+            <p class="text-sm text-gray-500 mt-1">Análisis de datos actuales e históricos del sistema de turnos</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
             <!-- Selector de Fechas -->
             <div class="flex flex-col sm:flex-row gap-2 items-center">
                 <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Fecha:</label>
-                <input type="date" id="fechaSelector" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent" value="{{ date('Y-m-d') }}">
+                <input type="date" id="fechaSelector" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent" value="{{ date('Y-m-d') }}">
 
                 <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Rango:</label>
-                <select id="rangoSelector" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <select id="rangoSelector" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="dia" selected>Día</option>
                     <option value="semana">Semana</option>
                     <option value="mes">Mes</option>
@@ -26,13 +27,13 @@
 
                 <!-- Campos para rango personalizado -->
                 <div id="rangoPersonalizado" class="hidden flex gap-2">
-                    <input type="date" id="fechaInicio" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                    <input type="date" id="fechaInicio" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <span class="text-sm text-gray-500 self-center">a</span>
-                    <input type="date" id="fechaFin" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                    <input type="date" id="fechaFin" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                 </div>
             </div>
 
-            <button onclick="actualizarTodosLosGraficos()" class="bg-hospital-blue hover:bg-hospital-blue-hover text-white px-4 py-2 rounded transition-colors duration-200 flex items-center gap-2">
+            <button onclick="actualizarTodosLosGraficos()" class="bg-hospital-blue hover:bg-hospital-blue-hover text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
@@ -80,10 +81,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Turnos por Estado (Hoy) -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Turnos por Estado (Hoy)</h3>
-                <button onclick="exportarGrafico('turnosPorEstadoChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('turnosPorEstadoChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -95,10 +96,10 @@
         </div>
 
         <!-- Distribución de Prioridades -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Distribución de Prioridades (Hoy)</h3>
-                <button onclick="exportarGrafico('distribucionPrioridadesChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('distribucionPrioridadesChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -110,10 +111,10 @@
         </div>
 
         <!-- Turnos por Hora del Día -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Turnos por Hora del Día (Hoy)</h3>
-                <button onclick="exportarGrafico('turnosPorHoraChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('turnosPorHoraChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -125,10 +126,10 @@
         </div>
 
         <!-- Turnos por Servicio (Hoy) -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Turnos por Servicio (Hoy)</h3>
-                <button onclick="exportarGrafico('turnosPorServicioChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('turnosPorServicioChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -140,10 +141,10 @@
         </div>
 
         <!-- Top Asesores (Hoy) -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Top Asesores (Hoy)</h3>
-                <button onclick="exportarGrafico('rendimientoAsesoresChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('rendimientoAsesoresChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -155,10 +156,10 @@
         </div>
 
         <!-- Tiempo de Atención por Servicio -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Tiempo Promedio de Atención por Servicio (min)</h3>
-                <button onclick="exportarGrafico('tiempoAtencionChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('tiempoAtencionChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -170,10 +171,10 @@
         </div>
 
         <!-- Distribución de Turnos por Hora (Hoy) -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">Distribución de Turnos por Hora (Hoy)</h3>
-                <button onclick="exportarGrafico('turnosPorDiaChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                <button onclick="exportarGrafico('turnosPorDiaChart')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -192,7 +193,7 @@
     <div id="content-historico" class="tab-content hidden">
 
         <!-- Filtros Avanzados Históricos -->
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-6">
             <div class="flex items-center mb-4">
                 <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
@@ -325,7 +326,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             <!-- 1. Volumen de Turnos por Tiempo -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Evolución de Turnos Histórica</h3>
                     <div class="flex gap-2">
@@ -334,7 +335,7 @@
                             <option value="weekly">Semanal</option>
                             <option value="monthly">Mensual</option>
                         </select>
-                        <button onclick="exportarGrafico('volumenChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                        <button onclick="exportarGrafico('volumenChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -347,10 +348,10 @@
             </div>
 
             <!-- 2. Distribución por Servicios -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Distribución por Servicios</h3>
-                    <button onclick="exportarGrafico('serviciosChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                    <button onclick="exportarGrafico('serviciosChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -362,10 +363,10 @@
             </div>
 
             <!-- 3. Estados Finales -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Estados Finales</h3>
-                    <button onclick="exportarGrafico('estadosChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                    <button onclick="exportarGrafico('estadosChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -377,10 +378,10 @@
             </div>
 
             <!-- 4. Horas Pico -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm lg:col-span-2">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Análisis de Horas Pico</h3>
-                    <button onclick="exportarGrafico('horasPicoChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                    <button onclick="exportarGrafico('horasPicoChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -392,10 +393,10 @@
             </div>
 
             <!-- 5. Tiempo Promedio por Servicio -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Tiempo Promedio de Atención</h3>
-                    <button onclick="exportarGrafico('tiempoAtencionChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                    <button onclick="exportarGrafico('tiempoAtencionChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -407,10 +408,10 @@
             </div>
 
             <!-- 6. Rendimiento de Asesores -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Top Asesores</h3>
-                    <button onclick="exportarGrafico('asesoresChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-md hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
+                    <button onclick="exportarGrafico('asesoresChartHistorico')" class="text-hospital-blue hover:text-hospital-blue-hover p-2 rounded-lg hover:bg-hospital-blue-light transition-colors duration-200" title="Exportar gráfico">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>

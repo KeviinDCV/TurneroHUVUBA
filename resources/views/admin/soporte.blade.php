@@ -3,12 +3,13 @@
 @section('title', 'Soporte Técnico')
 
 @section('content')
-<div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Soporte Técnico</h1>
-            <p class="text-sm text-gray-600 mt-1">Reportar errores o solicitar mejoras en el aplicativo</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Ayuda</p>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Soporte Técnico</h1>
+            <p class="text-sm text-gray-500 mt-1">Reportar errores o solicitar mejoras en el aplicativo</p>
         </div>
         <div class="flex items-center text-sm text-gray-500 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
             <svg class="w-4 h-4 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,7 +42,7 @@
         @csrf
 
         <!-- Información del Usuario (Solo lectura) -->
-        <div class="bg-white border border-gray-200 shadow-sm">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
             <div class="bg-hospital-blue text-white px-6 py-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +62,7 @@
                             Nombre Completo
                         </label>
                         <input type="text" value="{{ $user->nombre_completo }}" readonly
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -71,14 +72,14 @@
                             Correo Electrónico
                         </label>
                         <input type="email" value="{{ $user->correo_electronico }}" readonly
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Detalles de la Solicitud -->
-        <div class="bg-white border border-gray-200 shadow-sm">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
             <div class="bg-hospital-blue text-white px-6 py-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +100,7 @@
                             Tipo de Solicitud *
                         </label>
                         <select id="tipo_solicitud" name="tipo_solicitud" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                             <option value="">Seleccionar tipo</option>
                             <option value="error" {{ old('tipo_solicitud') == 'error' ? 'selected' : '' }}>Reporte de Error</option>
                             <option value="mejora" {{ old('tipo_solicitud') == 'mejora' ? 'selected' : '' }}>Mejora de Funcionalidad</option>
@@ -116,7 +117,7 @@
                             Prioridad *
                         </label>
                         <select id="prioridad" name="prioridad" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                             <option value="">Seleccionar prioridad</option>
                             <option value="baja" {{ old('prioridad') == 'baja' ? 'selected' : '' }}>Baja</option>
                             <option value="media" {{ old('prioridad') == 'media' ? 'selected' : '' }}>Media</option>
@@ -137,7 +138,7 @@
                     <input type="text" id="asunto" name="asunto" required maxlength="255"
                            value="{{ old('asunto') }}"
                            placeholder="Resumen breve del problema o solicitud"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                 </div>
 
                 <!-- Descripción -->
@@ -150,7 +151,7 @@
                     </label>
                     <textarea id="descripcion" name="descripcion" required maxlength="2000" rows="5"
                               placeholder="Describa detalladamente el problema, error o funcionalidad solicitada..."
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">{{ old('descripcion') }}</textarea>
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">{{ old('descripcion') }}</textarea>
                     <p class="text-xs text-gray-500 mt-1">Máximo 2000 caracteres</p>
                 </div>
             </div>
@@ -158,7 +159,7 @@
 
         <!-- Campos adicionales para errores -->
         <div id="campos-error" style="display: none;">
-            <div class="bg-white border border-gray-200 shadow-sm">
+            <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
                 <div class="bg-red-600 text-white px-6 py-4">
                     <h3 class="text-lg font-semibold flex items-center">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +180,7 @@
                         </label>
                         <textarea id="pasos_reproducir" name="pasos_reproducir" maxlength="1000" rows="4"
                                   placeholder="1. Ir a la página...&#10;2. Hacer clic en...&#10;3. El error aparece cuando..."
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">{{ old('pasos_reproducir') }}</textarea>
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">{{ old('pasos_reproducir') }}</textarea>
                         <p class="text-xs text-gray-500 mt-1">Máximo 1000 caracteres</p>
                     </div>
 
@@ -193,7 +194,7 @@
                         </label>
                         <textarea id="comportamiento_esperado" name="comportamiento_esperado" maxlength="1000" rows="3"
                                   placeholder="Describa qué debería suceder en lugar del error..."
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">{{ old('comportamiento_esperado') }}</textarea>
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">{{ old('comportamiento_esperado') }}</textarea>
                         <p class="text-xs text-gray-500 mt-1">Máximo 1000 caracteres</p>
                     </div>
                 </div>
@@ -203,11 +204,11 @@
         <!-- Botones -->
         <div class="flex justify-end space-x-3 mt-6">
             <button type="button" onclick="limpiarFormulario()"
-                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors">
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
                 Limpiar Formulario
             </button>
             <button type="submit"
-                    class="px-4 py-2 bg-hospital-blue text-white rounded hover:bg-hospital-blue-hover transition-colors">
+                    class="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-hover transition-colors">
                 Enviar Solicitud
             </button>
         </div>

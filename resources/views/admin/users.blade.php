@@ -40,7 +40,7 @@
 @endsection
 
 @section('content')
-    <div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-7xl mx-auto">
                 @if (session('success'))
                 <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6">
                     {{ session('success') }}
@@ -81,8 +81,12 @@
                 }">
                     <!-- Header con título y botón -->
                     <div class="flex justify-between items-center mb-6">
-                        <h1 class="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
-                        <button @click="openModal = true" class="bg-hospital-blue text-white px-4 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Administración</p>
+                            <h1 class="text-2xl font-bold text-gray-900 mt-1">Gestión de Usuarios</h1>
+                        </div>
+                        <button @click="openModal = true" class="inline-flex items-center gap-2 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Nuevo Usuario
                         </button>
                     </div>
@@ -101,7 +105,7 @@
                     >
                         <div
                             @click.away="openModal = false"
-                            class="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
+                            class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 transform scale-95"
                             x-transition:enter-end="opacity-100 transform scale-100"
@@ -142,7 +146,7 @@
                                                 id="nombre_completo"
                                                 name="nombre_completo"
                                                 value="{{ old('nombre_completo') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                         </div>
@@ -155,7 +159,7 @@
                                                 id="cedula"
                                                 name="cedula"
                                                 value="{{ old('cedula') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                             >
                                         </div>
 
@@ -167,7 +171,7 @@
                                                 id="correo_electronico"
                                                 name="correo_electronico"
                                                 value="{{ old('correo_electronico') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                             >
                                         </div>
 
@@ -179,7 +183,7 @@
                                                 id="nombre_usuario"
                                                 name="nombre_usuario"
                                                 value="{{ old('nombre_usuario') }}"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                         </div>
@@ -190,7 +194,7 @@
                                             <select
                                                 id="rol"
                                                 name="rol"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                                 required
                                             >
                                                 <option value="">Seleccionar rol</option>
@@ -206,7 +210,7 @@
                                                 type="password"
                                                 id="password"
                                                 name="password"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                             >
                                         </div>
 
@@ -217,16 +221,16 @@
                                                 type="password"
                                                 id="password_confirmation"
                                                 name="password_confirmation"
-                                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
                                             >
                                         </div>
                                     </div>
 
                                     <div class="mt-8 flex justify-end space-x-3">
-                                        <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
+                                        <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
                                             Cancelar
                                         </button>
-                                        <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                                        <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
                                             Guardar Usuario
                                         </button>
                                     </div>
@@ -237,7 +241,7 @@
 
                     <!-- Buscador -->
                     <div class="mb-6">
-                        <div class="flex items-center border border-gray-300 rounded-md overflow-hidden shadow-sm search-container">
+                        <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm search-container">
                             <div class="px-3 py-2 bg-gray-50">
                                 <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -261,9 +265,9 @@
 
                     <!-- Tabla de Usuarios -->
                     <div class="overflow-x-auto flex justify-center">
-                        <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                        <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
                             <thead>
-                                <tr class="bg-hospital-blue text-white">
+                                <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
                                     <th class="py-3 px-4 text-left font-semibold">NOMBRE</th>
                                     <th class="py-3 px-4 text-left font-semibold">CÉDULA</th>
                                     <th class="py-3 px-4 text-left font-semibold">CORREO</th>
@@ -360,7 +364,7 @@
         >
             <div
                 @click.away="isOpen = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -409,7 +413,7 @@
                                         type="text"
                                         id="edit_nombre_completo"
                                         x-model="userData.nombre_completo"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                         required
                                     >
                                 </div>
@@ -421,7 +425,7 @@
                                         type="text"
                                         id="edit_cedula"
                                         x-model="userData.cedula"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                     >
                                 </div>
 
@@ -432,7 +436,7 @@
                                         type="text"
                                         id="edit_correo_electronico"
                                         x-model="userData.correo_electronico"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                     >
                                 </div>
 
@@ -443,7 +447,7 @@
                                         type="text"
                                         id="edit_nombre_usuario"
                                         x-model="userData.nombre_usuario"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                         required
                                     >
                                 </div>
@@ -454,7 +458,7 @@
                                     <select
                                         id="edit_rol"
                                         x-model="userData.rol"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                         required
                                     >
                                         <option value="">Seleccionar rol</option>
@@ -518,7 +522,7 @@
                                         type="password"
                                         id="edit_password"
                                         x-model="userData.password"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                     >
                                 </div>
 
@@ -529,16 +533,16 @@
                                         type="password"
                                         id="edit_password_confirmation"
                                         x-model="userData.password_confirmation"
-                                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                     >
                                 </div>
                             </div>
 
                             <div class="mt-8 flex justify-end space-x-3">
-                                <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
+                                <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
                                     Cancelar
                                 </button>
-                                <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
+                                <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
                                     Guardar Cambios
                                 </button>
                             </div>
@@ -568,7 +572,7 @@
         >
             <div
                 @click.away="isOpen = false"
-                class="bg-white rounded-lg shadow-2xl w-full max-w-md"
+                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform scale-95"
                 x-transition:enter-end="opacity-100 transform scale-100"
@@ -591,10 +595,10 @@
                     </div>
 
                     <div class="mt-6 flex justify-center space-x-4">
-                        <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer">
+                        <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
                             Cancelar
                         </button>
-                        <button @click="deleteUser()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors cursor-pointer">
+                        <button @click="deleteUser()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer">
                             Eliminar
                         </button>
                     </div>

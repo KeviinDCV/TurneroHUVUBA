@@ -3,10 +3,13 @@
 @section('title', 'Reportes')
 @section('content')
 
-<div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 class="text-xl md:text-2xl font-bold text-gray-800">Reportes del Sistema</h1>
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Análisis</p>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Reportes del Sistema</h1>
+        </div>
     </div>
 
     <!-- Formulario de Reportes -->
@@ -14,7 +17,7 @@
         @csrf
 
         <!-- Selección de Fechas -->
-        <div class="bg-white border border-gray-200 shadow-sm">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
             <div class="bg-hospital-blue text-white px-6 py-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,7 +39,7 @@
                         <input type="date"
                                id="fecha_inicio"
                                name="fecha_inicio"
-                               class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue transition-colors"
+                               class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue transition-colors"
                                value="{{ date('Y-m-d', strtotime('-7 days')) }}"
                                required>
                     </div>
@@ -51,7 +54,7 @@
                         <input type="date"
                                id="fecha_fin"
                                name="fecha_fin"
-                               class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue transition-colors"
+                               class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue transition-colors"
                                value="{{ date('Y-m-d') }}"
                                required>
                     </div>
@@ -60,7 +63,7 @@
         </div>
 
         <!-- Filtros Opcionales -->
-        <div class="bg-white border border-gray-200 shadow-sm">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
             <div class="bg-hospital-blue text-white px-6 py-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,7 +162,7 @@
         </div>
 
         <!-- Reportes Adicionales -->
-        <div class="bg-white border border-gray-200 shadow-sm">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
             <div class="bg-hospital-blue text-white px-6 py-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +174,7 @@
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <label class="flex items-start p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
+                    <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
                         <input type="checkbox"
                                name="incluir_calificaciones"
                                value="1"
@@ -182,7 +185,7 @@
                         </div>
                     </label>
 
-                    <label class="flex items-start p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
+                    <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
                         <input type="checkbox"
                                name="incluir_tiempos_detallados"
                                value="1"
@@ -193,7 +196,7 @@
                         </div>
                     </label>
 
-                    <label class="flex items-start p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
+                    <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
                         <input type="checkbox"
                                name="incluir_estadisticas_avanzadas"
                                value="1"
@@ -208,7 +211,7 @@
         </div>
 
         <!-- Formato de Exportación -->
-        <div class="bg-white border border-gray-200 shadow-sm">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
             <div class="bg-hospital-blue text-white px-6 py-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +223,7 @@
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <label class="relative flex items-start p-6 border-2 border-gray-200 cursor-pointer hover:border-hospital-blue hover:shadow-md transition-all group">
+                    <label class="relative flex items-start p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-hospital-blue hover:shadow-md transition-all group">
                         <input type="radio"
                                name="formato"
                                value="excel"
@@ -245,7 +248,7 @@
                         </div>
                     </label>
 
-                    <label class="relative flex items-start p-6 border-2 border-gray-200 cursor-pointer hover:border-hospital-blue hover:shadow-md transition-all group">
+                    <label class="relative flex items-start p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-hospital-blue hover:shadow-md transition-all group">
                         <input type="radio"
                                name="formato"
                                value="pdf"
@@ -273,10 +276,10 @@
         </div>
 
         <!-- Botones de Acción -->
-        <div class="bg-white border border-gray-200 shadow-sm p-6">
+        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden p-6">
             <div class="flex flex-col sm:flex-row gap-4">
                 <button type="submit"
-                        class="flex-1 bg-hospital-blue hover:bg-hospital-blue-hover text-white font-semibold py-4 px-8 transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                        class="flex-1 bg-hospital-blue hover:bg-hospital-blue-hover text-white font-semibold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -285,7 +288,7 @@
 
                 <button type="button"
                         onclick="limpiarFormulario()"
-                        class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 px-8 transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                        class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
@@ -293,7 +296,7 @@
                 </button>
             </div>
 
-            <div class="mt-4 p-4 bg-blue-50 border border-blue-200">
+            <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <div class="flex items-start">
                     <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
