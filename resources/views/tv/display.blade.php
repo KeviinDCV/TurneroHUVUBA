@@ -2448,6 +2448,7 @@
             }
 
             isMediaPlaying = false;
+            limpiarVideoTimers();
             if (mediaTimer) {
                 clearTimeout(mediaTimer);
                 mediaTimer = null;
@@ -2456,8 +2457,8 @@
 
         // Cargar placeholder con transición
         function loadPlaceholder(container) {
-            // Limpiar contenido actual
-            container.innerHTML = '';
+            // Limpiar contenido actual (liberando el decoder del video saliente)
+            limpiarMultimediaContainer(container);
 
             // Crear placeholder con transición
             const placeholderDiv = document.createElement('div');
@@ -2519,10 +2520,53 @@
             }
         }
 
+        // ============================================================
+        // FIX 2026: reproductor de video sin fuga de decoders + watchdog
+        // anti-congelamiento. Antes: se creaba un <video> nuevo cada ciclo y
+        // se borraba con innerHTML='' sin apagar su decoder -> fuga en Chrome
+        // 24/7 -> lag progresivo y congelamiento. Y los videos solo avanzaban
+        // por onended (sin plan B ante estancamientos).
+        // ============================================================
+        let videoPersistente = null;   // se reutiliza UN solo <video> (Chrome amortiza el decoder)
+        let videoWatchdogTimer = null; // timeout de seguridad por clip
+        let videoStallTimer = null;    // timeout ante stall/waiting
+        let videoGen = 0;              // generación de carga; invalida timers/handlers viejos
+
+        function limpiarVideoWatchdog() {
+            if (videoWatchdogTimer) { clearTimeout(videoWatchdogTimer); videoWatchdogTimer = null; }
+        }
+        function limpiarVideoTimers() {
+            limpiarVideoWatchdog();
+            if (videoStallTimer) { clearTimeout(videoStallTimer); videoStallTimer = null; }
+        }
+        // Apaga un <video> liberando su decoder en Chrome (clave contra la fuga)
+        function destruirVideo(video) {
+            if (!video || video.tagName !== 'VIDEO') return;
+            try {
+                video.onloadedmetadata = null;
+                video.onloadeddata = null;
+                video.onended = null;
+                video.onerror = null;
+                video.onstalled = null;
+                video.onwaiting = null;
+                video.onplaying = null;
+                video.pause();
+                video.removeAttribute('src');
+                video.load(); // fuerza a Chrome a soltar el pipeline/decoder
+            } catch (e) { /* el elemento puede estar ya detached */ }
+        }
+        // Vacía el contenedor liberando primero el <video> activo y sus timers
+        function limpiarMultimediaContainer(container) {
+            limpiarVideoTimers();
+            const v = container.querySelector('video');
+            if (v) destruirVideo(v);
+            container.innerHTML = '';
+        }
+
         // Cargar nuevo archivo multimedia
         function loadNewMedia(media, container) {
-            // Limpiar contenido anterior
-            container.innerHTML = '';
+            // Limpiar contenido anterior (liberando el decoder del video saliente)
+            limpiarMultimediaContainer(container);
 
             if (media.tipo === 'imagen') {
                 // Mostrar imagen
@@ -2556,21 +2600,53 @@
                 };
 
             } else if (media.tipo === 'video') {
-                // Mostrar video
-                const video = document.createElement('video');
-                video.src = media.url;
+                // Reutilizar UN solo <video> persistente (Chrome amortiza el decoder)
+                const gen = ++videoGen;     // esta carga; invalida timers/handlers de cargas previas
+                limpiarVideoTimers();
+
+                let video = videoPersistente;
+                if (!video) {
+                    video = document.createElement('video');
+                    videoPersistente = video;
+                } else {
+                    destruirVideo(video);   // teardown del uso anterior antes de reasignar
+                }
+
                 video.className = 'max-w-full max-h-full object-contain media-transition media-loading';
                 video.autoplay = true;
                 video.muted = true;
                 video.loop = false;
-                video.playsInline = true; // Importante para rendimiento en móviles y algunos navegadores
-                video.preload = 'auto'; // Preargar metadatos y buffer
-                
-                // Manejo de errores para evitar bucles infinitos
-                let errorHandled = false;
+                video.playsInline = true;
+                video.preload = 'auto';
+
+                // Avance idempotente y a prueba de cargas viejas
+                let avanzado = false;
+                const avanzarUnaVez = (motivo) => {
+                    if (avanzado || gen !== videoGen) return;
+                    avanzado = true;
+                    limpiarVideoTimers();
+                    if (motivo) console.warn('▶ Avance de video forzado:', motivo, media.url);
+                    nextMedia();
+                };
+
+                // Detección de estancamiento: si bufferea sin progresar 8s, saltar
+                const onStall = () => {
+                    if (videoStallTimer) return;
+                    videoStallTimer = setTimeout(() => avanzarUnaVez('estancamiento (stall/waiting)'), 8000);
+                };
+                const cancelarStall = () => { if (videoStallTimer) { clearTimeout(videoStallTimer); videoStallTimer = null; } };
+
+                video.onloadedmetadata = () => {
+                    // Watchdog de seguridad = duración REAL del clip + 10s (no corta clips largos)
+                    const dur = (isFinite(video.duration) && video.duration > 0)
+                        ? video.duration
+                        : (media.duracion && media.duracion > 0 ? media.duracion : 60);
+                    limpiarVideoWatchdog();
+                    videoWatchdogTimer = setTimeout(() => avanzarUnaVez('timeout de seguridad'), (dur + 10) * 1000);
+                };
 
                 video.onloadeddata = () => {
-                    container.appendChild(video);
+                    if (!container.querySelector('video')) container.appendChild(video);
                     intentosCargaMedia = 0; // Resetear contador al cargar exitosamente
 
                     // Aplicar transición de entrada
@@ -2580,22 +2656,23 @@
                     }, 50);
                 };
 
+                video.onplaying = cancelarStall;
+                video.onstalled = onStall;
+                video.onwaiting = onStall;
+
                 video.onended = () => {
-                    // Limpiar video para liberar memoria antes de pasar al siguiente
-                    video.src = "";
-                    video.load();
-                    nextMedia();
+                    cancelarStall();
+                    avanzarUnaVez(); // el teardown lo hace limpiarMultimediaContainer en el próximo ciclo
                 };
 
                 video.onerror = () => {
-                    if (errorHandled) return;
-                    errorHandled = true;
+                    cancelarStall();
                     console.error('Error al cargar video:', media.url);
-                    // Intentar siguiente media después de un breve delay
-                    setTimeout(() => {
-                        nextMedia();
-                    }, 1000); // Aumentar delay para evitar sobrecarga si falla repetidamente
+                    setTimeout(() => avanzarUnaVez('error de carga'), 1000);
                 };
+
+                // src al final, con todos los handlers ya registrados
+                video.src = media.url;
             }
         }
 
