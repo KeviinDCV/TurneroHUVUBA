@@ -1047,20 +1047,34 @@
         .tv-root #patient-queue > div.is-atendido .turno-caja {
             color: rgba(255, 255, 255, 0.6) !important;
         }
-        /* Badge ATENDIDO: en flujo, a la izquierda de CAJA, centrado vertical (no se monta) */
-        .badge-atendido {
+        /* Estado ATENDIDO: tag pequeño ENCIMA de la CAJA. El badge es position:absolute,
+           NO aporta ancho a la celda → la celda mide exactamente lo que "CAJA", y el
+           número del turno conserva TODO su espacio (igual que un turno normal) y nunca
+           se recorta. El margin-top de la CAJA deja hueco para el badge (sin overlap). */
+        .caja-cell {
             flex: 0 0 auto;
-            align-self: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .caja-cell .turno-caja {
+            margin-top: 1.6rem !important;
+        }
+        .badge-atendido {
+            position: absolute;
+            top: 0;
+            right: 1rem;
             background: #16a34a;
             color: #ffffff;
             font-weight: 700;
-            padding: 0.2rem 0.7rem;
-            border-radius: 0.4rem;
-            font-size: clamp(0.8rem, 1.05vw, 1.05rem);
-            letter-spacing: 0.06em;
+            padding: 0.12rem 0.55rem;
+            border-radius: 0.35rem;
+            font-size: clamp(0.65rem, 0.9vw, 0.95rem);
+            letter-spacing: 0.05em;
             line-height: 1;
             white-space: nowrap;
-            margin-right: 0.7rem;
         }
         /* Placeholder multimedia con marca (reemplaza el emoji 🏥) */
         .mm-brand-tile {
@@ -2111,18 +2125,18 @@
 
                 turnoElement.className = clases;
 
-                // Badge de estado dentro de la tarjeta, en la esquina superior derecha
-                // Ajustado con top negativo para compensar el padding del contenedor padre (pt-3) y quedar al borde
-                const estadoBadge = esAtendido ?
-                    '<div class="badge-atendido">ATENDIDO</div>' :
-                    '';
+                // CAJA a la derecha. Si está atendido, el tag "ATENDIDO" va ENCIMA de la CAJA
+                // (no a su lado) para que el número del turno NUNCA pierda espacio ni se recorte.
+                const cajaTexto = `<div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>`;
+                const cajaBlock = esAtendido
+                    ? `<div class="caja-cell"><div class="badge-atendido">ATENDIDO</div>${cajaTexto}</div>`
+                    : cajaTexto;
 
                 turnoElement.innerHTML = `
                     <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center;">
                         <div class="turno-container" style="width: 100%;">
                             <div class="turno-numero font-bold">${turno.codigo_completo}</div>
-                            ${estadoBadge}
-                            <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
+                            ${cajaBlock}
                         </div>
                     </div>
                 `;
