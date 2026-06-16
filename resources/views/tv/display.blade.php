@@ -1003,15 +1003,91 @@
                 max-height: 6rem !important;
             }
         }
+
+        /* ===================================================================
+           REDISEÑO 2026 — override aditivo (NO borra el sistema responsive).
+           1) Layout a prueba de resolución: grid de 3 filas que impide que
+              cualquier card invada el header (bug del TV).
+           2) Cola: distribución uniforme por flex, nunca desborda.
+           3) Jerarquía de estado: "en atención" (sin badge) = azul vivo;
+              "atendido" (ya terminó) = atenuado en segundo plano.
+           Selectores con id-specificity + !important para ganar al sistema viejo.
+           =================================================================== */
+        .tv-root {
+            height: 100% !important;
+            display: grid !important;
+            grid-template-rows: auto minmax(0, 1fr) auto !important;
+            overflow: hidden !important;
+        }
+        .tv-root > .responsive-header { height: auto !important; }
+        .tv-root > .responsive-main {
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+        }
+        .tv-root #patient-queue {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.7rem !important;
+            overflow: hidden !important;
+        }
+        .tv-root #patient-queue > div {
+            flex: 1 1 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            max-height: none !important;
+            margin: 0 !important;
+        }
+        /* Turno atendido (ya terminó) = atenuado, pasa a segundo plano */
+        .tv-root #patient-queue > div.is-atendido {
+            background: #3f6a9e !important;
+        }
+        .tv-root #patient-queue > div.is-atendido .turno-numero,
+        .tv-root #patient-queue > div.is-atendido .turno-caja {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+        /* Badge ATENDIDO legible a distancia (reemplaza el de 9px) */
+        .badge-atendido {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.7rem;
+            background: #16a34a;
+            color: #ffffff;
+            font-weight: 700;
+            padding: 0.2rem 0.8rem;
+            border-radius: 0.45rem;
+            font-size: clamp(0.85rem, 1.2vw, 1.15rem);
+            letter-spacing: 0.06em;
+            line-height: 1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            z-index: 10;
+        }
+        /* Placeholder multimedia con marca (reemplaza el emoji 🏥) */
+        .mm-brand-tile {
+            width: clamp(3.5rem, 7vw, 7rem);
+            height: clamp(3.5rem, 7vw, 7rem);
+            background: #064b9e;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: clamp(1.2rem, 2.5vw, 2.5rem);
+            letter-spacing: 0.04em;
+        }
     </style>
 </head>
 <body class="w-full h-screen bg-white overflow-hidden {{ $tvConfig->ticker_enabled ? 'ticker-enabled' : '' }}">
-    <div class="w-full h-full bg-white">
+    <div class="w-full h-full bg-white tv-root">
         <!-- Header Section -->
         <div class="grid grid-cols-6 responsive-header responsive-container">
             <!-- Left Header - Apoyo Diagnostico y Hora -->
             <div class="bg-hospital-blue-light p-4 flex flex-col justify-center items-end col-span-2" style="overflow: visible !important; padding-right: 2rem;">
-                <h1 class="text-5xl font-bold text-hospital-blue leading-tight mb-1" style="text-align: right;">UBA</h1>
+                <h1 class="text-5xl font-bold text-hospital-blue leading-tight" style="text-align: right;">UBA</h1>
+                <p class="text-hospital-blue" style="font-size: 0.95rem; opacity: 0.72; line-height: 1.1; text-align: right; margin-bottom: 0.35rem;">Unidad Básica de Atención</p>
                 <!-- Hora de Colombia (UTC-5) -->
                 <p class="text-2xl text-hospital-blue font-semibold" id="current-time" style="white-space: nowrap; overflow: visible; text-align: right;">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
             </div>
@@ -1052,9 +1128,9 @@
                     <div id="multimedia-content" class="w-full h-full flex items-center justify-center">
                         <!-- Placeholder content con mejor diseño -->
                         <div id="multimedia-placeholder" class="text-center text-gray-400 z-10">
-                            <div class="text-8xl mb-4 opacity-50 multimedia-placeholder-icon">🏥</div>
-                            <p class="text-2xl font-semibold text-hospital-blue mb-2 multimedia-placeholder-title">Contenido Multimedia</p>
-                            <p class="text-lg text-gray-500 multimedia-placeholder-subtitle">Videos e imágenes del hospital</p>
+                            <div class="mm-brand-tile">HUV</div>
+                            <p class="text-2xl font-semibold text-hospital-blue mb-2 multimedia-placeholder-title">Hospital Universitario del Valle</p>
+                            <p class="text-lg text-gray-500 multimedia-placeholder-subtitle">Contenido institucional</p>
                         </div>
 
                         <!-- Decorative background pattern -->
@@ -1069,69 +1145,38 @@
             <div class="bg-hospital-blue-light p-2 col-span-2 responsive-queue-section responsive-container">
                 <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
                 <div class="space-y-3 overflow-hidden" id="patient-queue">
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full">
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
-                                <div class="turno-numero font-bold animate-pulse-number">U001</div>
-                            </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="turno-caja font-semibold">CAJA 1</div>
-                            </div>
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
+                        <div class="turno-container" style="width: 100%;">
+                            <div class="turno-numero font-bold">----</div>
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.2s;">
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
-                                <div class="turno-numero font-bold">U002</div>
-                            </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="turno-caja font-semibold">CAJA 2</div>
-                            </div>
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
+                        <div class="turno-container" style="width: 100%;">
+                            <div class="turno-numero font-bold">----</div>
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.4s;">
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
-                                <div class="turno-numero font-bold">U003</div>
-                            </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="turno-caja font-semibold">CAJA 3</div>
-                            </div>
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
+                        <div class="turno-container" style="width: 100%;">
+                            <div class="turno-numero font-bold">----</div>
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.6s;">
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
-                                <div class="turno-numero font-bold">U004</div>
-                            </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="turno-caja font-semibold">CAJA 4</div>
-                            </div>
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
+                        <div class="turno-container" style="width: 100%;">
+                            <div class="turno-numero font-bold">----</div>
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
 
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg animate-slide-in flex items-center h-full" style="animation-delay: 0.8s;">
-                        <div class="grid grid-cols-2 gap-1 items-center w-full">
-                            <div class="text-left flex items-center">
-                                <div class="turno-numero font-bold">U005</div>
-                            </div>
-                            <div class="text-right flex items-center justify-end">
-                                <div class="turno-caja font-semibold">CAJA 5</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="gradient-hospital text-white p-4 enhanced-shadow rounded-lg animate-slide-in" style="animation-delay: 1.0s;">
-                        <div class="grid grid-cols-2 gap-4 items-center">
-                            <div class="text-center">
-                                <div class="text-6xl font-bold">U006</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-3xl font-semibold">CAJA 6</div>
-                            </div>
+                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
+                        <div class="turno-container" style="width: 100%;">
+                            <div class="turno-numero font-bold">----</div>
+                            <div class="turno-caja font-semibold">CAJA -</div>
                         </div>
                     </div>
                 </div>
@@ -1707,12 +1752,14 @@
             const colombiaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Bogota"}));
 
             const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
             const month = months[colombiaTime.getMonth()];
+            const weekday = weekdays[colombiaTime.getDay()];
             const day = colombiaTime.getDate().toString().padStart(2, '0');
             const hours = colombiaTime.getHours().toString().padStart(2, '0');
             const minutes = colombiaTime.getMinutes().toString().padStart(2, '0');
 
-            document.getElementById('current-time').textContent = `${month} ${day} - ${hours}:${minutes}`;
+            document.getElementById('current-time').textContent = `${weekday} ${day} ${month} · ${hours}:${minutes}`;
             
             // Verificar si es medianoche (12:00 AM) para limpiar turnos del día anterior
             const fechaActual = colombiaTime.toDateString();
@@ -2050,8 +2097,9 @@
                 const esAtendido = turno.estado === 'atendido';
                 const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
 
-                // MANTENER EL DISEÑO ORIGINAL - Solo cambiar el badge
+                // Estado: "atendido" (ya terminó) se atenúa; sin badge = en atención ahora
                 let clases = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg flex items-center h-full';
+                if (esAtendido) clases += ' is-atendido';
 
                 // Animación solo para turnos nuevos llamados
                 if (i === 0 && !yaAnimado && !esAtendido) {
@@ -2067,7 +2115,7 @@
                 // Badge de estado dentro de la tarjeta, en la esquina superior derecha
                 // Ajustado con top negativo para compensar el padding del contenedor padre (pt-3) y quedar al borde
                 const estadoBadge = esAtendido ?
-                    '<div style="position: absolute; top: -8px; right: 8px; z-index: 10;"><span class="bg-green-500 text-white px-2 py-0.5 rounded-b text-[9px] font-bold shadow-sm tracking-wider uppercase border-x border-b border-white/20">ATENDIDO</span></div>' :
+                    '<div class="badge-atendido">ATENDIDO</div>' :
                     '';
 
                 turnoElement.innerHTML = `
@@ -2403,9 +2451,9 @@
             placeholderDiv.className = 'media-transition media-loading';
             placeholderDiv.innerHTML = `
                 <div id="multimedia-placeholder" class="text-center text-gray-400 z-10">
-                    <div class="text-8xl mb-4 opacity-50">🏥</div>
-                    <p class="text-2xl font-semibold text-hospital-blue mb-2">Contenido Multimedia</p>
-                    <p class="text-lg text-gray-500">Videos e imágenes del hospital</p>
+                    <div class="mm-brand-tile">HUV</div>
+                    <p class="text-2xl font-semibold text-hospital-blue mb-2">Hospital Universitario del Valle</p>
+                    <p class="text-lg text-gray-500">Contenido institucional</p>
                 </div>
                 <div class="absolute inset-0 opacity-5">
                     <div class="w-full h-full" style="background-image: repeating-linear-gradient(45deg, #064b9e 0px, #064b9e 10px, transparent 10px, transparent 20px);"></div>
