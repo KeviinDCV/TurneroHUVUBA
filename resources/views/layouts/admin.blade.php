@@ -42,6 +42,7 @@
             --hospital-blue: #064b9e;
             --hospital-blue-hover: #053d7a;
             --hospital-blue-light: #e6f0ff;
+            --sidebar-collapsed-width: 5.25rem;
         }
 
         .bg-hospital-blue {
@@ -64,27 +65,58 @@
             background-color: var(--hospital-blue-light);
         }
 
+        /* ===== Sidebar "Marca profunda" (azul profundo + pestaña conectada) ===== */
+        .sidebar-shell {
+            background: #072449;
+        }
+
+        .sidebar-section-title {
+            color: #7e9bc4;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            line-height: 1.4;
+        }
+
+        /* Sin brillo de barrido en este diseño */
+        .sidebar-item::before { display: none !important; }
+
+        /* Ítems: pestaña que llega al borde derecho y se "conecta" con el contenido */
+        .sidebar-item {
+            color: #bccce4;
+            margin-left: 12px;
+            border-radius: 10px 0 0 10px;
+        }
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+        .sidebar-item-active,
+        .sidebar-item-active:hover {
+            background: #ffffff;
+            color: #072449;
+        }
+
+        .sidebar-logout { color: #bccce4; border-radius: 10px; }
+        .sidebar-logout:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+
         /* Animaciones suaves */
         .transition-all {
             transition: all 0.3s ease;
         }
 
-        /* Mejora del scroll en la sidebar */
-        .sidebar-nav::-webkit-scrollbar {
-            width: 4px;
+        /* Menú desplazable SIN barra visible (la barra translúcida se veía como
+           una línea azul sobre el navy). El contenido sigue desplazándose con rueda/touch. */
+        .sidebar-nav,
+        .sidebar-full-height {
+            scrollbar-width: none;          /* Firefox */
+            -ms-overflow-style: none;       /* IE/Edge antiguo */
         }
-
-        .sidebar-nav::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-        }
-
-        .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.5);
+        .sidebar-nav::-webkit-scrollbar,
+        .sidebar-full-height::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;                  /* Chrome/Safari/Edge */
         }
 
         .modal-overlay {
@@ -294,6 +326,36 @@
 
         .sidebar-item:hover::before {
             left: 100%;
+        }
+
+        /* ===================== PULIDO PROFESIONAL DEL SIDEBAR ===================== */
+        /* Colapso suave: animar el ancho/margen al alternar el modo compacto */
+        @media (min-width: 768px) {
+            .sidebar-responsive { transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
+            .header-responsive  { transition: left 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
+            .main-content       { transition: margin-left 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
+        }
+
+        /* Micro-interacción: desplazamiento sutil al pasar el cursor (excepto el activo) */
+        .sidebar-item:not(.sidebar-item-active):hover {
+            transform: translateX(2px);
+        }
+
+        /* Ícono del ítem: leve realce al pasar el cursor y sombra en el activo */
+        .sidebar-icon { transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
+        .sidebar-item:hover .sidebar-icon { transform: scale(1.06); }
+        .sidebar-item-active .sidebar-icon { box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.28); }
+
+        /* Botón de colapsar: realce al pasar el cursor */
+        body.sidebar-is-collapsed .sidebar-header .flex.items-center.min-w-0 { justify-content: center; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar-responsive, .header-responsive, .main-content,
+            .sidebar-item, .sidebar-icon, .sidebar-item::before { transition: none !important; }
+        }
+
+        body.sidebar-is-collapsed .sidebar-label {
+            pointer-events: none;
         }
 
         /* Animación suave para el indicador activo */
@@ -516,10 +578,32 @@
             }
         }
 
+        @media (min-width: 768px) {
+            body.sidebar-is-collapsed .sidebar-responsive {
+                width: var(--sidebar-collapsed-width) !important;
+            }
+
+            body.sidebar-is-collapsed .header-responsive {
+                left: var(--sidebar-collapsed-width) !important;
+            }
+
+            body.sidebar-is-collapsed .main-content {
+                margin-left: var(--sidebar-collapsed-width) !important;
+            }
+        }
+
+        @media (max-width: 767px) {
+            body.sidebar-is-collapsed .sidebar-responsive {
+                width: 16rem !important;
+            }
+        }
+
         @yield('styles')
     </style>
 </head>
-<body class="min-h-screen bg-gray-100" x-data="{ sidebarOpen: false }">
+<body class="min-h-screen bg-gray-100"
+      x-data="{ sidebarOpen: false, sidebarCollapsed: window.innerWidth >= 768 && localStorage.getItem('huvSidebarCollapsed') === '1' }"
+      :class="sidebarCollapsed ? 'sidebar-is-collapsed' : ''">
     @include('components.admin.header')
 
     <div class="flex main-container">
