@@ -2495,40 +2495,27 @@
             showCurrentMedia();
         }
 
-        // Mostrar el archivo multimedia actual con transiciones
+        // Mostrar el archivo multimedia actual ("carga primero, cambia después")
         function showCurrentMedia() {
             if (multimediaList.length === 0) {
                 showPlaceholder();
                 return;
             }
-
             const media = multimediaList[currentMediaIndex];
             const container = document.getElementById('multimedia-content');
-
-            // Aplicar transición de salida al contenido actual
-            const currentContent = container.children[0];
-            if (currentContent && !currentContent.id.includes('placeholder')) {
-                currentContent.classList.add('media-transition', 'media-fade-out');
-
-                // Esperar a que termine la transición de salida antes de mostrar el nuevo contenido
-                setTimeout(() => {
-                    loadNewMedia(media, container);
-                }, 400); // Mitad de la duración de la transición
-            } else {
-                // No hay contenido previo, mostrar inmediatamente
-                loadNewMedia(media, container);
-            }
+            loadNewMedia(media, container);
         }
 
         // ============================================================
-        // FIX 2026: reproductor de video sin fuga de decoders + watchdog
-        // anti-congelamiento. Antes: se creaba un <video> nuevo cada ciclo y
-        // se borraba con innerHTML='' sin apagar su decoder -> fuga en Chrome
-        // 24/7 -> lag progresivo y congelamiento. Y los videos solo avanzaban
-        // por onended (sin plan B ante estancamientos).
+        // FIX 2026: reproductor robusto de multimedia.
+        //  - Sin fuga de decoders: el <video> saliente se apaga (pause +
+        //    removeAttribute('src') + load) antes de quitarlo del DOM.
+        //  - "Carga primero, cambia después": el medio nuevo se carga mientras
+        //    el actual sigue visible; el cambio es instantáneo -> SIN blanco.
+        //  - Watchdogs: timeout de carga + estancamiento + seguridad por
+        //    duración real -> no se queda pegado.
         // ============================================================
-        let videoPersistente = null;   // se reutiliza UN solo <video> (Chrome amortiza el decoder)
-        let videoWatchdogTimer = null; // timeout de seguridad por clip
+        let videoWatchdogTimer = null; // timeout de seguridad por clip (en reproducción)
         let videoStallTimer = null;    // timeout ante stall/waiting
         let videoGen = 0;              // generación de carga; invalida timers/handlers viejos
 
@@ -2544,6 +2531,7 @@
             if (!video || video.tagName !== 'VIDEO') return;
             try {
                 video.onloadedmetadata = null;
+                video.oncanplay = null;
                 video.onloadeddata = null;
                 video.onended = null;
                 video.onerror = null;
@@ -2563,80 +2551,70 @@
             container.innerHTML = '';
         }
 
-        // Cargar nuevo archivo multimedia
+        // Cargar el medio nuevo SIN borrar el anterior; cambiar solo cuando esté listo
+        // (elimina el "blanco" entre medios) y con timeout de carga (no se queda pegado).
         function loadNewMedia(media, container) {
-            // Limpiar contenido anterior (liberando el decoder del video saliente)
-            limpiarMultimediaContainer(container);
+            if (!media) return;
+            if (mediaTimer) { clearTimeout(mediaTimer); mediaTimer = null; }
+            limpiarVideoTimers();
+            const gen = ++videoGen;        // esta carga; invalida timers/handlers de cargas previas
+            let avanzado = false;
+            let loadTimer = null;
+
+            const avanzarUnaVez = (motivo) => {
+                if (avanzado || gen !== videoGen) return;
+                avanzado = true;
+                if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
+                limpiarVideoTimers();
+                if (motivo) console.warn('▶ Avance forzado:', motivo, media && media.url);
+                nextMedia();
+            };
+
+            // Cambio INSTANTÁNEO: el contenido nuevo ya está cargado; apaga/quita el
+            // anterior y muestra el nuevo en el mismo paso síncrono -> no hay frame en blanco.
+            const swap = (nuevoEl) => {
+                if (gen !== videoGen) return;
+                limpiarMultimediaContainer(container); // teardown del video saliente + innerHTML=''
+                container.appendChild(nuevoEl);
+                intentosCargaMedia = 0; // Resetear contador al mostrar exitosamente
+            };
+
+            // Si el medio nuevo no llega a estar listo en 12s, saltar (cubre "pegado al cargar")
+            loadTimer = setTimeout(() => avanzarUnaVez('timeout de carga (medio no cargó)'), 12000);
 
             if (media.tipo === 'imagen') {
-                // Mostrar imagen
                 const img = document.createElement('img');
-                img.src = media.url;
-                img.className = 'max-w-full max-h-full object-contain media-transition media-loading';
-                img.alt = media.nombre;
-
+                img.className = 'max-w-full max-h-full object-contain';
+                img.alt = media.nombre || '';
                 img.onload = () => {
-                    container.appendChild(img);
-                    intentosCargaMedia = 0; // Resetear contador al cargar exitosamente
-
-                    // Aplicar transición de entrada
-                    setTimeout(() => {
-                        img.classList.remove('media-loading');
-                        img.classList.add('media-fade-in', 'media-enter');
-                    }, 50);
-
-                    // Programar siguiente media después de la duración especificada
-                    mediaTimer = setTimeout(() => {
-                        nextMedia();
-                    }, media.duracion * 1000);
+                    if (gen !== videoGen) return;
+                    clearTimeout(loadTimer); loadTimer = null;
+                    swap(img);
+                    const dur = (media.duracion && media.duracion > 0) ? media.duracion : 10;
+                    mediaTimer = setTimeout(() => avanzarUnaVez(), dur * 1000);
                 };
-
-                img.onerror = () => {
-                    console.error('Error al cargar imagen:', media.url);
-                    // Intentar siguiente media después de un breve delay
-                    setTimeout(() => {
-                        nextMedia();
-                    }, 500);
-                };
+                img.onerror = () => avanzarUnaVez('error de imagen');
+                img.src = media.url;
 
             } else if (media.tipo === 'video') {
-                // Reutilizar UN solo <video> persistente (Chrome amortiza el decoder)
-                const gen = ++videoGen;     // esta carga; invalida timers/handlers de cargas previas
-                limpiarVideoTimers();
-
-                let video = videoPersistente;
-                if (!video) {
-                    video = document.createElement('video');
-                    videoPersistente = video;
-                } else {
-                    destruirVideo(video);   // teardown del uso anterior antes de reasignar
-                }
-
-                video.className = 'max-w-full max-h-full object-contain media-transition media-loading';
-                video.autoplay = true;
+                const video = document.createElement('video');
+                video.className = 'max-w-full max-h-full object-contain';
                 video.muted = true;
                 video.loop = false;
                 video.playsInline = true;
                 video.preload = 'auto';
 
-                // Avance idempotente y a prueba de cargas viejas
-                let avanzado = false;
-                const avanzarUnaVez = (motivo) => {
-                    if (avanzado || gen !== videoGen) return;
-                    avanzado = true;
-                    limpiarVideoTimers();
-                    if (motivo) console.warn('▶ Avance de video forzado:', motivo, media.url);
-                    nextMedia();
-                };
-
-                // Detección de estancamiento: si bufferea sin progresar 8s, saltar
-                const onStall = () => {
-                    if (videoStallTimer) return;
-                    videoStallTimer = setTimeout(() => avanzarUnaVez('estancamiento (stall/waiting)'), 8000);
-                };
+                let mostrado = false;
+                const stall = () => { if (videoStallTimer) return; videoStallTimer = setTimeout(() => avanzarUnaVez('estancamiento (stall/waiting)'), 8000); };
                 const cancelarStall = () => { if (videoStallTimer) { clearTimeout(videoStallTimer); videoStallTimer = null; } };
 
-                video.onloadedmetadata = () => {
+                // 'canplay' = ya puede arrancar; aquí recién hacemos el swap y reproducimos.
+                video.oncanplay = () => {
+                    if (mostrado || gen !== videoGen) return;
+                    mostrado = true;
+                    clearTimeout(loadTimer); loadTimer = null;
+                    swap(video);
+                    video.play().catch(() => {});
                     // Watchdog de seguridad = duración REAL del clip + 10s (no corta clips largos)
                     const dur = (isFinite(video.duration) && video.duration > 0)
                         ? video.duration
@@ -2644,35 +2622,14 @@
                     limpiarVideoWatchdog();
                     videoWatchdogTimer = setTimeout(() => avanzarUnaVez('timeout de seguridad'), (dur + 10) * 1000);
                 };
-
-                video.onloadeddata = () => {
-                    if (!container.querySelector('video')) container.appendChild(video);
-                    intentosCargaMedia = 0; // Resetear contador al cargar exitosamente
-
-                    // Aplicar transición de entrada
-                    setTimeout(() => {
-                        video.classList.remove('media-loading');
-                        video.classList.add('media-fade-in', 'media-enter');
-                    }, 50);
-                };
-
                 video.onplaying = cancelarStall;
-                video.onstalled = onStall;
-                video.onwaiting = onStall;
+                video.onstalled = stall;
+                video.onwaiting = stall;
+                video.onended = () => { cancelarStall(); avanzarUnaVez(); };
+                video.onerror = () => { cancelarStall(); avanzarUnaVez('error de video'); };
 
-                video.onended = () => {
-                    cancelarStall();
-                    avanzarUnaVez(); // el teardown lo hace limpiarMultimediaContainer en el próximo ciclo
-                };
-
-                video.onerror = () => {
-                    cancelarStall();
-                    console.error('Error al cargar video:', media.url);
-                    setTimeout(() => avanzarUnaVez('error de carga'), 1000);
-                };
-
-                // src al final, con todos los handlers ya registrados
                 video.src = media.url;
+                video.load();
             }
         }
 
