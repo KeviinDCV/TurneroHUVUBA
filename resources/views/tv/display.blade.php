@@ -1047,21 +1047,20 @@
         .tv-root #patient-queue > div.is-atendido .turno-caja {
             color: rgba(255, 255, 255, 0.6) !important;
         }
-        /* Badge ATENDIDO legible a distancia (reemplaza el de 9px) */
+        /* Badge ATENDIDO: en flujo, a la izquierda de CAJA, centrado vertical (no se monta) */
         .badge-atendido {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.7rem;
+            flex: 0 0 auto;
+            align-self: center;
             background: #16a34a;
             color: #ffffff;
             font-weight: 700;
-            padding: 0.2rem 0.8rem;
-            border-radius: 0.45rem;
-            font-size: clamp(0.85rem, 1.2vw, 1.15rem);
+            padding: 0.2rem 0.7rem;
+            border-radius: 0.4rem;
+            font-size: clamp(0.8rem, 1.05vw, 1.05rem);
             letter-spacing: 0.06em;
             line-height: 1;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-            z-index: 10;
+            white-space: nowrap;
+            margin-right: 0.7rem;
         }
         /* Placeholder multimedia con marca (reemplaza el emoji 🏥) */
         .mm-brand-tile {
@@ -2122,9 +2121,9 @@
                     <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center;">
                         <div class="turno-container" style="width: 100%;">
                             <div class="turno-numero font-bold">${turno.codigo_completo}</div>
+                            ${estadoBadge}
                             <div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>
                         </div>
-                        ${estadoBadge}
                     </div>
                 `;
 
