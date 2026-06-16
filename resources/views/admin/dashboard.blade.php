@@ -2,35 +2,106 @@
 
 @section('title', 'Dashboard')
 @section('content')
+@php
+    $usuariosActivosTotal = $usuariosActivos->count();
+    $usuariosDisponibles = $usuariosActivos->where('status', 'DISPONIBLE')->count();
+    $usuariosOcupados = $usuariosActivos->where('status', 'OCUPADO')->count();
+    $turnosAtendidosTotal = $turnosPorServicio->sum('terminados');
+    $asesoresConAtencion = $turnosPorAsesor->count();
+    $turnosEnColaTotal = $turnosEnCola->sum('en_cola');
+    $serviciosConCola = $turnosEnCola->where('en_cola', '>', 0)->count();
+@endphp
 
-                <div class="dashboard-container bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
-                    <!-- Header del Dashboard -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                        <h1 class="dashboard-title text-xl md:text-2xl font-bold text-gray-800">Dashboard Administrativo</h1>
-                        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div class="dashboard-container max-w-7xl mx-auto space-y-5">
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 md:p-5">
+                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Operación de hoy</p>
+                                <h1 class="dashboard-title text-xl md:text-2xl font-bold text-gray-900 mt-1">Dashboard administrativo</h1>
+                                <p class="text-sm text-gray-500 mt-1">{{ now()->format('d/m/Y') }} · Estado general del turnero</p>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                             <button
                                 onclick="showCleanSessionsOptions()"
-                                class="dashboard-button bg-hospital-blue hover:bg-hospital-blue-hover text-white px-4 py-2 rounded transition-colors duration-200 flex items-center gap-2 w-full sm:w-auto"
+                                class="dashboard-button bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 w-full sm:w-auto"
                                 id="cleanSessionsBtn">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                 </svg>
                                 Limpiar Sesiones
                             </button>
                             <button
                                 onclick="showEmergencyTurnosOptions()"
-                                class="dashboard-button bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center gap-2 w-full sm:w-auto"
+                                class="dashboard-button bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 w-full sm:w-auto"
                                 id="emergencyTurnosBtn">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                                 </svg>
                                 Emergencia Turnos
                             </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Usuarios activos</p>
+                                    <div id="metric-usuarios-activos" class="metric-value text-3xl font-bold mt-2">{{ number_format($usuariosActivosTotal) }}</div>
+                                    <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#22c55e;"></span>
+                                        <span><span id="metric-usuarios-disponibles">{{ number_format($usuariosDisponibles) }}</span> disponibles · <span id="metric-usuarios-ocupados">{{ number_format($usuariosOcupados) }}</span> ocupados</span>
+                                    </p>
+                                </div>
+                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Atendidos hoy</p>
+                                    <div id="metric-turnos-atendidos" class="metric-value text-3xl font-bold mt-2">{{ number_format($turnosAtendidosTotal) }}</div>
+                                    <p class="text-xs text-gray-500 mt-1.5">Turnos terminados por servicio</p>
+                                </div>
+                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Asesores con atención</p>
+                                    <div id="metric-asesores-atencion" class="metric-value text-3xl font-bold mt-2">{{ number_format($asesoresConAtencion) }}</div>
+                                    <p class="text-xs text-gray-500 mt-1.5">Con turnos terminados hoy</p>
+                                </div>
+                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm6 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Turnos en cola</p>
+                                    <div id="metric-turnos-cola" class="metric-value text-3xl font-bold mt-2">{{ number_format($turnosEnColaTotal) }}</div>
+                                    <p class="text-xs text-gray-500 mt-1.5"><span id="metric-servicios-cola">{{ number_format($serviciosConCola) }}</span> servicios con espera</p>
+                                </div>
+                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Usuarios Activos -->
-                    <div class="overflow-x-auto">
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Usuarios Activos</h2>
@@ -38,20 +109,20 @@
                             </div>
                         </div>
 
-                        <table class="dashboard-table w-full divide-y divide-gray-200 border border-gray-200 rounded-lg" id="usuarios-activos-table">
+                        <table class="dashboard-table w-full divide-y divide-gray-200" id="usuarios-activos-table">
                             <thead>
-                                <tr class="bg-hospital-blue text-white">
-                                    <th class="py-3 px-4 text-left font-semibold">USUARIO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">ROL</th>
-                                    <th class="py-3 px-4 text-left font-semibold">DISPONIBILIDAD</th>
-                                    <th class="py-3 px-4 text-left font-semibold">ESTADO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">ACTIVIDAD</th>
+                                <tr class="bg-gray-50 text-gray-600">
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Usuario</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Rol</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Disponibilidad</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Estado</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Actividad</th>
                                 </tr>
                             </thead>
                             <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white">
                                 @if($usuariosActivos->count() > 0)
                                     @foreach($usuariosActivos as $usuario)
-                                        <tr class="hover:bg-blue-50 cursor-pointer transition-colors" 
+                                        <tr class="hover:bg-blue-50/70 cursor-pointer transition-colors" 
                                             onclick="abrirModalEstadisticas({{ $usuario['id'] }}, '{{ addslashes($usuario['name']) }}')"
                                             title="Clic para ver estadísticas de {{ $usuario['name'] }}">
                                             <td class="py-3 px-4 whitespace-nowrap">
@@ -66,7 +137,7 @@
                                                 </div>
                                             </td>
                                             <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="dashboard-badge px-2 py-1 rounded text-sm {{ $usuario['rol'] === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
+                                                    <span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium {{ $usuario['rol'] === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
                                                     {{ $usuario['rol'] }}
                                                 </span>
                                             </td>
@@ -74,7 +145,7 @@
                                                 {{ $usuario['availability'] }}
                                             </td>
                                             <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="dashboard-badge px-2 py-1 rounded text-sm
+                                                <span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium
                                                     @if($usuario['status'] === 'DISPONIBLE') bg-green-100 text-green-800
                                                     @elseif($usuario['status'] === 'OCUPADO') bg-yellow-100 text-yellow-800
                                                     @elseif($usuario['status'] === 'EN DESCANSO') bg-blue-100 text-blue-800
@@ -110,8 +181,9 @@
                         </table>
                     </div>
 
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <!-- Turnos por Servicio -->
-                    <div class="dashboard-section mt-8 overflow-x-auto">
+                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos Atendidos por Servicio (Hoy)</h2>
@@ -119,11 +191,11 @@
                             </div>
                         </div>
 
-                        <table class="dashboard-table w-full divide-y divide-gray-200 border border-gray-200 rounded-lg" id="turnos-servicio-table">
+                        <table class="dashboard-table w-full divide-y divide-gray-200" id="turnos-servicio-table">
                             <thead>
-                                <tr class="bg-hospital-blue text-white">
-                                    <th class="py-3 px-4 text-left font-semibold">SERVICIO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">TERMINADOS</th>
+                                <tr class="bg-gray-50 text-gray-600">
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Terminados</th>
                                 </tr>
                             </thead>
                             <tbody id="turnos-servicio-container" class="divide-y divide-gray-200 bg-white">
@@ -156,7 +228,7 @@
                     </div>
 
                     <!-- Turnos por Asesor -->
-                    <div class="dashboard-section mt-8 overflow-x-auto">
+                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos Atendidos por Asesor (Hoy)</h2>
@@ -164,11 +236,11 @@
                             </div>
                         </div>
 
-                        <table class="dashboard-table w-full divide-y divide-gray-200 border border-gray-200 rounded-lg" id="turnos-asesor-table">
+                        <table class="dashboard-table w-full divide-y divide-gray-200" id="turnos-asesor-table">
                             <thead>
-                                <tr class="bg-hospital-blue text-white">
-                                    <th class="py-3 px-4 text-left font-semibold">ASESOR</th>
-                                    <th class="py-3 px-4 text-left font-semibold">TERMINADOS</th>
+                                <tr class="bg-gray-50 text-gray-600">
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesor</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Terminados</th>
                                 </tr>
                             </thead>
                             <tbody id="turnos-asesor-container" class="divide-y divide-gray-200 bg-white">
@@ -201,7 +273,7 @@
                     </div>
 
                     <!-- Turnos en Cola por Servicio -->
-                    <div class="dashboard-section mt-8 overflow-x-auto">
+                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos en Cola por Servicio (Hoy)</h2>
@@ -209,11 +281,11 @@
                             </div>
                         </div>
 
-                        <table class="dashboard-table w-full divide-y divide-gray-200 border border-gray-200 rounded-lg" id="turnos-cola-table">
+                        <table class="dashboard-table w-full divide-y divide-gray-200" id="turnos-cola-table">
                             <thead>
-                                <tr class="bg-hospital-blue text-white">
-                                    <th class="py-3 px-4 text-left font-semibold">SERVICIO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">TURNOS EN COLA</th>
+                                <tr class="bg-gray-50 text-gray-600">
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">En cola</th>
                                 </tr>
                             </thead>
                             <tbody id="turnos-cola-container" class="divide-y divide-gray-200 bg-white">
@@ -1591,6 +1663,54 @@ function estadisticasUsuarioModal() {
         }
     }
 }
+
+// === Actualización en vivo de las tarjetas de métricas (autocontenido) ===
+// Lee las tablas que el resto del JS ya refresca cada 15s y recalcula las métricas.
+(function(){
+    function setM(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+    function num(t){ var n = parseInt((t || '').replace(/[^0-9-]/g, ''), 10); return isNaN(n) ? 0 : n; }
+    function actualizarMetricasDashboard(){
+        try {
+            var total = 0, disp = 0, ocup = 0;
+            document.querySelectorAll('#usuarios-activos-container > tr').forEach(function(tr){
+                var tds = tr.querySelectorAll('td');
+                if (tds.length >= 4) {
+                    total++;
+                    var t = tr.textContent;
+                    if (t.indexOf('DISPONIBLE') > -1) disp++;
+                    else if (t.indexOf('OCUPADO') > -1) ocup++;
+                }
+            });
+            setM('metric-usuarios-activos', total);
+            setM('metric-usuarios-disponibles', disp);
+            setM('metric-usuarios-ocupados', ocup);
+
+            var atendidos = 0;
+            document.querySelectorAll('#turnos-servicio-container > tr').forEach(function(tr){
+                var tds = tr.querySelectorAll('td');
+                if (tds.length >= 2) atendidos += num(tds[1].textContent);
+            });
+            setM('metric-turnos-atendidos', atendidos);
+
+            var asesores = 0;
+            document.querySelectorAll('#turnos-asesor-container > tr').forEach(function(tr){
+                if (tr.querySelectorAll('td').length >= 2) asesores++;
+            });
+            setM('metric-asesores-atencion', asesores);
+
+            var colaSum = 0, colaServ = 0;
+            document.querySelectorAll('#turnos-cola-container > tr').forEach(function(tr){
+                var tds = tr.querySelectorAll('td');
+                if (tds.length >= 2) { var v = num(tds[1].textContent); colaSum += v; if (v > 0) colaServ++; }
+            });
+            setM('metric-turnos-cola', colaSum);
+            setM('metric-servicios-cola', colaServ);
+        } catch (e) {}
+    }
+    if (document.readyState !== 'loading') actualizarMetricasDashboard();
+    else document.addEventListener('DOMContentLoaded', actualizarMetricasDashboard);
+    setInterval(actualizarMetricasDashboard, 5000);
+})();
 </script>
 
 <style>
@@ -1634,6 +1754,16 @@ button:hover,
     transform: translateY(-1px);
     transition: transform 0.1s ease;
 }
+
+/* ===== Refresco visual del dashboard ===== */
+/* Chips de ícono de las métricas: azul institucional (todas iguales) */
+.metric-icon { background: #e6f1fb; color: #064b9e; }
+.metric-value { color: #0f2547; }
+.metric-card { transition: box-shadow .2s ease, border-color .2s ease; }
+.metric-card:hover { border-color: #cdd9ec; box-shadow: 0 6px 18px -10px rgba(16, 24, 40, .18); }
+/* Encabezado de tablas: tinte sobrio en lugar de gris plano */
+.dashboard-table thead tr { background: #f6f8fc; }
+.dashboard-table th { color: #5f6b80; }
 </style>
 
 @endsection
