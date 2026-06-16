@@ -3,11 +3,12 @@
 @section('title', 'Gestión de Turnos')
 
 @section('content')
-<div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Turnos del Día</h1>
-            <p class="text-sm text-gray-500">{{ \Carbon\Carbon::now()->format('d/m/Y') }}</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Operación de hoy</p>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Turnos del Día</h1>
+            <p class="text-sm text-gray-500 mt-1">{{ \Carbon\Carbon::now()->format('d/m/Y') }}</p>
         </div>
         <div class="flex items-center gap-2 text-sm text-gray-500">
             <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -17,27 +18,27 @@
 
     <!-- Estadísticas Rápidas -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+        <div class="bg-gray-50 rounded-xl p-3 text-center border border-gray-200">
             <p class="text-2xl font-bold text-gray-800" id="stat-total">{{ $estadisticas['total'] }}</p>
             <p class="text-xs text-gray-500">Total</p>
         </div>
-        <div class="bg-yellow-50 rounded-lg p-3 text-center border border-yellow-200">
+        <div class="bg-yellow-50 rounded-xl p-3 text-center border border-yellow-200">
             <p class="text-2xl font-bold text-yellow-600" id="stat-pendientes">{{ $estadisticas['pendientes'] }}</p>
             <p class="text-xs text-gray-500">Pendientes</p>
         </div>
-        <div class="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
+        <div class="bg-blue-50 rounded-xl p-3 text-center border border-blue-200">
             <p class="text-2xl font-bold text-blue-600" id="stat-llamados">{{ $estadisticas['llamados'] }}</p>
             <p class="text-xs text-gray-500">Llamados</p>
         </div>
-        <div class="bg-green-50 rounded-lg p-3 text-center border border-green-200">
+        <div class="bg-green-50 rounded-xl p-3 text-center border border-green-200">
             <p class="text-2xl font-bold text-green-600" id="stat-atendidos">{{ $estadisticas['atendidos'] }}</p>
             <p class="text-xs text-gray-500">Atendidos</p>
         </div>
-        <div class="bg-orange-50 rounded-lg p-3 text-center border border-orange-200">
+        <div class="bg-orange-50 rounded-xl p-3 text-center border border-orange-200">
             <p class="text-2xl font-bold text-orange-600" id="stat-aplazados">{{ $estadisticas['aplazados'] }}</p>
             <p class="text-xs text-gray-500">Aplazados</p>
         </div>
-        <div class="bg-red-50 rounded-lg p-3 text-center border border-red-200">
+        <div class="bg-red-50 rounded-xl p-3 text-center border border-red-200">
             <p class="text-2xl font-bold text-red-600" id="stat-cancelados">{{ $estadisticas['cancelados'] }}</p>
             <p class="text-xs text-gray-500">Cancelados</p>
         </div>
@@ -50,13 +51,13 @@
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
                 <input type="text" name="search" value="{{ $search }}" placeholder="Código, número..."
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
             </div>
 
             <!-- Estado -->
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Estado</label>
-                <select name="estado" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <select name="estado" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="">Todos</option>
                     <option value="pendiente" {{ $estado === 'pendiente' ? 'selected' : '' }}>Pendiente</option>
                     <option value="llamado" {{ $estado === 'llamado' ? 'selected' : '' }}>Llamado</option>
@@ -69,7 +70,7 @@
             <!-- Servicio -->
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Servicio</label>
-                <select name="servicio" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <select name="servicio" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="">Todos</option>
                     @foreach($servicios as $s)
                         <option value="{{ $s->id }}" {{ $servicio == $s->id ? 'selected' : '' }}>{{ $s->nombre }}</option>
@@ -80,7 +81,7 @@
             <!-- Asesor -->
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Asesor</label>
-                <select name="asesor" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <select name="asesor" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="">Todos</option>
                     @foreach($asesores as $a)
                         <option value="{{ $a->id }}" {{ $asesor == $a->id ? 'selected' : '' }}>{{ $a->nombre_completo }}</option>
@@ -90,10 +91,10 @@
 
             <!-- Botones -->
             <div class="flex items-end gap-2">
-                <button type="submit" class="flex-1 bg-hospital-blue text-white px-4 py-2 rounded-md hover:bg-hospital-blue-hover transition-colors text-sm">
+                <button type="submit" class="flex-1 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors text-sm">
                     Filtrar
                 </button>
-                <a href="{{ route('admin.turnos') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm">
+                <a href="{{ route('admin.turnos') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
                     Limpiar
                 </a>
             </div>
@@ -104,7 +105,7 @@
     <div class="overflow-x-auto">
         <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg text-sm">
             <thead>
-                <tr class="bg-hospital-blue text-white">
+                <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
                     <th class="py-3 px-3 text-left font-semibold">TURNO</th>
                     <th class="py-3 px-3 text-left font-semibold">SERVICIO</th>
                     <th class="py-3 px-3 text-left font-semibold">PRIORIDAD</th>
