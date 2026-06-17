@@ -183,7 +183,7 @@
 
                     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <!-- Turnos por Servicio -->
-                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
+                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos Atendidos por Servicio (Hoy)</h2>
@@ -228,7 +228,7 @@
                     </div>
 
                     <!-- Turnos por Asesor -->
-                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
+                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos Atendidos por Asesor (Hoy)</h2>
@@ -273,7 +273,7 @@
                     </div>
 
                     <!-- Turnos en Cola por Servicio -->
-                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
+                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos en Cola por Servicio (Hoy)</h2>
@@ -1714,6 +1714,27 @@ function estadisticasUsuarioModal() {
 </script>
 
 <style>
+/* UX: tarjetas de listas del dashboard con ALTURA TOPE + scroll vertical interno (no estiran
+   la página), nombres largos que ENVUELVEN (no scroll horizontal) y encabezado de columna
+   pegado al hacer scroll. Cubre también las filas que re-renderiza el JS (selecciona por id). */
+.dashboard-section {
+    max-height: 26rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+#turnos-servicio-table td:first-child,
+#turnos-asesor-table td:first-child,
+#turnos-cola-table td:first-child {
+    white-space: normal;
+    word-break: break-word;
+}
+.dashboard-section thead th {
+    position: sticky;
+    top: 0;
+    background: #f6f8fc;
+    z-index: 1;
+}
+
 /* A11y (WCAG 2.4.7): quitar el outline SOLO para foco de mouse/touch (no feo al hacer
    click), pero CONSERVAR un indicador claro para foco de teclado vía :focus-visible. */
 button:focus:not(:focus-visible),
