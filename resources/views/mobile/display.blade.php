@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">{{-- a11y: zoom permitido (WCAG 1.4.4) --}}
     <title>{{ config('app.name', 'Turnero HUV') }} - Vista Móvil</title>
     @include('components.favicon')
 
@@ -405,7 +405,7 @@
 
         // Variables globales para la configuración del TV
         let currentConfig = {
-            ticker_message: '{{ addslashes($tvConfig->ticker_message) }}',
+            ticker_message: @json($tvConfig->ticker_message ?? ''),
             ticker_speed: {{ $tvConfig->ticker_speed }},
             ticker_enabled: {{ $tvConfig->ticker_enabled ? 'true' : 'false' }}
         };

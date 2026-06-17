@@ -307,7 +307,7 @@ function actualizarTurnos() {
             } else {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="10" class="py-8 text-center text-gray-500">
+                        <td colspan="11" class="py-8 text-center text-gray-500">
                             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
                             </svg>

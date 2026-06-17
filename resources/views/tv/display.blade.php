@@ -1753,7 +1753,7 @@
         // Ejecutar verificación de estado cada 5 segundos
         setInterval(verificarEstadoColaAudio, 5000);
         let currentConfig = {
-            ticker_message: '{{ addslashes($tvConfig->ticker_message) }}',
+            ticker_message: @json($tvConfig->ticker_message ?? ''),
             ticker_speed: {{ $tvConfig->ticker_speed }},
             ticker_enabled: {{ $tvConfig->ticker_enabled ? 'true' : 'false' }}
         };

@@ -1714,37 +1714,35 @@ function estadisticasUsuarioModal() {
 </script>
 
 <style>
-/* Eliminar outline/borde de focus en botones y elementos interactivos */
-button:focus,
-button:active,
-input:focus,
-input:active,
-select:focus,
-select:active,
-textarea:focus,
-textarea:active,
-.btn:focus,
-.btn:active,
-[role="button"]:focus,
-[role="button"]:active {
-    outline: none !important;
-    box-shadow: none !important;
+/* A11y (WCAG 2.4.7): quitar el outline SOLO para foco de mouse/touch (no feo al hacer
+   click), pero CONSERVAR un indicador claro para foco de teclado vía :focus-visible. */
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible),
+.btn:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible),
+.cursor-pointer:focus:not(:focus-visible),
+label:focus:not(:focus-visible),
+input[type="radio"]:focus:not(:focus-visible),
+input[type="checkbox"]:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
 }
 
-/* Eliminar outline en radio buttons y checkboxes */
-input[type="radio"]:focus,
-input[type="checkbox"]:focus {
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-/* Eliminar outline en elementos clickeables */
-.cursor-pointer:focus,
-.cursor-pointer:active,
-label:focus,
-label:active {
-    outline: none !important;
-    box-shadow: none !important;
+/* Indicador visible de foco para navegación por teclado */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+[role="button"]:focus-visible,
+.cursor-pointer:focus-visible,
+label:focus-visible,
+input[type="radio"]:focus-visible,
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid #064b9e;
+    outline-offset: 2px;
 }
 
 /* Mantener accesibilidad con un sutil efecto hover en lugar del outline */
