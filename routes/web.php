@@ -174,7 +174,9 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
 
     // Rutas para reportes
     Route::get('/reportes', [ReportesController::class, 'index'])->name('admin.reportes');
-    Route::post('/reportes/generar', [ReportesController::class, 'generarReporte'])->name('admin.reportes.generar');
+    // GET (además de POST) para que los gestores de descarga (Chrono, IDM, etc.) puedan
+    // reintentar la URL con sus parámetros; generar un reporte es de solo lectura.
+    Route::match(['get', 'post'], '/reportes/generar', [ReportesController::class, 'generarReporte'])->name('admin.reportes.generar');
     Route::post('/reportes/dashboard-historico', [ReportesController::class, 'exportarDashboardHistorico'])->name('admin.reportes.dashboard-historico');
 
     // Rutas para soporte

@@ -13,8 +13,9 @@
     </div>
 
     <!-- Formulario de Reportes -->
-    <form id="reporteForm" action="{{ route('admin.reportes.generar') }}" method="POST" class="space-y-6">
-        @csrf
+    {{-- GET: los parámetros viajan en la URL para que un gestor de descargas pueda reintentarla.
+         Generar un reporte es de solo lectura, así que GET es correcto y no necesita CSRF. --}}
+    <form id="reporteForm" action="{{ route('admin.reportes.generar') }}" method="GET" class="space-y-6">
 
         <!-- Selección de Fechas -->
         <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
