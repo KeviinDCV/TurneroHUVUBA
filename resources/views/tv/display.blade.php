@@ -118,7 +118,9 @@
             color: white;
             font-weight: 600;
             font-size: 1.25rem;
-            animation: ticker-glow 3s ease-in-out infinite;
+            /* PERF: sombra estática. La animación ticker-glow repintaba el texto en cada
+               frame (60fps) las 24h porque text-shadow no la acelera el compositor. */
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             letter-spacing: 0.5px;
         }
 
@@ -1228,6 +1230,13 @@
     </div>
 
     <script>
+        // ===== Modo producción: silenciar logs verbosos (perf en hot-path de 3s y, sobre
+        // todo, evitar que con DevTools abierto se retengan objetos logeados -> deriva de
+        // memoria en 24/7). Se CONSERVAN console.warn (watchdog/red) y console.error (fallos).
+        // Poner DEBUG = true para depurar en sitio. =====
+        const DEBUG = false;
+        if (!DEBUG) { console.log = function () {}; console.info = function () {}; }
+
         // ===== SISTEMA DE MODAL DE NOTIFICACIÓN CON COLA =====
         let modalVisible = false;
         let modalTimeout = null;
@@ -1787,8 +1796,10 @@
                 turnos = [];
                 turnosVistos.clear();
                 ultimoTurnoId = null;
-                ultimoContenidoTurnos = '';
-                
+                // ultimoContenidoTurnos NO se resetea aquí a propósito: así renderTurnos([])
+                // detecta el cambio "con turnos" -> vacío y limpia la vista (necesario ahora
+                // que renderTurnos hace early-return cuando el contenido no cambió).
+
                 // Limpiar cola de audio
                 limpiarColaAudio(true);
                 
@@ -2068,10 +2079,14 @@
         function renderTurnos(turnosList) {
             const container = document.getElementById('patient-queue');
 
-            // Crear un hash del contenido para detectar cambios reales
-            const contenidoActual = turnosList.map(t => `${t.codigo_completo}-${t.numero_caja}`).join('|');
-            const contenidoCambio = contenidoActual !== ultimoContenidoTurnos;
+            // Hash del contenido (incluye 'estado' para que el badge ATENDIDO se repinte
+            // cuando un turno pasa de llamado a atendido).
+            const contenidoActual = turnosList.slice(0, 5).map(t => `${t.codigo_completo}-${t.numero_caja}-${t.estado}`).join('|');
+            // PERF: si nada cambió, el DOM ya está correcto -> 0 reconstrucción/reflow.
+            // (Antes se hacía innerHTML='' + recrear las 5 filas en CADA poll de 3s, ~28.800 veces/día.)
+            if (contenidoActual === ultimoContenidoTurnos) return;
             ultimoContenidoTurnos = contenidoActual;
+            const contenidoCambio = true; // llegamos aquí => hubo cambio real
 
             // Conservar el contenedor pero limpiar su contenido
             container.innerHTML = '';
