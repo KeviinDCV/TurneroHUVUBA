@@ -49,15 +49,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <!-- Búsqueda -->
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
-                <input type="text" name="search" value="{{ $search }}" placeholder="Código, número..."
+                <label for="filtro-search" class="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
+                <input id="filtro-search" type="text" name="search" value="{{ $search }}" placeholder="Código, número..."
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
             </div>
 
             <!-- Estado -->
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Estado</label>
-                <select name="estado" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <label for="filtro-estado" class="block text-xs font-medium text-gray-700 mb-1">Estado</label>
+                <select id="filtro-estado" name="estado" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="">Todos</option>
                     <option value="pendiente" {{ $estado === 'pendiente' ? 'selected' : '' }}>Pendiente</option>
                     <option value="llamado" {{ $estado === 'llamado' ? 'selected' : '' }}>Llamado</option>
@@ -69,8 +69,8 @@
 
             <!-- Servicio -->
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Servicio</label>
-                <select name="servicio" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <label for="filtro-servicio" class="block text-xs font-medium text-gray-700 mb-1">Servicio</label>
+                <select id="filtro-servicio" name="servicio" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="">Todos</option>
                     @foreach($servicios as $s)
                         <option value="{{ $s->id }}" {{ $servicio == $s->id ? 'selected' : '' }}>{{ $s->nombre }}</option>
@@ -80,8 +80,8 @@
 
             <!-- Asesor -->
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Asesor</label>
-                <select name="asesor" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
+                <label for="filtro-asesor" class="block text-xs font-medium text-gray-700 mb-1">Asesor</label>
+                <select id="filtro-asesor" name="asesor" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
                     <option value="">Todos</option>
                     @foreach($asesores as $a)
                         <option value="{{ $a->id }}" {{ $asesor == $a->id ? 'selected' : '' }}>{{ $a->nombre_completo }}</option>
