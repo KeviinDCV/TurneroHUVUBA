@@ -1060,10 +1060,13 @@ class AdminController extends Controller
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('codigo', 'like', "%{$search}%")
-                  ->orWhere('numero', 'like', "%{$search}%");
+                  ->orWhere('numero', 'like', "%{$search}%")
+                  ->orWhereHas('servicio', function($sq) use ($search) {
+                      $sq->where('nombre', 'like', "%{$search}%");
+                  });
             });
         }
-        
+
         $turnos = $query->get()->map(function($turno) {
             return [
                 'id' => $turno->id,
