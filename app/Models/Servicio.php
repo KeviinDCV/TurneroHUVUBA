@@ -83,8 +83,11 @@ class Servicio extends Model
      * Se resuelve por la SECCIÓN (el servicio raíz): un subservicio hereda la
      * ubicación de su padre, así no hay que listar cada subservicio uno por uno.
      *
-     * Devuelve ['lugar' => ..., 'sitio' => ...] o null si la sección no tiene
+     * Devuelve ['sitio' => ..., 'rango' => ...] o null si la sección no tiene
      * ubicación definida (en ese caso el turno se imprime sin el recuadro).
+     *
+     * 'sitio' es la palabra (Ventanillas / Cajas) y 'rango' los números, que se
+     * imprimen en la línea de ABAJO y en grande, para que no se partan.
      *
      * ▸ PARA CAMBIAR VENTANILLAS/CAJAS: editar únicamente el arreglo $mapa.
      *   La clave es el nombre de la SECCIÓN principal, sin tildes y en mayúscula.
@@ -92,9 +95,9 @@ class Servicio extends Model
     public function ubicacionAtencion(): ?array
     {
         $mapa = [
-            'FACTURACION'              => ['lugar' => 'FACTURACIÓN',  'sitio' => 'Ventanillas 18 a 21'],
-            'PROGRAMACION DE CIRUGIAS' => ['lugar' => 'PROGRAMACIÓN', 'sitio' => 'Ventanillas 16 a 17'],
-            'PAGOS'                    => ['lugar' => 'CAJA',         'sitio' => 'Cajas 1 a 2'],
+            'FACTURACION'              => ['sitio' => 'Ventanillas', 'rango' => '18 a 21'],
+            'PROGRAMACION DE CIRUGIAS' => ['sitio' => 'Ventanillas', 'rango' => '16 a 17'],
+            'PAGOS'                    => ['sitio' => 'Cajas',       'rango' => '1 a 2'],
             // CITAS: sin ubicación definida todavía -> se imprime sin recuadro.
         ];
 

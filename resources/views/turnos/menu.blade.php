@@ -417,11 +417,11 @@ body{background:white;font-family:'Courier New',monospace;display:flex;justify-c
 .sep{border-top:1px dashed #888;margin:8px 0;}
 .info{font-size:10px;color:#444;}
 .info div{margin:2px 0;}
-.guia{border:2px solid #000;padding:5px 6px 6px;margin:8px 0;text-align:center;}
-.guia-titulo{font-size:9px;font-weight:bold;letter-spacing:1px;color:#000;margin-bottom:3px;}
-.guia-lugar{font-size:11px;font-weight:bold;color:#000;letter-spacing:1px;}
-.guia-sitio{font-size:16px;font-weight:bold;color:#000;line-height:1.2;margin-top:2px;}
-@media print{body{min-height:auto;}.ticket{width:80mm;padding:5mm;}}
+.guia{border:2px solid #000;padding:3px 4px 4px;margin:6px 0;text-align:center;}
+.guia-titulo{font-size:8px;font-weight:bold;letter-spacing:1px;color:#000;line-height:1.1;}
+.guia-sitio{font-size:11px;font-weight:bold;color:#000;line-height:1.25;margin-top:2px;}
+.guia-rango{font-size:19px;font-weight:bold;color:#000;line-height:1.1;white-space:nowrap;}
+@media print{@page{size:auto;margin:0;}body{min-height:auto;}.ticket{width:80mm;padding:4mm 5mm;}.ticket,.guia,.info{page-break-inside:avoid;break-inside:avoid;}}
 </style>
 </head>
 <body>
@@ -434,8 +434,8 @@ body{background:white;font-family:'Courier New',monospace;display:flex;justify-c
 <div class="sep"></div>
 ${turnoData.ubicacion ? `<div class="guia">
 <div class="guia-titulo">¿DÓNDE DEBO UBICARME?</div>
-<div class="guia-lugar">${turnoData.ubicacion.lugar}</div>
 <div class="guia-sitio">${turnoData.ubicacion.sitio}</div>
+<div class="guia-rango">${turnoData.ubicacion.rango}</div>
 </div>` : ''}
 <div class="info">
 <div>FECHA: ${fecha}</div>

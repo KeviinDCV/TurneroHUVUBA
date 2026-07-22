@@ -31,16 +31,22 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
         .info { font-size: 10px; color: #444; }
         .info div { margin: 2px 0; }
 
-        /* Ubicacion de la seccion del turno.
+        /* Ubicacion de la seccion del turno. Compacta a proposito: si el ticket
+           crece de mas, la impresora lo parte en dos paginas y separa FECHA/HORA.
            Negro puro y sin fondos: es lo que mejor rinde en impresora termica. */
-        .guia { border: 2px solid #000; padding: 5px 6px 6px; margin: 8px 0; text-align: center; }
-        .guia-titulo { font-size: 9px; font-weight: bold; letter-spacing: 1px; color: #000; margin-bottom: 3px; }
-        .guia-lugar { font-size: 11px; font-weight: bold; color: #000; letter-spacing: 1px; }
-        .guia-sitio { font-size: 16px; font-weight: bold; color: #000; line-height: 1.2; margin-top: 2px; }
+        .guia { border: 2px solid #000; padding: 3px 4px 4px; margin: 6px 0; text-align: center; }
+        .guia-titulo { font-size: 8px; font-weight: bold; letter-spacing: 1px; color: #000; line-height: 1.1; }
+        .guia-sitio { font-size: 11px; font-weight: bold; color: #000; line-height: 1.25; margin-top: 2px; }
+        .guia-rango { font-size: 19px; font-weight: bold; color: #000; line-height: 1.1; white-space: nowrap; }
         .qr { position: absolute; top: 2mm; right: 2mm; }
         @media print {
+            /* Sin margenes de pagina: el ticket debe caber en UNA sola pagina.
+               Si sobra alto, la impresora lo parte y separa FECHA/HORA. */
+            @page { size: auto; margin: 0; }
             body { min-height: auto; }
-            .ticket { width: 80mm; padding: 5mm; }
+            .ticket { width: 80mm; padding: 4mm 5mm; }
+            /* Blindaje: que nada se corte a la mitad */
+            .ticket, .guia, .info { page-break-inside: avoid; break-inside: avoid; }
         }
         @media screen {
             .ticket { border: 2px dashed #ccc; max-width: 300px; padding: 20px; }
@@ -66,8 +72,8 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
         @if($ubicacion)
             <div class="guia">
                 <div class="guia-titulo">¿DÓNDE DEBO UBICARME?</div>
-                <div class="guia-lugar">{{ $ubicacion['lugar'] }}</div>
                 <div class="guia-sitio">{{ $ubicacion['sitio'] }}</div>
+                <div class="guia-rango">{{ $ubicacion['rango'] }}</div>
             </div>
         @endif
 
