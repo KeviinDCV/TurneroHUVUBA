@@ -410,7 +410,7 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:white;font-family:'Courier New',monospace;display:flex;justify-content:center;align-items:center;}
 .ticket{width:80mm;padding:5mm;text-align:center;line-height:1.3;}
-.ancho{transform:scaleX(1.18);}
+.ancho{display:inline-block;transform:scaleX(1.18);}
 .logo{height:36px;margin-bottom:6px;}
 .label{font-size:11px;color:#444;font-weight:bold;margin-bottom:1px;}
 .turno{font-size:38px;font-weight:bold;color:#064b9e;letter-spacing:2px;margin:3px 0;line-height:1.15;}
@@ -428,19 +428,19 @@ body{background:white;font-family:'Courier New',monospace;display:flex;justify-c
 <body>
 <div class="ticket">
 <img src="${baseUrl}/images/logo.png" alt="Logo" class="logo">
-<div class="label ancho">TURNO</div>
-<div class="turno ancho">${turnoData.codigo_completo}</div>
-<div class="label ancho">SERVICIO</div>
+<div class="label"><span class="ancho">TURNO</span></div>
+<div class="turno"><span class="ancho">${turnoData.codigo_completo}</span></div>
+<div class="label"><span class="ancho">SERVICIO</span></div>
 <div class="servicio">${turnoData.servicio.toUpperCase()}</div>
 <div class="sep"></div>
 ${turnoData.ubicacion ? `<div class="guia">
-<div class="guia-titulo ancho">¿DÓNDE DEBO UBICARME?</div>
-<div class="guia-sitio ancho">${turnoData.ubicacion.sitio}</div>
-<div class="guia-rango ancho">${turnoData.ubicacion.rango}</div>
+<div class="guia-titulo"><span class="ancho">¿DÓNDE DEBO UBICARME?</span></div>
+<div class="guia-sitio"><span class="ancho">${turnoData.ubicacion.sitio}</span></div>
+<div class="guia-rango"><span class="ancho">${turnoData.ubicacion.rango}</span></div>
 </div>` : ''}
 <div class="info">
-<div class="ancho">FECHA: ${fecha}</div>
-<div class="ancho">HORA: ${hora}</div>
+<div><span class="ancho">FECHA: ${fecha}</span></div>
+<div><span class="ancho">HORA: ${hora}</span></div>
 </div>
 ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="margin-top:4px;font-size:11px;font-weight:bold;color:#dc2626;">★ PRIORITARIO</div>' : ''}
 </div>
