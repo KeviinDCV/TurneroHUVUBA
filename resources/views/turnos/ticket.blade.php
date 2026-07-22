@@ -23,21 +23,28 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
             line-height: 1.3;
             position: relative;
         }
-        .logo { height: 40px; margin-bottom: 8px; }
-        .label { font-size: 10px; color: #666; font-weight: bold; margin-bottom: 2px; }
-        .turno { font-size: 36px; font-weight: bold; color: #064b9e; letter-spacing: 2px; margin: 4px 0; }
-        .servicio { font-size: 12px; font-weight: bold; color: #111; padding: 0 4px; }
-        .sep { border-top: 1px dashed #888; margin: 8px 0; }
-        .info { font-size: 10px; color: #444; }
-        .info div { margin: 2px 0; }
+        /* Letra mas GRANDE pero sobre todo mas ANCHA: el scaleX ensancha los
+           glifos sin gastar ni un milimetro de papel a lo alto. Solo se aplica a
+           textos cortos; .servicio NO se ensancha porque es largo y se envolveria
+           en mas lineas (eso si gastaria papel). */
+        /* inline-block = la caja se ajusta al texto, asi el scaleX ensancha SOLO
+           las letras y nunca desborda los 80mm ni empuja un salto de pagina. */
+        .ancho { display: inline-block; transform: scaleX(1.18); }
+        .logo { height: 36px; margin-bottom: 6px; }
+        .label { font-size: 11px; color: #444; font-weight: bold; margin-bottom: 1px; }
+        .turno { font-size: 38px; font-weight: bold; color: #064b9e; letter-spacing: 2px; margin: 3px 0; line-height: 1.15; }
+        .servicio { font-size: 13px; font-weight: bold; color: #000; padding: 0 2px; line-height: 1.2; }
+        .sep { border-top: 1px dashed #888; margin: 6px 0; }
+        .info { font-size: 12px; color: #222; }
+        .info div { margin: 1px 0; }
 
         /* Ubicacion de la seccion del turno. Compacta a proposito: si el ticket
            crece de mas, la impresora lo parte en dos paginas y separa FECHA/HORA.
            Negro puro y sin fondos: es lo que mejor rinde en impresora termica. */
         .guia { border: 2px solid #000; padding: 3px 4px 4px; margin: 6px 0; text-align: center; }
-        .guia-titulo { font-size: 8px; font-weight: bold; letter-spacing: 1px; color: #000; line-height: 1.1; }
-        .guia-sitio { font-size: 11px; font-weight: bold; color: #000; line-height: 1.25; margin-top: 2px; }
-        .guia-rango { font-size: 19px; font-weight: bold; color: #000; line-height: 1.1; white-space: nowrap; }
+        .guia-titulo { font-size: 9px; font-weight: bold; letter-spacing: 1px; color: #000; line-height: 1.1; }
+        .guia-sitio { font-size: 13px; font-weight: bold; color: #000; line-height: 1.2; margin-top: 1px; }
+        .guia-rango { font-size: 21px; font-weight: bold; color: #000; line-height: 1.1; white-space: nowrap; }
         .qr { position: absolute; top: 2mm; right: 2mm; }
         @media print {
             /* Sin margenes de pagina: el ticket debe caber en UNA sola pagina.
@@ -57,10 +64,10 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
     <div class="ticket">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" class="logo">
 
-        <div class="label">TURNO</div>
-        <div class="turno">{{ $turno->codigo_completo }}</div>
+        <div class="label"><span class="ancho">TURNO</span></div>
+        <div class="turno"><span class="ancho">{{ $turno->codigo_completo }}</span></div>
 
-        <div class="label">SERVICIO</div>
+        <div class="label"><span class="ancho">SERVICIO</span></div>
         <div class="servicio">{{ strtoupper($servicio->nombre_completo ?? $servicio->nombre) }}</div>
 
         <div class="sep"></div>
@@ -71,15 +78,15 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
         @php($ubicacion = $servicio->ubicacionAtencion())
         @if($ubicacion)
             <div class="guia">
-                <div class="guia-titulo">¿DÓNDE DEBO UBICARME?</div>
-                <div class="guia-sitio">{{ $ubicacion['sitio'] }}</div>
-                <div class="guia-rango">{{ $ubicacion['rango'] }}</div>
+                <div class="guia-titulo"><span class="ancho">¿DÓNDE DEBO UBICARME?</span></div>
+                <div class="guia-sitio"><span class="ancho">{{ $ubicacion['sitio'] }}</span></div>
+                <div class="guia-rango"><span class="ancho">{{ $ubicacion['rango'] }}</span></div>
             </div>
         @endif
 
         <div class="info">
-            <div>FECHA: {{ $turno->fecha_creacion->format('d/m/Y') }}</div>
-            <div>HORA: {{ $turno->fecha_creacion->format('h:i:s A') }}</div>
+            <div><span class="ancho">FECHA: {{ $turno->fecha_creacion->format('d/m/Y') }}</span></div>
+            <div><span class="ancho">HORA: {{ $turno->fecha_creacion->format('h:i:s A') }}</span></div>
         </div>
 
         <div class="qr">

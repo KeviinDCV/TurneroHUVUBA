@@ -95,9 +95,9 @@ class Servicio extends Model
     public function ubicacionAtencion(): ?array
     {
         $mapa = [
-            'FACTURACION'              => ['sitio' => 'Ventanillas', 'rango' => '18 a 21'],
-            'PROGRAMACION DE CIRUGIAS' => ['sitio' => 'Ventanillas', 'rango' => '16 a 17'],
-            'PAGOS'                    => ['sitio' => 'Cajas',       'rango' => '1 a 2'],
+            'FACTURACION'              => ['sitio' => 'Ventanillas', 'rango' => '18 Y 21'],
+            'PROGRAMACION DE CIRUGIAS' => ['sitio' => 'Ventanillas', 'rango' => '16 Y 17'],
+            'PAGOS'                    => ['sitio' => 'Cajas',       'rango' => '1 Y 2'],
             // CITAS: sin ubicación definida todavía -> se imprime sin recuadro.
         ];
 

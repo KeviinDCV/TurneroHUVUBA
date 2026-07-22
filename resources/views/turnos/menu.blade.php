@@ -410,36 +410,37 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:white;font-family:'Courier New',monospace;display:flex;justify-content:center;align-items:center;}
 .ticket{width:80mm;padding:5mm;text-align:center;line-height:1.3;}
-.logo{height:40px;margin-bottom:8px;}
-.label{font-size:10px;color:#666;font-weight:bold;margin-bottom:2px;}
-.turno{font-size:36px;font-weight:bold;color:#064b9e;letter-spacing:2px;margin:4px 0;}
-.servicio{font-size:12px;font-weight:bold;color:#111;padding:0 4px;}
-.sep{border-top:1px dashed #888;margin:8px 0;}
-.info{font-size:10px;color:#444;}
-.info div{margin:2px 0;}
+.ancho{transform:scaleX(1.18);}
+.logo{height:36px;margin-bottom:6px;}
+.label{font-size:11px;color:#444;font-weight:bold;margin-bottom:1px;}
+.turno{font-size:38px;font-weight:bold;color:#064b9e;letter-spacing:2px;margin:3px 0;line-height:1.15;}
+.servicio{font-size:13px;font-weight:bold;color:#000;padding:0 2px;line-height:1.2;}
+.sep{border-top:1px dashed #888;margin:6px 0;}
+.info{font-size:12px;color:#222;}
+.info div{margin:1px 0;}
 .guia{border:2px solid #000;padding:3px 4px 4px;margin:6px 0;text-align:center;}
-.guia-titulo{font-size:8px;font-weight:bold;letter-spacing:1px;color:#000;line-height:1.1;}
-.guia-sitio{font-size:11px;font-weight:bold;color:#000;line-height:1.25;margin-top:2px;}
-.guia-rango{font-size:19px;font-weight:bold;color:#000;line-height:1.1;white-space:nowrap;}
+.guia-titulo{font-size:9px;font-weight:bold;letter-spacing:1px;color:#000;line-height:1.1;}
+.guia-sitio{font-size:13px;font-weight:bold;color:#000;line-height:1.2;margin-top:1px;}
+.guia-rango{font-size:21px;font-weight:bold;color:#000;line-height:1.1;white-space:nowrap;}
 @media print{@page{size:auto;margin:0;}body{min-height:auto;}.ticket{width:80mm;padding:4mm 5mm;}.ticket,.guia,.info{page-break-inside:avoid;break-inside:avoid;}}
 </style>
 </head>
 <body>
 <div class="ticket">
 <img src="${baseUrl}/images/logo.png" alt="Logo" class="logo">
-<div class="label">TURNO</div>
-<div class="turno">${turnoData.codigo_completo}</div>
-<div class="label">SERVICIO</div>
+<div class="label ancho">TURNO</div>
+<div class="turno ancho">${turnoData.codigo_completo}</div>
+<div class="label ancho">SERVICIO</div>
 <div class="servicio">${turnoData.servicio.toUpperCase()}</div>
 <div class="sep"></div>
 ${turnoData.ubicacion ? `<div class="guia">
-<div class="guia-titulo">¿DÓNDE DEBO UBICARME?</div>
-<div class="guia-sitio">${turnoData.ubicacion.sitio}</div>
-<div class="guia-rango">${turnoData.ubicacion.rango}</div>
+<div class="guia-titulo ancho">¿DÓNDE DEBO UBICARME?</div>
+<div class="guia-sitio ancho">${turnoData.ubicacion.sitio}</div>
+<div class="guia-rango ancho">${turnoData.ubicacion.rango}</div>
 </div>` : ''}
 <div class="info">
-<div>FECHA: ${fecha}</div>
-<div>HORA: ${hora}</div>
+<div class="ancho">FECHA: ${fecha}</div>
+<div class="ancho">HORA: ${hora}</div>
 </div>
 ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="margin-top:4px;font-size:11px;font-weight:bold;color:#dc2626;">★ PRIORITARIO</div>' : ''}
 </div>
