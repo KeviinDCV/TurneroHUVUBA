@@ -417,6 +417,10 @@ body{background:white;font-family:'Courier New',monospace;display:flex;justify-c
 .sep{border-top:1px dashed #888;margin:8px 0;}
 .info{font-size:10px;color:#444;}
 .info div{margin:2px 0;}
+.guia{border:2px solid #000;padding:5px 6px 6px;margin:8px 0;text-align:center;}
+.guia-titulo{font-size:9px;font-weight:bold;letter-spacing:1px;color:#000;margin-bottom:3px;}
+.guia-lugar{font-size:11px;font-weight:bold;color:#000;letter-spacing:1px;}
+.guia-sitio{font-size:16px;font-weight:bold;color:#000;line-height:1.2;margin-top:2px;}
 @media print{body{min-height:auto;}.ticket{width:80mm;padding:5mm;}}
 </style>
 </head>
@@ -428,6 +432,11 @@ body{background:white;font-family:'Courier New',monospace;display:flex;justify-c
 <div class="label">SERVICIO</div>
 <div class="servicio">${turnoData.servicio.toUpperCase()}</div>
 <div class="sep"></div>
+${turnoData.ubicacion ? `<div class="guia">
+<div class="guia-titulo">¿DÓNDE DEBO UBICARME?</div>
+<div class="guia-lugar">${turnoData.ubicacion.lugar}</div>
+<div class="guia-sitio">${turnoData.ubicacion.sitio}</div>
+</div>` : ''}
 <div class="info">
 <div>FECHA: ${fecha}</div>
 <div>HORA: ${hora}</div>

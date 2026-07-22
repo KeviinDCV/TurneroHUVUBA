@@ -78,6 +78,40 @@ class Servicio extends Model
     }
 
     /**
+     * Ubicación física donde se atiende este servicio, para imprimirla en el turno.
+     *
+     * Se resuelve por la SECCIÓN (el servicio raíz): un subservicio hereda la
+     * ubicación de su padre, así no hay que listar cada subservicio uno por uno.
+     *
+     * Devuelve ['lugar' => ..., 'sitio' => ...] o null si la sección no tiene
+     * ubicación definida (en ese caso el turno se imprime sin el recuadro).
+     *
+     * ▸ PARA CAMBIAR VENTANILLAS/CAJAS: editar únicamente el arreglo $mapa.
+     *   La clave es el nombre de la SECCIÓN principal, sin tildes y en mayúscula.
+     */
+    public function ubicacionAtencion(): ?array
+    {
+        $mapa = [
+            'FACTURACION'              => ['lugar' => 'FACTURACIÓN',  'sitio' => 'Ventanillas 18 a 21'],
+            'PROGRAMACION DE CIRUGIAS' => ['lugar' => 'PROGRAMACIÓN', 'sitio' => 'Ventanillas 16 a 17'],
+            'PAGOS'                    => ['lugar' => 'CAJA',         'sitio' => 'Cajas 1 a 2'],
+            // CITAS: sin ubicación definida todavía -> se imprime sin recuadro.
+        ];
+
+        // La sección es el servicio raíz (si es subservicio, su padre).
+        $seccion = ($this->nivel === 'subservicio' && $this->servicioPadre)
+            ? $this->servicioPadre
+            : $this;
+
+        // Normalizar: mayúsculas, sin tildes y sin espacios sobrantes.
+        $clave = mb_strtoupper(trim($seccion->nombre ?? ''), 'UTF-8');
+        $clave = strtr($clave, ['Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N']);
+        $clave = preg_replace('/\s+/', ' ', $clave);
+
+        return $mapa[$clave] ?? null;
+    }
+
+    /**
      * Relación muchos a muchos con usuarios
      */
     public function usuarios()

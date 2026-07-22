@@ -142,7 +142,9 @@ class TurnoController extends Controller
                     'id' => $turno->id,
                     'codigo_completo' => $turno->codigo_completo,
                     'servicio' => $nombreServicio,
-                    'numero' => $turno->numero
+                    'numero' => $turno->numero,
+                    // Ubicación física de la sección, para imprimirla en el ticket
+                    'ubicacion' => $servicio->ubicacionAtencion()
                 ],
                 'redirect_url' => route('turnos.ticket', $turno->id)
             ]);
@@ -234,7 +236,9 @@ class TurnoController extends Controller
                     'codigo_completo' => $turno->codigo_completo,
                     'servicio' => $nombreServicio,
                     'numero' => $turno->numero,
-                    'prioridad' => $tipoPrioridad
+                    'prioridad' => $tipoPrioridad,
+                    // Ubicación física de la sección, para imprimirla en el ticket
+                    'ubicacion' => $servicio->ubicacionAtencion()
                 ],
                 'redirect_url' => route('turnos.ticket', $turno->id)
             ]);

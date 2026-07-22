@@ -30,6 +30,13 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
         .sep { border-top: 1px dashed #888; margin: 8px 0; }
         .info { font-size: 10px; color: #444; }
         .info div { margin: 2px 0; }
+
+        /* Ubicacion de la seccion del turno.
+           Negro puro y sin fondos: es lo que mejor rinde en impresora termica. */
+        .guia { border: 2px solid #000; padding: 5px 6px 6px; margin: 8px 0; text-align: center; }
+        .guia-titulo { font-size: 9px; font-weight: bold; letter-spacing: 1px; color: #000; margin-bottom: 3px; }
+        .guia-lugar { font-size: 11px; font-weight: bold; color: #000; letter-spacing: 1px; }
+        .guia-sitio { font-size: 16px; font-weight: bold; color: #000; line-height: 1.2; margin-top: 2px; }
         .qr { position: absolute; top: 2mm; right: 2mm; }
         @media print {
             body { min-height: auto; }
@@ -51,6 +58,18 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
         <div class="servicio">{{ strtoupper($servicio->nombre_completo ?? $servicio->nombre) }}</div>
 
         <div class="sep"></div>
+
+        {{-- Ubicacion de la seccion del turno. Si la seccion no tiene ubicacion
+             definida (p. ej. CITAS), no se imprime nada.
+             Para cambiar ventanillas/cajas: App\Models\Servicio::ubicacionAtencion() --}}
+        @php($ubicacion = $servicio->ubicacionAtencion())
+        @if($ubicacion)
+            <div class="guia">
+                <div class="guia-titulo">¿DÓNDE DEBO UBICARME?</div>
+                <div class="guia-lugar">{{ $ubicacion['lugar'] }}</div>
+                <div class="guia-sitio">{{ $ubicacion['sitio'] }}</div>
+            </div>
+        @endif
 
         <div class="info">
             <div>FECHA: {{ $turno->fecha_creacion->format('d/m/Y') }}</div>
