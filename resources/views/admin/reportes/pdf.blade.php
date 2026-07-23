@@ -206,6 +206,10 @@
                 <div class="summary-label">Porcentaje de Atención</div>
                 <div class="summary-value">{{ $estadisticas['resumen']['porcentaje_atencion'] }}%</div>
             </div>
+            <div class="summary-item">
+                <div class="summary-label">Turnos Transferidos</div>
+                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_transferidos'] ?? 0) }}</div>
+            </div>
         </div>
         
         @if($estadisticas['resumen']['tiempo_promedio_atencion'])
@@ -228,6 +232,7 @@
                     <th class="text-center">Atendidos</th>
                     <th class="text-center">Pendientes</th>
                     <th class="text-center">Cancelados</th>
+                    <th class="text-center">Transferidos</th>
                     <th class="text-center">Tiempo Promedio (mm:ss)</th>
                 </tr>
             </thead>
@@ -239,6 +244,7 @@
                     <td class="text-center">{{ $datos['atendidos'] }}</td>
                     <td class="text-center">{{ $datos['pendientes'] }}</td>
                     <td class="text-center">{{ $datos['cancelados'] }}</td>
+                    <td class="text-center">{{ $datos['transferidos'] ?? 0 }}</td>
                     <td class="text-center">
                         @if(isset($datos['tiempo_promedio']) && $datos['tiempo_promedio'])
                             @php
@@ -268,6 +274,7 @@
                     <th>Asesor</th>
                     <th class="text-center">Total Turnos</th>
                     <th class="text-center">Turnos Atendidos</th>
+                    <th class="text-center">Transferidos</th>
                     <th class="text-center">Tiempo Promedio (mm:ss)</th>
                 </tr>
             </thead>
@@ -277,6 +284,7 @@
                     <td>{{ $datos['nombre_completo'] ?? ($datos['nombre_usuario'] ?? 'N/A') }}</td>
                     <td class="text-center">{{ $datos['total'] }}</td>
                     <td class="text-center">{{ $datos['atendidos'] }}</td>
+                    <td class="text-center">{{ $datos['transferidos'] ?? 0 }}</td>
                     <td class="text-center">
                         @if(isset($datos['tiempo_promedio_atencion']) && $datos['tiempo_promedio_atencion'])
                             @php
@@ -310,6 +318,7 @@
                     <th>Prioridad</th>
                     <th>Fecha Creación</th>
                     <th>Duración (mm:ss)</th>
+                    <th>Transferencia</th>
                 </tr>
             </thead>
             <tbody>
@@ -339,11 +348,24 @@
                             N/A
                         @endif
                     </td>
+                    <td style="font-size: 10px;">
+                        @php
+                            $obs = $turno->observaciones ?? '';
+                            if (str_starts_with($obs, 'Transferido a ')) {
+                                $tx = 'A: ' . \Illuminate\Support\Str::limit(str_replace('Transferido a ', '', $obs), 20);
+                            } elseif (str_starts_with($obs, 'Transferido desde ')) {
+                                $tx = 'DE: ' . \Illuminate\Support\Str::limit(str_replace('Transferido desde ', '', $obs), 20);
+                            } else {
+                                $tx = '-';
+                            }
+                        @endphp
+                        {{ $tx }}
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
-        
+
         @if($turnos->count() > 50)
         <p style="font-style: italic; color: #666; text-align: center; margin-top: 10px;">
             Mostrando los primeros 50 de {{ $turnos->count() }} turnos totales. 

@@ -98,9 +98,12 @@ class ReportesController extends Controller
         $turnosPendientes = $turnos->whereIn('estado', ['pendiente', 'aplazado'])->count();
         $turnosCancelados = $turnos->where('estado', 'cancelado')->count();
         
-        // Contar turnos transferidos (tienen observación que empieza con "Transferido")
+        // Contar turnos transferidos (SALIENTES: observación "Transferido a ...").
+        // Consistente con el conteo por asesor y por servicio. Los "Transferido
+        // desde ..." son el ticket de continuación creado en el servicio destino,
+        // no una transferencia adicional, por eso no se cuentan aquí.
         $turnosTransferidos = $turnos->filter(function($turno) {
-            return $turno->observaciones && str_starts_with($turno->observaciones, 'Transferido');
+            return $turno->observaciones && str_starts_with($turno->observaciones, 'Transferido a');
         })->count();
 
         // Estadísticas por servicio
@@ -110,6 +113,10 @@ class ReportesController extends Controller
                 'atendidos' => $grupo->where('estado', 'atendido')->count(),
                 'pendientes' => $grupo->whereIn('estado', ['pendiente', 'aplazado'])->count(),
                 'cancelados' => $grupo->where('estado', 'cancelado')->count(),
+                // Turnos transferidos SALIENTES desde este servicio
+                'transferidos' => $grupo->filter(function($turno) {
+                    return $turno->observaciones && str_contains($turno->observaciones, 'Transferido a ');
+                })->count(),
                 'tiempo_promedio' => round($grupo->where('estado', 'atendido')->avg('duracion_atencion'), 2),
                 'tiempo_total' => round($grupo->where('estado', 'atendido')->sum('duracion_atencion'), 2)
             ];
@@ -786,7 +793,8 @@ class ReportesController extends Controller
             'C1' => 'Atendidos',
             'D1' => 'Pendientes',
             'E1' => 'Cancelados',
-            'F1' => 'Tiempo Promedio (mm:ss)'
+            'F1' => 'Transferidos',
+            'G1' => 'Tiempo Promedio (mm:ss)'
         ];
 
         foreach ($headers as $cell => $header) {
@@ -794,7 +802,7 @@ class ReportesController extends Controller
         }
 
         // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:F1')->applyFromArray([
+        $sheet->getStyle('A1:G1')->applyFromArray([
             'font' => ['bold' => true],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
@@ -822,13 +830,14 @@ class ReportesController extends Controller
             $sheet->setCellValue('C' . $row, $datos['atendidos']);
             $sheet->setCellValue('D' . $row, $datos['pendientes']);
             $sheet->setCellValue('E' . $row, $datos['cancelados']);
-            $sheet->setCellValue('F' . $row, $tiempoPromedioFormato);
+            $sheet->setCellValue('F' . $row, $datos['transferidos'] ?? 0);
+            $sheet->setCellValue('G' . $row, $tiempoPromedioFormato);
             $row++;
         }
 
         // Aplicar bordes
         if ($row > 2) {
-            $sheet->getStyle('A1:F' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:G' . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -838,7 +847,7 @@ class ReportesController extends Controller
         }
 
         // Ajustar ancho de columnas
-        foreach (range('A', 'F') as $column) {
+        foreach (range('A', 'G') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
