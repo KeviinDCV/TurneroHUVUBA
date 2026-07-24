@@ -91,9 +91,13 @@
             background: rgba(255, 255, 255, 0.08);
             color: #ffffff;
         }
+        /* La pestaña activa debe ser EXACTAMENTE del color del fondo del contenido
+           (<body class="bg-gray-100">) para que se vea "conectada" y no como un
+           bloque blanco pegado encima. Se usa la MISMA variable de Tailwind que
+           pinta el fondo, asi no se desincronizan; el hex es solo respaldo. */
         .sidebar-item-active,
         .sidebar-item-active:hover {
-            background: #ffffff;
+            background: var(--color-gray-100, #f3f4f6);
             color: #072449;
         }
 
