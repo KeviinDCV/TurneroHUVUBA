@@ -602,6 +602,68 @@
             }
         }
 
+        /* ================= ESTILO MINIMALISTA: SIN BORDES =================
+           Quita los bordes de CARDS, MODALES y BOTONES en todas las vistas.
+
+           Por que se hace aqui y no editando cada vista: son ~1.200 usos de
+           "border" repartidos en 20 archivos. Centralizarlo es reversible
+           (basta borrar este bloque) y no se escapa ninguna vista.
+
+           Clave: se usa el selector COMPUESTO ".border.border-gray-200", que
+           solo alcanza a los elementos con borde COMPLETO (clase `border`).
+           Los separadores direccionales (`border-b`, `border-t`, `border-l-4`)
+           NO llevan la clase `border`, asi que se conservan intactos.
+
+           Se usa `border-color: transparent` en vez de `border: none` para que
+           NO haya corrimiento de layout: el ancho del borde se mantiene.
+
+           NO se tocan a proposito: inputs/selects/textarea (border-gray-300),
+           separadores de tabla, acentos laterales de color (border-l-4) ni el
+           spinner de carga (border-b-2 border-white).
+
+           Los MODALES ya no tenian borde (bg-white + rounded + shadow), asi
+           que no requieren ninguna regla. */
+
+        /* --- Cards y paneles ---
+           El ancla `div.` es DELIBERADA: hay <table> que tambien usan
+           "border border-gray-200" (cajas, turnos, users) y su borde SI debe
+           conservarse, porque una tabla no es una card. */
+        div.border.border-gray-200,
+        div.border.border-gray-100 {
+            border-color: transparent;
+        }
+
+        /* Tiles de metrica y avisos de color (turnos, reportes): conservan su
+           fondo de color, que ya comunica el estado sin necesidad del borde. */
+        div.border.border-blue-200,
+        div.border.border-green-200,
+        div.border.border-yellow-200,
+        div.border.border-red-200,
+        div.border.border-purple-200 {
+            border-color: transparent;
+        }
+
+        /* --- Botones ---
+           :not(.tab-button) protege el indicador de pestana activa, que se
+           dibuja con borde y que el JS reescribe en caliente. */
+        button.border.border-gray-300:not(.tab-button),
+        button.border.border-gray-200:not(.tab-button),
+        button.border.border-hospital-blue:not(.tab-button),
+        a.border.border-gray-300:not(.tab-button) {
+            border-color: transparent;
+        }
+
+        /* Los secundarios blancos se quedarian invisibles sobre la card blanca:
+           se les da un gris muy suave para que sigan leyendose como boton. */
+        button.border.border-gray-300:not(.tab-button),
+        a.border.border-gray-300:not(.tab-button) {
+            background-color: #eef1f6;
+        }
+        button.border.border-gray-300:not(.tab-button):hover,
+        a.border.border-gray-300:not(.tab-button):hover {
+            background-color: #e2e8f2;
+        }
+
         @yield('styles')
     </style>
 </head>
