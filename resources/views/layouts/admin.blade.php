@@ -643,6 +643,24 @@
             border-color: transparent;
         }
 
+        /* Listas de seleccion con scroll (Usuarios/Servicios de Reportes y
+           similares). Se anclan por `overflow-y-auto` porque algunas llevan
+           `border` sin clase de color. */
+        div.overflow-y-auto.border,
+        div.overflow-y-auto.border.border-gray-300 {
+            border-color: transparent;
+        }
+
+        /* Tiles de opcion seleccionables dentro de modales. Usan `border-2`,
+           no `border`. El `:not(:hover)` es IMPRESCINDIBLE: conserva el
+           resaltado azul de `hover:border-hospital-blue`, que es la unica
+           senal de que la opcion es clicable. */
+        div.border-2.border-gray-200:not(:hover),
+        label.border-2.border-gray-200:not(:hover),
+        label.border.border-gray-200:not(:hover) {
+            border-color: transparent;
+        }
+
         /* --- Botones ---
            :not(.tab-button) protege el indicador de pestana activa, que se
            dibuja con borde y que el JS reescribe en caliente. */
