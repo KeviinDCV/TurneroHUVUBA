@@ -305,9 +305,16 @@ class AsesorController extends Controller
      *  - servicio: los atendidos por TODOS en los servicios que el asesor tiene
      *              asignados (incluyendo sus subservicios), para dar contexto.
      *
-     * OJO: un turno TRANSFERIDO queda con estado 'atendido' y observaciones
-     * "Transferido a ...". No es una atención real (la resuelve otro servicio),
-     * por eso se excluye de ambos contadores.
+     * TRANSFERIDOS: SI cuentan. Un turno transferido queda con estado 'atendido'
+     * y observaciones "Transferido a ...", y aparece en el historial del asesor
+     * como ATENDIDO. En la operación real el asesor SI lo atendió (lo llamó y
+     * lo derivó), y las ventanillas lo cuentan como propio. Se intentó
+     * excluirlos y los asesores lo reportaron como error (un turno "K" que
+     * habían transferido no les sumaba), asi que el criterio es:
+     *
+     *   el contador debe coincidir SIEMPRE con las filas ATENDIDO que el
+     *   asesor ve en su historial. Si se vuelve a filtrar por observaciones,
+     *   los dos numeros dejan de cuadrar y se reporta como bug.
      *
      * Se usa el scope delDia() —igual que el resto del tablero— para que los
      * números cuadren con la cola y el historial que se ven en la misma pantalla.
@@ -324,22 +331,14 @@ class AsesorController extends Controller
             ->values()
             ->all();
 
-        // Excluir los turnos que solo fueron transferidos
-        $sinTransferidos = function ($q) {
-            $q->whereNull('observaciones')
-              ->orWhere('observaciones', 'NOT LIKE', 'Transferido a%');
-        };
-
         $delUsuario = Turno::delDia()
             ->where('estado', 'atendido')
             ->where('asesor_id', $user->id)
-            ->where($sinTransferidos)
             ->count();
 
         $delServicio = empty($serviciosIds) ? 0 : Turno::delDia()
             ->where('estado', 'atendido')
             ->whereIn('servicio_id', $serviciosIds)
-            ->where($sinTransferidos)
             ->count();
 
         return ['usuario' => $delUsuario, 'servicio' => $delServicio];
