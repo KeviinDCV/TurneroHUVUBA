@@ -292,7 +292,57 @@ class AsesorController extends Controller
             ];
         }
 
-        return view('asesor.llamar-turnos', compact('user', 'caja', 'serviciosEstructurados'));
+        $totalesAtendidos = $this->calcularTotalesAtendidos($user);
+
+        return view('asesor.llamar-turnos', compact('user', 'caja', 'serviciosEstructurados', 'totalesAtendidos'));
+    }
+
+    /**
+     * Totales de turnos ATENDIDOS del día para el tablero del asesor.
+     *
+     * Devuelve ['usuario' => n, 'servicio' => m]:
+     *  - usuario:  los que atendió este asesor.
+     *  - servicio: los atendidos por TODOS en los servicios que el asesor tiene
+     *              asignados (incluyendo sus subservicios), para dar contexto.
+     *
+     * OJO: un turno TRANSFERIDO queda con estado 'atendido' y observaciones
+     * "Transferido a ...". No es una atención real (la resuelve otro servicio),
+     * por eso se excluye de ambos contadores.
+     *
+     * Se usa el scope delDia() —igual que el resto del tablero— para que los
+     * números cuadren con la cola y el historial que se ven en la misma pantalla.
+     */
+    private function calcularTotalesAtendidos($user): array
+    {
+        // Servicios que ve el asesor: los asignados + los subservicios de esos
+        $asignados = $user->serviciosActivos()->with('subservicios')->get();
+        $serviciosIds = $asignados->pluck('id')
+            ->merge($asignados->flatMap(function ($s) {
+                return $s->subservicios->pluck('id');
+            }))
+            ->unique()
+            ->values()
+            ->all();
+
+        // Excluir los turnos que solo fueron transferidos
+        $sinTransferidos = function ($q) {
+            $q->whereNull('observaciones')
+              ->orWhere('observaciones', 'NOT LIKE', 'Transferido a%');
+        };
+
+        $delUsuario = Turno::delDia()
+            ->where('estado', 'atendido')
+            ->where('asesor_id', $user->id)
+            ->where($sinTransferidos)
+            ->count();
+
+        $delServicio = empty($serviciosIds) ? 0 : Turno::delDia()
+            ->where('estado', 'atendido')
+            ->whereIn('servicio_id', $serviciosIds)
+            ->where($sinTransferidos)
+            ->count();
+
+        return ['usuario' => $delUsuario, 'servicio' => $delServicio];
     }
 
     /**
@@ -1296,7 +1346,13 @@ class AsesorController extends Controller
             ];
         }
 
-        return response()->json($serviciosEstructurados);
+        // Se devuelve un objeto (antes era un array plano) para poder incluir los
+        // totales atendidos. El JS acepta ambas formas, por si queda una pestaña
+        // abierta con la version anterior mientras se despliega.
+        return response()->json([
+            'servicios' => $serviciosEstructurados,
+            'totales' => $this->calcularTotalesAtendidos($user),
+        ]);
     }
 
     /**

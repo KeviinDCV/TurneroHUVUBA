@@ -484,6 +484,22 @@
                 </div>
             </div>
 
+            <!-- Resumen de turnos atendidos hoy -->
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="rounded p-3 text-center" style="background-color: #eef3fa;">
+                    <div class="text-xs font-semibold tracking-wide" style="color: #4a688f;">ATENDIDOS POR MÍ HOY</div>
+                    <div id="total-atendidos-usuario" class="text-3xl font-bold leading-tight" style="color: #064b9e;">
+                        {{ $totalesAtendidos['usuario'] ?? 0 }}
+                    </div>
+                </div>
+                <div class="rounded p-3 text-center" style="background-color: #eef3fa;">
+                    <div class="text-xs font-semibold tracking-wide" style="color: #4a688f;">EN EL SERVICIO HOY</div>
+                    <div id="total-atendidos-servicio" class="text-3xl font-bold leading-tight" style="color: #064b9e;">
+                        {{ $totalesAtendidos['servicio'] ?? 0 }}
+                    </div>
+                </div>
+            </div>
+
             <!-- Tabla de servicios -->
             <div class="services-table border border-gray-300 rounded overflow-hidden">
                 <div class="text-white grid grid-cols-4 text-sm font-medium" style="background-color: #064b9e;">
@@ -967,12 +983,32 @@
         function actualizarEstadisticasServicios() {
             fetch('{{ route("api.asesor.servicios-estadisticas") }}')
                 .then(response => response.json())
-                .then(servicios => {
+                .then(data => {
+                    // Tolera las DOS formas de respuesta: array plano (version
+                    // anterior) u objeto {servicios, totales} (version actual).
+                    // Asi la pantalla no se rompe durante el despliegue si un
+                    // navegador quedo con el JS viejo en cache.
+                    const servicios = Array.isArray(data) ? data : (data.servicios || []);
+                    const totales   = Array.isArray(data) ? null : data.totales;
+
                     actualizarTablaServicios(servicios);
+                    if (totales) actualizarTotalesAtendidos(totales);
                 })
                 .catch(error => {
                     console.error('Error al actualizar estadísticas:', error);
                 });
+        }
+
+        // Refresca los dos contadores de turnos atendidos del día
+        function actualizarTotalesAtendidos(totales) {
+            const elUsuario  = document.getElementById('total-atendidos-usuario');
+            const elServicio = document.getElementById('total-atendidos-servicio');
+            if (elUsuario && typeof totales.usuario !== 'undefined') {
+                elUsuario.textContent = totales.usuario;
+            }
+            if (elServicio && typeof totales.servicio !== 'undefined') {
+                elServicio.textContent = totales.servicio;
+            }
         }
 
         // Función para actualizar la tabla de servicios con los nuevos datos
