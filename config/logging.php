@@ -18,7 +18,11 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', 'stack'),
+    // Por defecto 'daily' (NO 'stack' -> 'single'): 'single' escribe en un unico
+    // laravel.log que NO rota y crece sin limite. En produccion llego a 26 MB en
+    // 5 horas y puede llenar el disco del cPanel. 'daily' rota por dia y conserva
+    // LOG_DAILY_DAYS (14) dias. Se puede sobreescribir con LOG_CHANNEL en .env.
+    'default' => env('LOG_CHANNEL', 'daily'),
 
     /*
     |--------------------------------------------------------------------------

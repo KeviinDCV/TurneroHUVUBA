@@ -13,8 +13,14 @@ class TurneroBroadcaster
      */
     public static function init()
     {
-        // Log para depuración
-        Log::info('Inicializando TurneroBroadcaster');
+        // Log para depuración.
+        // OJO: esto se escribía en CADA petición. Con el polling del TV y de los
+        // asesores (~5 peticiones/segundo) generaba ~80.000 líneas al día: 26 MB
+        // en 5 horas, en un archivo que no rota. Riesgo real de llenar el disco
+        // del cPanel. Ahora solo se escribe con APP_DEBUG=true y a nivel debug.
+        if (config('app.debug')) {
+            Log::debug('Inicializando TurneroBroadcaster');
+        }
 
         // Configurar programáticamente para usar Pusher con credenciales de la app
         app()->singleton('pusher', function ($app) {

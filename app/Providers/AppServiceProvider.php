@@ -50,14 +50,19 @@ class AppServiceProvider extends ServiceProvider
                 'session.http_only' => $sessionConfig['http_only'],
             ]);
 
-            // Log para debugging
-            \Log::info('Dynamic configuration updated', [
-                'host' => $host,
-                'url' => $url,
-                'is_secure' => $isSecure,
-                'session_config' => $sessionConfig,
-                'app_env' => config('app.env')
-            ]);
+            // Log para debugging.
+            // Igual que en TurneroBroadcaster::init, esto se escribía en CADA
+            // petición y era la otra mitad del ruido que llenaba el log.
+            // Ahora solo con APP_DEBUG=true y a nivel debug.
+            if (config('app.debug')) {
+                \Log::debug('Dynamic configuration updated', [
+                    'host' => $host,
+                    'url' => $url,
+                    'is_secure' => $isSecure,
+                    'session_config' => $sessionConfig,
+                    'app_env' => config('app.env')
+                ]);
+            }
         }
 
         // Inicializar el broadcaster personalizado
