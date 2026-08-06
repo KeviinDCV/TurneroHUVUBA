@@ -19,51 +19,29 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Configurar URL y sesiones automáticamente basada en la request actual
-        if (app()->runningInConsole() === false && request()) {
-            $url = request()->getSchemeAndHttpHost();
-            $host = request()->getHost();
-            $isSecure = request()->isSecure();
-
-            // Configurar URL de la aplicación
-            config(['app.url' => $url]);
-
-            // Configuración dinámica de sesiones para máxima compatibilidad
-            $sessionConfig = [
-                'domain' => null, // Siempre null para máxima compatibilidad
-                'secure' => $isSecure, // Solo secure si es HTTPS
-                'same_site' => 'lax', // Lax es más compatible que none
-                'http_only' => true, // Seguridad adicional
-            ];
-
-            // Para desarrollo local, ser aún más permisivo
-            if (config('app.env') === 'local') {
-                $sessionConfig['same_site'] = 'none';
-                $sessionConfig['secure'] = false; // No requerir HTTPS en desarrollo
-            }
-
-            // Aplicar configuración de sesión
-            config([
-                'session.domain' => $sessionConfig['domain'],
-                'session.secure' => $sessionConfig['secure'],
-                'session.same_site' => $sessionConfig['same_site'],
-                'session.http_only' => $sessionConfig['http_only'],
-            ]);
-
-            // Log para debugging.
-            // Igual que en TurneroBroadcaster::init, esto se escribía en CADA
-            // petición y era la otra mitad del ruido que llenaba el log.
-            // Ahora solo con APP_DEBUG=true y a nivel debug.
-            if (config('app.debug')) {
-                \Log::debug('Dynamic configuration updated', [
-                    'host' => $host,
-                    'url' => $url,
-                    'is_secure' => $isSecure,
-                    'session_config' => $sessionConfig,
-                    'app_env' => config('app.env')
-                ]);
-            }
-        }
+        // ===================================================================
+        // NOTA: aquí había un bloque que reescribía en CADA petición
+        // `app.url` y la configuración de sesión a partir de la request.
+        // Se eliminó porque hacía daño y no aportaba nada:
+        //
+        // 1) `config(['app.url' => ...])` era REDUNDANTE. Laravel ya genera
+        //    las URLs (`url()`, `asset()`, `route()`) con el esquema y host de
+        //    la petición actual; `app.url` solo se usa por consola/colas.
+        //    Comprobado: con `app.url` apuntando a otro dominio, una petición
+        //    http:// generaba URLs http:// y una https:// las generaba https://.
+        //    Es decir, el HTTPS ya es NATIVO: no hace falta forzarlo.
+        //
+        // 2) `session.secure => request()->isSecure()` SÍ rompía cosas: pisaba
+        //    el valor de SESSION_SECURE_COOKIE del .env y hacía que la cookie
+        //    llevara el flag `Secure` solo en las peticiones HTTPS. Como el
+        //    turnero se usa por las dos vías (el kiosco del TV entra por HTTP
+        //    y el panel por HTTPS), quien iniciaba sesión por HTTPS perdía la
+        //    sesión al pasar por HTTP: el navegador ya no manda esa cookie.
+        //
+        // Ahora manda `config/session.php`, que lee del .env
+        // (SESSION_SECURE_COOKIE, SESSION_SAME_SITE, SESSION_DOMAIN...), que es
+        // el comportamiento estándar de Laravel y un solo sitio donde mirar.
+        // ===================================================================
 
         // Inicializar el broadcaster personalizado
         \App\Broadcasting\TurneroBroadcaster::init();

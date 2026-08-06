@@ -13,7 +13,12 @@ return [
     |
     */
 
-    'default' => env('BROADCAST_DRIVER', 'pusher'),
+    // Por defecto 'log' (NO 'pusher'): el servidor WebSocket (127.0.0.1:6001)
+    // no existe en el cPanel y cada intento fallaba con "cURL error 7:
+    // Connection refused", ~50 errores/hora en el log. El turnero funciona
+    // por polling. Para reactivarlo: levantar el servidor y poner
+    // BROADCAST_DRIVER=pusher en el .env.
+    'default' => env('BROADCAST_DRIVER', 'log'),
 
     /*
     |--------------------------------------------------------------------------

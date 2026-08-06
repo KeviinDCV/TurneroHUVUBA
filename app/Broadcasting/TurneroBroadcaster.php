@@ -45,6 +45,16 @@ class TurneroBroadcaster
      */
     public static function broadcast($channel, $event, $data)
     {
+        // Si el broadcasting no está en 'pusher', no se intenta nada.
+        // En producción el servidor WebSocket (127.0.0.1:6001) NO existe, y cada
+        // intento fallaba con "cURL error 7: Connection refused", llenando el log
+        // con ~50 errores por hora. El turnero funciona igual porque el TV y los
+        // tableros consultan por polling. Para reactivarlo basta levantar el
+        // servidor y poner BROADCAST_DRIVER=pusher en el .env.
+        if (config('broadcasting.default') !== 'pusher') {
+            return false;
+        }
+
         try {
             app('pusher')->trigger($channel, $event, $data);
             Log::info("Mensaje enviado a canal: {$channel}, evento: {$event}", ['data' => $data]);
