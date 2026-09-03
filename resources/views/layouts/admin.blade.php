@@ -42,7 +42,7 @@
             --hospital-blue: #064b9e;
             --hospital-blue-hover: #053d7a;
             --hospital-blue-light: #e6f0ff;
-            --sidebar-collapsed-width: 5.25rem;
+            --sidebar-collapsed-width: 4.5rem;
         }
 
         .bg-hospital-blue {
@@ -70,13 +70,56 @@
             background: #072449;
         }
 
+        /* Titulos de seccion: mas pequenos y con mas caracter, para que se lean
+           como etiquetas de grupo y no compitan con los enlaces. */
         .sidebar-section-title {
-            color: #7e9bc4;
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
+            color: #5f7ba6;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
             line-height: 1.4;
         }
+
+        /* ============ SIDEBAR COMPACTO ============
+           En modo compacto la pestana activa NO puede usar el estilo "conectado"
+           (margen solo a la izquierda + esquinas redondeadas solo a la izquierda):
+           al no tener margen derecho se desbordaba por fuera del ancho del
+           sidebar. Aqui se convierte en un bloque contenido, con margen a ambos
+           lados y esquinas completas, y se centran los iconos. */
+        body.sidebar-is-collapsed .sidebar-item {
+            margin-left: 8px;
+            margin-right: 8px;
+            border-radius: 9px;
+        }
+        /* OJO: al boton de cerrar sesion NO se le ponen margenes. Es w-full, asi
+           que un margen lateral lo desborda 16 px y lo descentra. Solo se le
+           quita el padding lateral para que su icono quede centrado. */
+        /* El <nav> lleva pl-3 para que la pestana conectada respire; en compacto
+           ese desplazamiento descentra los iconos, asi que se anula. */
+        body.sidebar-is-collapsed .sidebar-nav > nav {
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        /* Encabezado en compacto: el logo y el boton de plegar no caben lado a
+           lado en 72 px (el logo quedaba pegado al borde y la flecha cortada).
+           Se apilan y se centran. */
+        body.sidebar-is-collapsed .sidebar-header {
+            padding-left: 0;
+            padding-right: 0;
+        }
+        body.sidebar-is-collapsed .sidebar-header > div {
+            flex-direction: column;
+            gap: 6px;
+            justify-content: center;
+        }
+        /* Pie en compacto: sin padding lateral para que el icono quede centrado */
+        body.sidebar-is-collapsed .sidebar-logout {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
 
         /* Sin brillo de barrido en este diseño */
         .sidebar-item::before { display: none !important; }
