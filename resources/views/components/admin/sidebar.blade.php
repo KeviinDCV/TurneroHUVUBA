@@ -46,15 +46,15 @@
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
 
     <!-- Encabezado -->
-    <div class="sidebar-header flex-shrink-0 px-4 py-3" style="border-bottom: 1px solid rgba(255,255,255,0.10);">
+    <div class="sidebar-header flex-shrink-0 px-4 py-4" style="border-bottom: 1px solid rgba(255,255,255,0.10);">
         <div class="flex items-center justify-between gap-2">
             <a href="{{ route('admin.dashboard') }}" class="flex items-center min-w-0 gap-3" title="Turnero HUV">
-                <span class="w-9 h-9 bg-white rounded-lg flex items-center justify-center flex-shrink-0 p-1" style="box-shadow: 0 1px 3px rgba(0,0,0,0.18);">
+                <span class="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 p-1" style="box-shadow: 0 1px 3px rgba(0,0,0,0.18);">
                     <img src="{{ asset('images/logo.png') }}" alt="Logo Hospital Universitario del Valle" class="w-full h-full object-contain">
                 </span>
                 <span class="min-w-0 sidebar-label" x-show="!sidebarCollapsed">
-                    <span class="block text-sm font-semibold leading-tight truncate">Turnero HUV</span>
-                    <span class="block text-[10px] leading-tight truncate" style="color: #9db8dd;">Panel administrativo</span>
+                    <span class="block text-base font-semibold leading-tight truncate">Turnero HUV</span>
+                    <span class="block leading-tight truncate" style="color: #9db8dd; font-size: 10px;">Panel administrativo</span>
                 </span>
             </a>
 
@@ -77,9 +77,9 @@
     </div>
 
     <!-- Usuario conectado -->
-    <div class="flex-shrink-0 px-4 py-2.5" style="border-bottom: 1px solid rgba(255,255,255,0.10);">
+    <div class="flex-shrink-0 px-4 py-3" style="border-bottom: 1px solid rgba(255,255,255,0.10);">
         <div class="flex items-center gap-3" :class="sidebarCollapsed ? 'justify-center' : ''">
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.16);">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.16);">
                 <span class="text-sm font-semibold text-white">{{ $userInitial }}</span>
             </div>
             <div class="min-w-0 sidebar-label" x-show="!sidebarCollapsed">
@@ -94,7 +94,7 @@
 
     <!-- Navegación -->
     <div class="flex-1 overflow-y-auto sidebar-nav">
-        <nav class="pl-3 py-2 space-y-3 pb-4">
+        <nav class="pl-3 py-3 space-y-4 pb-6">
             @foreach($navSections as $section)
                 <div>
                     @if($section['title'])
@@ -107,7 +107,7 @@
                             @php $isActive = $currentRoute === $item['route']; @endphp
                             <a href="{{ route($item['route']) }}"
                                title="{{ $item['label'] }}{{ !empty($item['hint']) ? ' — '.$item['hint'] : '' }}"
-                               class="sidebar-item group relative flex items-center min-h-[36px] transition-colors duration-150 {{ $isActive ? 'sidebar-item-active' : '' }}"
+                               class="sidebar-item group relative flex items-center min-h-[42px] transition-colors duration-150 {{ $isActive ? 'sidebar-item-active' : '' }}"
                                :class="sidebarCollapsed ? 'justify-center pr-2 pl-2' : 'justify-start px-3 gap-3'">
                                 <span class="flex-shrink-0 flex items-center justify-center">
                                     @switch($item['icon'])
@@ -152,16 +152,16 @@
     </div>
 
     <!-- Footer -->
-    <div class="flex-shrink-0 px-3 py-2.5" style="border-top: 1px solid rgba(255,255,255,0.10);">
+    <div class="flex-shrink-0 px-3 py-3" style="border-top: 1px solid rgba(255,255,255,0.10);">
         <div class="sidebar-label px-2 pb-2" x-show="!sidebarCollapsed">
-            <div class="text-[10px] font-semibold text-white leading-tight truncate">"Evaristo García" E.S.E</div>
-            <div class="text-[10px] leading-tight truncate" style="color: #9db8dd;">Innovación y Desarrollo</div>
+            <div class="font-semibold text-white leading-tight truncate" style="font-size: 10px;">"Evaristo García" E.S.E</div>
+            <div class="leading-tight truncate" style="color: #9db8dd; font-size: 10px;">Innovación y Desarrollo</div>
         </div>
 
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit"
-                    class="sidebar-logout w-full flex items-center min-h-[36px] transition-colors"
+                    class="sidebar-logout w-full flex items-center min-h-[42px] transition-colors"
                     :class="sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3 gap-3'"
                     title="Cerrar sesión">
                 <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
