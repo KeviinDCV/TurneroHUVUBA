@@ -812,7 +812,7 @@ function pintarCola(t) {
                 ? '<span class="cifra-alerta" title="' + escHtml(s.alerta_motivo) + '">' + escHtml(s.espera_max_min) + ' min</span>'
                 : escHtml(s.espera_max_min) + ' min');
         const cubren = s.sin_cobertura
-            ? '<a href="' + ASIGNACION_URL + '" class="sin-cobertura" title="Ningún asesor conectado puede atender este servicio">Nadie · Asignar</a>'
+            ? '<a href="' + ASIGNACION_URL + '?servicio=' + encodeURIComponent(s.id) + '" class="sin-cobertura" title="Ningún asesor conectado puede atender este servicio">Nadie · Asignar</a>'
             : escHtml(s.cubren);
         return '<tr class="' + (s.sin_cobertura ? 'fila-sin-cobertura' : 'hover:bg-gray-50') + '">'
             + '<td class="py-3 px-4"><span class="celda-nombre text-sm font-medium text-gray-900" title="' + escHtml(s.nombre) + '">' + escHtml(s.nombre) + '</span></td>'

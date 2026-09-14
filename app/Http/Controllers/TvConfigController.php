@@ -25,7 +25,7 @@ class TvConfigController extends Controller
     {
         $user = Auth::user();
         $tvConfig = TvConfig::getCurrentConfig();
-        $multimedia = Multimedia::orderBy('orden')->orderBy('created_at')->get();
+        $multimedia = Multimedia::orderBy('orden')->orderBy('created_at')->get()->map(fn ($m) => $this->filaMultimedia($m))->values();
 
         return view('admin.tv-config', compact('user', 'tvConfig', 'multimedia'));
     }
@@ -233,8 +233,6 @@ class TvConfigController extends Controller
         ini_set('memory_limit', '512M');
 
         try {
-            \Log::info('Inicio de storeMultimedia', ['hasFile' => $request->hasFile('archivo'), 'all' => $request->all()]);
-
             // Verificar si el archivo fue subido correctamente
             if (!$request->hasFile('archivo')) {
                 \Log::error('No se recibió archivo en storeMultimedia', ['files' => $request->allFiles()]);
@@ -266,14 +264,19 @@ class TvConfigController extends Controller
                 ], 400);
             }
 
+            // Solo lo que reproduce el Chrome del TV (AVI no; MOV solo a veces). Una imagen se muestra 1–300 s;
+            // un video dura lo que dura (el TV usa su duración real), el número queda como respaldo.
+            $extension = strtolower($archivo->getClientOriginalExtension());
+            $tipo = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']) ? 'imagen' : 'video';
             $request->validate([
-                'archivo' => 'required|file|mimes:jpg,jpeg,png,gif,mp4,mov,avi|max:512000', // 500MB max
+                'archivo' => 'required|file|mimes:jpg,jpeg,png,gif,webp,mp4,webm|max:512000', // 500 MB
                 'nombre' => 'required|string|max:255',
-                'duracion' => 'required|integer|min:1|max:300' // 1-300 segundos
-            ]);
-
-            $extension = $archivo->getClientOriginalExtension();
-            $tipo = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif']) ? 'imagen' : 'video';
+                'duracion' => $tipo === 'imagen' ? 'required|integer|min:1|max:300' : 'required|integer|min:1|max:14400',
+            ], [
+                'archivo.mimes' => 'Formato no admitido: usa JPG, PNG, GIF o WEBP para imágenes y MP4 o WEBM para videos.',
+                'archivo.max' => 'El archivo pesa más de 500 MB.',
+                'duracion.max' => 'Una imagen puede mostrarse hasta 300 segundos.',
+            ], ['archivo' => 'archivo', 'nombre' => 'nombre', 'duracion' => 'duración']);
 
             // Generar nombre único para el archivo
             $nombreArchivo = Str::uuid() . '.' . $extension;
@@ -299,7 +302,7 @@ class TvConfigController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Archivo subido correctamente',
-                'multimedia' => $multimedia
+                'multimedia' => $this->filaMultimedia($multimedia)
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -405,6 +408,28 @@ class TvConfigController extends Controller
                 'message' => 'Error al eliminar el archivo'
             ], 500);
         }
+    }
+
+    /**
+     * Una fila de la lista de reproducción, lista para pintar en la configuración.
+     */
+    private function filaMultimedia(Multimedia $m): array
+    {
+        $ext = strtolower((string) $m->extension);
+
+        return [
+            'id' => (int) $m->id,
+            'nombre' => $m->nombre,
+            'url' => $m->url,
+            'tipo' => $m->tipo,
+            'extension' => $ext,
+            'duracion' => (int) $m->duracion,
+            'activo' => (bool) $m->activo,
+            'orden' => (int) $m->orden,
+            'tamano' => (int) $m->tamaño,
+            // ok = el TV lo reproduce; dudoso = MOV (solo si viene en H.264); no = AVI u otro
+            'formato' => in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm']) ? 'ok' : ($ext === 'mov' ? 'dudoso' : 'no'),
+        ];
     }
 
     /**

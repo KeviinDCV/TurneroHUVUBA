@@ -1,836 +1,412 @@
 @extends('layouts.admin')
 
-@section('title', 'Gestión de Usuarios')
-
-@section('styles')
-    <!-- Para el modal -->
-    <style>
-        /* Eliminar anillo de resaltado en inputs */
-        input:focus, select:focus {
-            outline: none !important;
-            box-shadow: none !important;
-            ring: 0 !important;
-            --tw-ring-offset-width: 0 !important;
-            --tw-ring-offset-color: transparent !important;
-            --tw-ring-color: transparent !important;
-            --tw-ring-offset-shadow: none !important;
-            --tw-ring-shadow: none !important;
-        }
-
-        /* Estilo natural para inputs */
-        input, select {
-            transition: border-color 0.2s ease-in-out;
-        }
-
-        input:focus, select:focus {
-            border-color: #064b9e !important;
-        }
-
-        /* Estilos para el campo de búsqueda */
-        .search-container {
-            transition: border-color 0.2s ease-in-out;
-        }
-
-        .search-container:focus-within {
-            border-color: #064b9e !important;
-            box-shadow: none !important;
-            outline: none !important;
-        }
-    </style>
-@endsection
+@section('title', 'Usuarios')
 
 @section('content')
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-7xl mx-auto">
-                @if (session('success'))
-                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6">
-                    {{ session('success') }}
+{{-- Usuarios en una sola vista (AdminController::users): todos, con lo que sirve para operar (rol, servicios
+     asignados, conexión y, en huvuba, auto-llamado). Crear, editar y eliminar van por fetch en ventanas propias. --}}
+<div class="usuarios-vista max-w-7xl mx-auto space-y-4" x-data="usuariosVista(@js($filas), @js($search))">
+    <h1 class="sr-only">Usuarios</h1>
+    <div class="aviso-flotante" role="status" x-show="aviso" x-transition.opacity x-cloak><span x-text="aviso"></span></div>
+
+    <!-- Crear / editar -->
+    <div class="envoltorio-modal" x-data="formularioUsuario(@js($autoLlamado))" @abrir-usuario.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrarSiLimpio()">
+            <div class="modal-panel__caja" role="dialog" aria-modal="true" aria-labelledby="t-usuario">
+                <div class="modal-panel__cabeza">
+                    <h2 id="t-usuario" x-text="modo === 'crear' ? 'Nuevo usuario' : 'Editar usuario'"></h2>
+                    <button type="button" class="accion-icono" aria-label="Cerrar" @click="cerrar()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
-                @endif
+                <form class="form-panel" @submit.prevent="guardar()" novalidate autocomplete="off">
+                    <p class="form-seccion">Identidad</p>
+                    <label class="form-campo">Nombre completo
+                        <input type="text" class="campo" x-model="datos.nombre_completo" x-ref="primero" maxlength="255" autocomplete="off">
+                        <small x-show="errores.nombre_completo" x-text="errores.nombre_completo"></small>
+                    </label>
+                    <div class="form-panel__fila">
+                        <label class="form-campo">Cédula <span class="form-opcional">(opcional)</span>
+                            <input type="text" class="campo" x-model="datos.cedula" inputmode="numeric" maxlength="20" autocomplete="off">
+                            <small x-show="errores.cedula" x-text="errores.cedula"></small>
+                        </label>
+                        <label class="form-campo">Correo <span class="form-opcional">(opcional)</span>
+                            <input type="email" class="campo" x-model="datos.correo_electronico" maxlength="255" autocomplete="off">
+                            <small x-show="errores.correo_electronico" x-text="errores.correo_electronico"></small>
+                        </label>
+                    </div>
 
-                <!-- Aplicación Alpine.js para búsqueda en tiempo real y modal -->
-                <div x-data="{
-                    search: '{{ $search ?? '' }}',
-                    users: {{ json_encode($users->items()) }},
-                    allUsers: {{ json_encode($users->items()) }},
-                    openModal: {{ $errors->any() ? 'true' : 'false' }}, // Mantener modal abierto si hay errores
+                    <p class="form-seccion">Acceso</p>
+                    <div class="form-panel__fila">
+                        <label class="form-campo">Usuario
+                            <input type="text" class="campo" x-model="datos.nombre_usuario" maxlength="255" autocomplete="off" autocapitalize="off" spellcheck="false">
+                            <small x-show="errores.nombre_usuario" x-text="errores.nombre_usuario"></small>
+                        </label>
+                        <div class="form-campo">Rol
+                            <div class="segmentado segmentado--ancho" role="radiogroup" aria-label="Rol">
+                                <button type="button" role="radio" :aria-checked="(datos.rol === 'Asesor').toString()" @click="datos.rol = 'Asesor'">Asesor</button>
+                                <button type="button" role="radio" :aria-checked="(datos.rol === 'Administrador').toString()" @click="datos.rol = 'Administrador'">Administrador</button>
+                            </div>
+                            <small x-show="errores.rol" x-text="errores.rol"></small>
+                        </div>
+                    </div>
+                    <button type="button" class="enlace-panel enlace-contrasena" x-show="modo === 'editar' && !cambiarClave" @click="cambiarClave = true">Cambiar contraseña</button>
+                    <div class="form-panel__fila" x-show="modo === 'crear' || cambiarClave">
+                        <label class="form-campo"><span x-text="modo === 'crear' ? 'Contraseña' : 'Nueva contraseña'"></span>
+                            <input type="password" class="campo" x-model="datos.password" autocomplete="new-password">
+                            <small x-show="errores.password" x-text="errores.password"></small>
+                        </label>
+                        <label class="form-campo">Confirmar contraseña
+                            <input type="password" class="campo" x-model="datos.password_confirmation" autocomplete="new-password">
+                        </label>
+                    </div>
+                    <p class="form-ayuda" x-show="modo === 'crear'">Opcional: sin contraseña no podrá iniciar sesión hasta que se la asignes.</p>
 
-                    init() {
-                        this.$watch('search', value => {
-                            if (value === '') {
-                                this.users = this.allUsers;
-                                return;
-                            }
-
-                            value = value.toLowerCase();
-                            this.users = this.allUsers.filter(user => {
-                                return user.nombre_completo.toLowerCase().includes(value) ||
-                                       user.cedula.toLowerCase().includes(value) ||
-                                       user.correo_electronico.toLowerCase().includes(value) ||
-                                       user.nombre_usuario.toLowerCase().includes(value) ||
-                                       user.rol.toLowerCase().includes(value);
-                            });
-                        });
-
-                        // Abrir modal automáticamente si hay errores de validación
-                        @if($errors->any())
-                            this.$nextTick(() => {
-                                this.$dispatch('open-modal');
-                            });
-                        @endif
-                    }
-                }">
-                    <!-- Header con título y botón -->
-                    <div class="flex justify-between items-center mb-6">
+                    <template x-if="autoLlamado && datos.rol === 'Asesor'">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Administración</p>
-                            <h1 class="text-2xl font-bold text-gray-900 mt-1">Gestión de Usuarios</h1>
-                        </div>
-                        <button @click="openModal = true" class="inline-flex items-center gap-2 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Nuevo Usuario
-                        </button>
-                    </div>
-
-                    <!-- Modal para crear usuario -->
-                    <div
-                        x-show="openModal"
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100"
-                        x-transition:leave-end="opacity-0"
-                        class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-                        style="display: none;"
-                    >
-                        <div
-                            @click.away="openModal = false"
-                            class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 transform scale-95"
-                            x-transition:enter-end="opacity-100 transform scale-100"
-                            x-transition:leave="transition ease-in duration-200"
-                            x-transition:leave-start="opacity-100 transform scale-100"
-                            x-transition:leave-end="opacity-0 transform scale-95"
-                        >
-                            <div class="p-6">
-                                <div class="flex items-center justify-between mb-6">
-                                    <h2 class="text-xl font-bold text-gray-800">Crear Nuevo Usuario</h2>
-                                    <button @click="openModal = false" class="text-gray-500 hover:text-gray-700 cursor-pointer">
-                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                @if ($errors->any())
-                                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                                    <div class="font-bold">Por favor corrige los siguientes errores:</div>
-                                    <ul class="list-disc ml-5">
-                                        @foreach ($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                                @endif
-
-                                <form action="{{ route('admin.users.store') }}" method="POST">
-                                    @csrf
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <!-- Nombre Completo -->
-                                        <div>
-                                            <label for="nombre_completo" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                                            <input
-                                                type="text"
-                                                id="nombre_completo"
-                                                name="nombre_completo"
-                                                value="{{ old('nombre_completo') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                required
-                                            >
-                                        </div>
-
-                                        <!-- Cédula -->
-                                        <div>
-                                            <label for="cedula" class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
-                                            <input
-                                                type="text"
-                                                id="cedula"
-                                                name="cedula"
-                                                value="{{ old('cedula') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                            >
-                                        </div>
-
-                                        <!-- Correo Electrónico -->
-                                        <div>
-                                            <label for="correo_electronico" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                                            <input
-                                                type="text"
-                                                id="correo_electronico"
-                                                name="correo_electronico"
-                                                value="{{ old('correo_electronico') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                            >
-                                        </div>
-
-                                        <!-- Nombre de Usuario -->
-                                        <div>
-                                            <label for="nombre_usuario" class="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario</label>
-                                            <input
-                                                type="text"
-                                                id="nombre_usuario"
-                                                name="nombre_usuario"
-                                                value="{{ old('nombre_usuario') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                required
-                                            >
-                                        </div>
-
-                                        <!-- Rol -->
-                                        <div>
-                                            <label for="rol" class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                                            <select
-                                                id="rol"
-                                                name="rol"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                required
-                                            >
-                                                <option value="">Seleccionar rol</option>
-                                                <option value="Administrador" {{ old('rol') === 'Administrador' ? 'selected' : '' }}>Administrador</option>
-                                                <option value="Asesor" {{ old('rol') === 'Asesor' ? 'selected' : '' }}>Asesor</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Contraseña -->
-                                        <div>
-                                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                                            <input
-                                                type="password"
-                                                id="password"
-                                                name="password"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                            >
-                                        </div>
-
-                                        <!-- Confirmar Contraseña -->
-                                        <div>
-                                            <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmar Contraseña</label>
-                                            <input
-                                                type="password"
-                                                id="password_confirmation"
-                                                name="password_confirmation"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                            >
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-8 flex justify-end space-x-3">
-                                        <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
-                                            Cancelar
-                                        </button>
-                                        <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                                            Guardar Usuario
-                                        </button>
-                                    </div>
-                                </form>
+                            <p class="form-seccion">Operación</p>
+                            <div class="fila-auto">
+                                <label class="form-casilla"><input type="checkbox" x-model="datos.auto_llamado_activo">
+                                    <span>Auto-llamado de turnos <span class="form-ayuda">Llama el siguiente turno solo, tras un tiempo sin atender.</span></span>
+                                </label>
+                                <label class="minutos-auto" x-show="datos.auto_llamado_activo">cada
+                                    <input type="number" class="campo" min="1" max="60" x-model.number="datos.auto_llamado_minutos"> min
+                                </label>
                             </div>
                         </div>
-                    </div>
+                    </template>
 
-                    <!-- Buscador -->
-                    <div class="mb-6">
-                        <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm search-container">
-                            <div class="px-3 py-2 bg-gray-50">
-                                <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                            <input
-                                type="text"
-                                x-model="search"
-                                placeholder="Buscar por nombre, cédula, correo, usuario o rol..."
-                                class="w-full px-4 py-2 focus:outline-none focus:border-hospital-blue"
-                            >
-                            <template x-if="search">
-                                <button @click="search = ''" class="px-3 py-2 text-gray-500 hover:text-gray-700">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </template>
-                        </div>
+                    <p class="form-error" x-show="errores.general" x-text="errores.general"></p>
+                    <div class="modal-panel__pie modal-panel__pie--separado">
+                        <button type="button" class="enlace-peligro" x-show="modo === 'editar' && !original.yo" @click="pedirEliminar()">Eliminar usuario</button>
+                        <span class="espaciador"></span>
+                        <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
+                        <button type="submit" class="btn-primario" :disabled="guardando" x-text="guardando ? 'Guardando…' : (modo === 'crear' ? 'Crear usuario' : 'Guardar cambios')"></button>
                     </div>
-
-                    <!-- Tabla de Usuarios -->
-                    <div class="overflow-x-auto flex justify-center">
-                        <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
-                            <thead>
-                                <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
-                                    <th class="py-3 px-4 text-left font-semibold">NOMBRE</th>
-                                    <th class="py-3 px-4 text-left font-semibold">CÉDULA</th>
-                                    <th class="py-3 px-4 text-left font-semibold">CORREO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">USUARIO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">ROL</th>
-                                    <th class="py-3 px-4 text-center font-semibold">OPCIONES</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
-                                <template x-if="users.length === 0">
-                                    <tr>
-                                        <td colspan="6" class="py-4 text-center text-gray-500">
-                                            No se encontraron usuarios.
-                                        </td>
-                                    </tr>
-                                </template>
-                                <template x-for="(user, index) in users" :key="index">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="py-3 px-4 whitespace-nowrap">
-                                            <div class="flex items-center gap-1.5">
-                                                <span x-text="user.nombre_completo"></span>
-                                                <template x-if="user.auto_llamado_activo">
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700" title="Auto-llamado activo">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                        </svg>
-                                                    </span>
-                                                </template>
-                                            </div>
-                                        </td>
-                                        <td class="py-3 px-4 whitespace-nowrap" x-text="user.cedula"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap" x-text="user.correo_electronico"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap" x-text="user.nombre_usuario"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap">
-                                            <span
-                                                class="px-2 py-1 rounded text-sm"
-                                                :class="user.rol === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
-                                                x-text="user.rol">
-                                            </span>
-                                        </td>
-                                        <td class="py-3 px-4 whitespace-nowrap">
-                                            <div class="flex justify-center space-x-2">
-                                                <button class="p-1 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                                        title="Editar"
-                                                        @click="$store.modals.editUser.openModal(user.id)">
-                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                                    </svg>
-                                                </button>
-                                                <button class="p-1 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
-                                                        title="Eliminar"
-                                                        @click="$store.modals.deleteUser.openModal(user.id, user.nombre_completo)">
-                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Para paginación completa, necesitaremos implementar una solución del lado del servidor -->
-                    <div class="mt-4">
-                        <form id="searchForm" action="{{ route('admin.users') }}" method="GET" class="hidden">
-                            <input type="text" name="search" :value="search">
-                        </form>
-                        {{ $users->withQueryString()->links() }}
-                    </div>
-                </div>
+                </form>
             </div>
-            </div>
-        </main>
+        </div>
     </div>
 
-    <!-- Modal para Editar Usuario -->
-    <div
-        x-data="editUserModal()"
-        x-cloak
-        @keydown.escape.window="isOpen = false"
-    >
-        <div
-            x-show="isOpen"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-            style="display: none;"
-        >
-            <div
-                @click.away="isOpen = false"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh]"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95"
-            >
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-xl font-bold text-gray-800">Editar Usuario</h2>
-                        <button @click="isOpen = false" class="text-gray-500 hover:text-gray-700 cursor-pointer">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+    <!-- Eliminar: primero se mira qué depende del usuario -->
+    <div class="envoltorio-modal" x-data="eliminarUsuario()" @eliminar-usuario.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+            <div class="modal-panel__caja modal-panel__caja--angosta" role="dialog" aria-modal="true" aria-labelledby="t-eliminar-usuario">
+                <div class="modal-panel__cabeza">
+                    <h2 id="t-eliminar-usuario" x-text="u ? 'Eliminar a ' + u.nombre : ''"></h2>
+                    <button type="button" class="accion-icono" aria-label="Cerrar" @click="cerrar()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="form-panel">
+                    <div x-show="cargando" class="impacto-esqueleto" role="status">
+                        <span class="sr-only">Revisando qué depende de este usuario…</span>
+                        <span class="esqueleto" style="width: 92%" aria-hidden="true"></span>
+                        <span class="esqueleto" style="width: 76%" aria-hidden="true"></span>
+                        <span class="esqueleto" style="width: 58%" aria-hidden="true"></span>
                     </div>
-
-                    <!-- Indicador de Carga -->
-                    <div x-show="loading" class="flex justify-center items-center py-4">
-                        <svg class="animate-spin h-8 w-8 text-hospital-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-
-                    <!-- Errores de Validación -->
-                    <div x-show="Object.keys(errors).length > 0" class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                        <div class="font-bold">Por favor corrige los siguientes errores:</div>
-                        <ul class="list-disc ml-5">
-                            <template x-for="(messages, field) in errors" :key="field">
-                                <template x-for="(message, i) in messages" :key="i">
-                                    <li x-text="message"></li>
-                                </template>
-                            </template>
-                        </ul>
-                    </div>
-
-                    <!-- Formulario -->
-                    <div x-show="!loading" class="mt-4">
-                        <form @submit.prevent="submitForm">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Nombre Completo -->
-                                <div>
-                                    <label for="edit_nombre_completo" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                                    <input
-                                        type="text"
-                                        id="edit_nombre_completo"
-                                        x-model="userData.nombre_completo"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                        required
-                                    >
-                                </div>
-
-                                <!-- Cédula -->
-                                <div>
-                                    <label for="edit_cedula" class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
-                                    <input
-                                        type="text"
-                                        id="edit_cedula"
-                                        x-model="userData.cedula"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                    >
-                                </div>
-
-                                <!-- Correo Electrónico -->
-                                <div>
-                                    <label for="edit_correo_electronico" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                                    <input
-                                        type="text"
-                                        id="edit_correo_electronico"
-                                        x-model="userData.correo_electronico"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                    >
-                                </div>
-
-                                <!-- Nombre de Usuario -->
-                                <div>
-                                    <label for="edit_nombre_usuario" class="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario</label>
-                                    <input
-                                        type="text"
-                                        id="edit_nombre_usuario"
-                                        x-model="userData.nombre_usuario"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                        required
-                                    >
-                                </div>
-
-                                <!-- Rol -->
-                                <div>
-                                    <label for="edit_rol" class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                                    <select
-                                        id="edit_rol"
-                                        x-model="userData.rol"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                        required
-                                    >
-                                        <option value="">Seleccionar rol</option>
-                                        <option value="Administrador">Administrador</option>
-                                        <option value="Asesor">Asesor</option>
-                                    </select>
-                                </div>
-
-                                <!-- Cambiar Contraseña -->
-                                <div>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" x-model="showPassword" class="form-checkbox h-4 w-4 text-hospital-blue">
-                                        <span class="ml-2 text-sm text-gray-700">Cambiar Contraseña</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Auto-llamado de turnos -->
-                            <div class="mt-6 p-4 rounded-lg border-2" :class="userData.auto_llamado_activo ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <svg class="w-5 h-5 mr-2" :class="userData.auto_llamado_activo ? 'text-orange-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        <div>
-                                            <span class="text-sm font-semibold" :class="userData.auto_llamado_activo ? 'text-orange-800' : 'text-gray-700'">Auto-llamado de turnos</span>
-                                            <p class="text-xs text-gray-500 mt-0.5">Si el asesor no llama turnos, se le asignará uno automáticamente</p>
-                                        </div>
-                                    </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" x-model="userData.auto_llamado_activo" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                                    </label>
-                                </div>
-                                <!-- Configuración de minutos (visible solo cuando está activo) -->
-                                <div x-show="userData.auto_llamado_activo" x-transition class="mt-3 pt-3 border-t border-orange-200">
-                                    <div class="flex items-center justify-between">
-                                        <label class="text-sm text-orange-700">Tiempo de inactividad:</label>
-                                        <div class="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                x-model.number="userData.auto_llamado_minutos"
-                                                @change="userData.auto_llamado_minutos = Math.max(1, Math.min(60, parseInt(userData.auto_llamado_minutos) || 10))"
-                                                min="1"
-                                                max="60"
-                                                step="1"
-                                                class="w-16 px-2 py-1 text-center border border-orange-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                            >
-                                            <span class="text-sm text-orange-600 font-medium">minutos</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Campos de contraseña (condicionales) -->
-                            <div x-show="showPassword" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Contraseña -->
-                                <div>
-                                    <label for="edit_password" class="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
-                                    <input
-                                        type="password"
-                                        id="edit_password"
-                                        x-model="userData.password"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                    >
-                                </div>
-
-                                <!-- Confirmar Contraseña -->
-                                <div>
-                                    <label for="edit_password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmar Contraseña</label>
-                                    <input
-                                        type="password"
-                                        id="edit_password_confirmation"
-                                        x-model="userData.password_confirmation"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="mt-8 flex justify-end space-x-3">
-                                <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
-                                    Cancelar
-                                </button>
-                                <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                                    Guardar Cambios
-                                </button>
-                            </div>
-                        </form>
+                    <template x-if="!cargando && impacto">
+                        <div class="form-texto space-y-2">
+                            <p x-show="impacto.turnos > 0">Llamó o atendió <b x-text="miles(impacto.turnos)"></b> turnos. Si lo eliminas, esos turnos quedarán
+                                <b>sin asesor</b> en Reportes y Gráficos<span x-show="impacto.canal > 0">, y se borran sus <b x-text="miles(impacto.canal)"></b> registros de canales no presenciales</span>.</p>
+                            <p x-show="impacto.turnos > 0" class="texto-mudo">Si solo quieres que no vuelva a entrar, cámbiale la contraseña.</p>
+                            <p x-show="!impacto.turnos">Se eliminará la cuenta<span x-show="impacto.servicios > 0"> y sus <b x-text="impacto.servicios"></b> servicios asignados</span>. No se puede deshacer.</p>
+                            <label class="form-campo" x-show="impacto.turnos > 0">
+                                <span>Escribe <b x-text="u.usuario"></b> para confirmar</span>
+                                <input type="text" class="campo" x-model="confirmacion" autocomplete="off" spellcheck="false">
+                            </label>
+                        </div>
+                    </template>
+                    <p class="form-error" x-show="error" x-text="error"></p>
+                    <div class="modal-panel__pie">
+                        <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
+                        <button type="button" class="btn-peligro" :disabled="!puedeEliminar() || trabajando" @click="confirmar()" x-text="trabajando ? 'Eliminando…' : 'Eliminar'"></button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal para Confirmar Eliminación -->
-    <div
-        x-data="deleteUserModal()"
-        x-cloak
-        @keydown.escape.window="isOpen = false"
-    >
-        <div
-            x-show="isOpen"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-            style="display: none;"
-        >
-            <div
-                @click.away="isOpen = false"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95"
-            >
-                <div class="p-6">
-                    <div class="mb-4">
-                        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 class="mt-3 text-lg font-medium text-center text-gray-900">¿Eliminar este usuario?</h3>
-                        <p class="mt-2 text-sm text-center text-gray-500">
-                            Estás a punto de eliminar al usuario <span class="font-medium" x-text="userName"></span>.<br>
-                            Esta acción no se puede deshacer.
-                        </p>
-                    </div>
-
-                    <div class="mt-6 flex justify-center space-x-4">
-                        <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
-                            Cancelar
-                        </button>
-                        <button @click="deleteUser()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer">
-                            Eliminar
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <!-- Filtros rápidos, búsqueda y alta en una sola fila -->
+    <div class="barra-vista">
+        <div class="filtros-rapidos" role="group" aria-label="Filtrar usuarios">
+            @foreach ([3.25, 4.5, 7, 6, 7] as $ancho)
+                <span class="filtro-rapido" data-esqueleto aria-hidden="true"><span class="esqueleto" style="width: {{ $ancho }}rem"></span></span>
+            @endforeach
+            <template x-for="f in filtros" :key="f.clave">
+                <button type="button" class="filtro-rapido" :aria-pressed="(filtro === f.clave).toString()" @click="filtro = f.clave">
+                    <span x-text="f.rotulo"></span> <span class="filtro-rapido__n" x-text="contar(f.clave)"></span>
+                </button>
+            </template>
         </div>
+        <div class="buscador">
+            <svg class="buscador__icono" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z"></path></svg>
+            <input type="search" x-model.debounce.150ms="buscar" class="campo" placeholder="Nombre, usuario, cédula o correo" aria-label="Buscar usuario">
+        </div>
+        <button type="button" class="btn-primario" @click="$dispatch('abrir-usuario', { modo: 'crear' })">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Nuevo usuario
+        </button>
     </div>
 
-    <!-- Scripts para los modales -->
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('modals', {
-                editUser: {
-                    isOpen: false,
-                    userId: null,
-                    openModal(userId) {
-                        this.userId = userId;
-                        this.isOpen = true;
-                    }
-                },
-                deleteUser: {
-                    isOpen: false,
-                    userId: null,
-                    userName: '',
-                    openModal(userId, userName) {
-                        this.userId = userId;
-                        this.userName = userName;
-                        this.isOpen = true;
-                    }
-                }
-            });
+    <div class="superficie overflow-x-auto">
+        <table class="tabla-panel tabla-usuarios">
+            <thead>
+                <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col">Servicios</th>
+                    <th scope="col">Actividad</th>
+                    @if ($autoLlamado)<th scope="col">Auto-llamado</th>@endif
+                    <th scope="col"><span class="sr-only">Acciones</span></th>
+                </tr>
+            </thead>
+            {{-- Mientras arranca Alpine: la forma de las filas (init() las quita) --}}
+            <tbody data-esqueleto aria-hidden="true">
+                @for ($i = 0; $i < min(count($filas), 14); $i++)
+                    <tr class="fila-esqueleto">
+                        <td><span class="esqueleto" style="width: {{ [11, 9, 12.5, 10][$i % 4] }}rem"></span></td>
+                        <td><span class="esqueleto" style="width: 5.5rem"></span></td>
+                        <td><span class="esqueleto" style="width: 3.5rem"></span></td>
+                        <td><span class="esqueleto" style="width: {{ [5, 3, 6, 4][$i % 4] }}rem"></span></td>
+                        <td><span class="esqueleto" style="width: 6.5rem"></span></td>
+                        @if ($autoLlamado)<td><span class="esqueleto" style="width: 3rem"></span></td>@endif
+                        <td></td>
+                    </tr>
+                @endfor
+            </tbody>
+            <tbody>
+                <template x-for="u in visibles()" :key="u.id">
+                    <tr>
+                        <td>
+                            <span class="usuario-nombre" x-text="u.nombre"></span>
+                            <span class="marca-yo" x-show="u.yo">Tú</span>
+                            <span class="usuario-cedula" x-show="u.cedula" x-text="u.cedula"></span>
+                        </td>
+                        <td class="usuario-login" x-text="u.usuario"></td>
+                        <td><span :class="u.rol === 'Administrador' ? 'rol-admin' : 'texto-mudo'" x-text="u.rol"></span></td>
+                        <td>
+                            <template x-if="u.rol !== 'Asesor'"><span class="texto-mudo">—</span></template>
+                            <template x-if="u.rol === 'Asesor' && !u.servicios.length">
+                                <a class="sin-asesor" :href="asignacionUrl(u)" title="No atiende ningún servicio">Ninguno · Asignar</a>
+                            </template>
+                            <template x-if="u.rol === 'Asesor' && u.servicios.length">
+                                <a class="codigos-servicio" :href="asignacionUrl(u)" :title="u.servicios.map(s => s.nombre).join(', ')"
+                                   x-text="u.servicios.map(s => s.codigo || '?').join(' · ')"></a>
+                            </template>
+                        </td>
+                        <td>
+                            <span class="actividad" :class="u.conectado ? 'actividad--' + u.conectado.estado : ''">
+                                <span class="actividad__punto" x-show="u.conectado" aria-hidden="true"></span>
+                                <span x-text="actividad(u)"></span>
+                            </span>
+                        </td>
+                        @if ($autoLlamado)
+                            <td><span x-show="u.auto_llamado" x-text="'Cada ' + u.auto_llamado_minutos + ' min'"></span><span class="texto-mudo" x-show="!u.auto_llamado">—</span></td>
+                        @endif
+                        <td class="celda-acciones">
+                            <button type="button" class="accion-icono" title="Editar" :aria-label="'Editar a ' + u.nombre"
+                                    @click="$dispatch('abrir-usuario', { modo: 'editar', usuario: u })">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+        <p class="vacio-usuarios" x-show="!visibles().length" x-cloak>
+            Ningún usuario coincide. <button type="button" class="enlace-panel" @click="filtro = 'todos'; buscar = ''">Quitar filtros</button>
+        </p>
+    </div>
+</div>
 
-            Alpine.data('editUserModal', () => ({
-                isOpen: false,
-                userId: null,
-                userData: {
-                    nombre_completo: '',
-                    cedula: '',
-                    correo_electronico: '',
-                    nombre_usuario: '',
-                    rol: '',
-                    password: '',
-                    password_confirmation: '',
-                    auto_llamado_activo: false,
-                    auto_llamado_minutos: 10
-                },
-                showPassword: false,
-                loading: false,
-                errors: {},
+<script>
+document.addEventListener('alpine:init', () => {
+    const USUARIOS_URL = @json(route('admin.users'));
+    const ASIGNACION_URL = @json(route('admin.asignacion-servicios'));
+    const TOKEN = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const ESTADOS = { atendiendo: 'Atendiendo', libre: 'Libre', descanso: 'En descanso', canal: 'Canal no presencial' };
+    const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const AVISO = 'aviso-usuarios';
+    const recargarCon = texto => { try { sessionStorage.setItem(AVISO, texto); } catch (e) {} location.reload(); };
+    const mensajeDe = (estado, datos, porDefecto) => estado === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.' : (datos.message || porDefecto);
 
-                init() {
-                    this.$watch('$store.modals.editUser.isOpen', value => {
-                        if (value) {
-                            this.userId = Alpine.store('modals').editUser.userId;
-                            this.isOpen = true;
-                            this.loadUserData();
-                        } else {
-                            this.isOpen = false;
-                        }
-                    });
+    Alpine.data('usuariosVista', (filas, busquedaInicial) => ({
+        filas,
+        filtro: 'todos',
+        buscar: busquedaInicial || '',
+        aviso: '',
+        filtros: [
+            { clave: 'todos', rotulo: 'Todos' },
+            { clave: 'asesores', rotulo: 'Asesores' },
+            { clave: 'admins', rotulo: 'Administradores' },
+            { clave: 'conectados', rotulo: 'Conectados' },
+            { clave: 'sin', rotulo: 'Sin servicios' },
+        ],
+        init() {
+            this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
+            try {
+                const texto = sessionStorage.getItem(AVISO);
+                if (texto) { sessionStorage.removeItem(AVISO); this.aviso = texto; setTimeout(() => this.aviso = '', 4000); }
+            } catch (e) {}
+        },
+        pasa(u, clave) {
+            if (clave === 'asesores') return u.rol === 'Asesor';
+            if (clave === 'admins') return u.rol === 'Administrador';
+            if (clave === 'conectados') return !!u.conectado;
+            if (clave === 'sin') return u.rol === 'Asesor' && !u.servicios.length;
+            return true;
+        },
+        contar(clave) { return this.filas.filter(u => this.pasa(u, clave)).length; },
+        visibles() {
+            const q = normal(this.buscar.trim());
+            return this.filas.filter(u => this.pasa(u, this.filtro) && (!q || [u.nombre, u.usuario, u.cedula, u.correo].some(v => normal(v).includes(q))));
+        },
+        asignacionUrl(u) { return ASIGNACION_URL + '?asesor=' + u.id; },
+        actividad(u) {
+            if (u.conectado) return 'Módulo ' + u.conectado.modulo + ' · ' + (ESTADOS[u.conectado.estado] || 'Conectado');
+            if (!u.ultima_actividad) return 'Sin actividad';
+            const f = new Date(u.ultima_actividad), min = Math.round((Date.now() - f) / 60000);
+            if (min < 2) return 'Hace un momento';
+            if (min < 60) return 'Hace ' + min + ' min';
+            if (min < 24 * 60) return 'Hace ' + Math.round(min / 60) + ' h';
+            if (min < 48 * 60) return 'Ayer';
+            return f.getDate() + ' ' + MESES[f.getMonth()] + (f.getFullYear() !== new Date().getFullYear() ? ' ' + f.getFullYear() : '');
+        },
+    }));
 
-                    this.$watch('isOpen', value => {
-                        if (!value) {
-                            this.resetForm();
-                            Alpine.store('modals').editUser.isOpen = false;
-                        }
-                    });
-                },
+    const vacio = () => ({ nombre_completo: '', cedula: '', correo_electronico: '', nombre_usuario: '', rol: 'Asesor',
+                           password: '', password_confirmation: '', auto_llamado_activo: false, auto_llamado_minutos: 10 });
 
-                resetForm() {
-                    this.userId = null;
-                    this.userData = {
-                        nombre_completo: '',
-                        cedula: '',
-                        correo_electronico: '',
-                        nombre_usuario: '',
-                        rol: '',
-                        password: '',
-                        password_confirmation: '',
-                        auto_llamado_activo: false,
-                        auto_llamado_minutos: 10
-                    };
-                    this.showPassword = false;
-                    this.errors = {};
-                },
+    Alpine.data('formularioUsuario', (autoLlamado) => ({
+        autoLlamado,
+        abierto: false, modo: 'crear', id: null, original: {}, guardando: false, errores: {}, cambiarClave: false,
+        datos: vacio(), inicial: '',
+        abrir({ modo, usuario }) {
+            this.modo = modo; this.errores = {}; this.guardando = false; this.cambiarClave = false;
+            this.id = usuario ? usuario.id : null;
+            this.original = usuario || {};
+            this.datos = usuario ? {
+                ...vacio(), nombre_completo: usuario.nombre || '', cedula: usuario.cedula || '', correo_electronico: usuario.correo || '',
+                nombre_usuario: usuario.usuario || '', rol: usuario.rol || 'Asesor',
+                auto_llamado_activo: !!usuario.auto_llamado, auto_llamado_minutos: usuario.auto_llamado_minutos || 10,
+            } : vacio();
+            this.inicial = JSON.stringify(this.datos);
+            this.abierto = true;
+            this.$nextTick(() => this.$refs.primero && this.$refs.primero.focus());
+        },
+        sucio() { return JSON.stringify(this.datos) !== this.inicial; },
+        cerrar() { if (!this.guardando) this.abierto = false; },
+        // Clic fuera: solo cierra si no hay nada escrito (antes se perdía el formulario sin aviso).
+        cerrarSiLimpio() { if (!this.sucio()) this.cerrar(); },
+        pedirEliminar() { this.abierto = false; this.$dispatch('eliminar-usuario', { usuario: this.original }); },
+        guardar() {
+            this.guardando = true; this.errores = {};
+            const d = this.datos, cuerpo = new FormData();
+            ['nombre_completo', 'cedula', 'correo_electronico', 'nombre_usuario', 'rol'].forEach(k => cuerpo.append(k, (d[k] ?? '').toString().trim()));
+            if ((this.modo === 'crear' || this.cambiarClave) && d.password) {
+                cuerpo.append('password', d.password);
+                cuerpo.append('password_confirmation', d.password_confirmation);
+            }
+            if (this.autoLlamado) {
+                if (d.rol === 'Asesor' && d.auto_llamado_activo) cuerpo.append('auto_llamado_activo', '1');
+                cuerpo.append('auto_llamado_minutos', Math.max(1, Math.min(60, parseInt(d.auto_llamado_minutos, 10) || 10)));
+            }
+            if (this.modo === 'editar') cuerpo.append('_method', 'PUT');
+            const url = this.modo === 'crear' ? USUARIOS_URL : USUARIOS_URL + '/' + this.id;
+            fetch(url, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) { recargarCon(this.modo === 'crear' ? 'Usuario creado.' : 'Cambios guardados.'); return; }
+                    this.guardando = false;
+                    const e = datos.errors || {};
+                    this.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+                    if (!Object.keys(this.errores).length) this.errores = { general: mensajeDe(estado, datos, 'No se pudo guardar el usuario.') };
+                })
+                .catch(() => { this.guardando = false; this.errores = { general: 'No hay conexión con el servidor. Inténtalo de nuevo.' }; });
+        },
+    }));
 
-                loadUserData() {
-                    this.loading = true;
-                    fetch(`/admin/usuarios/${this.userId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            this.userData = {
-                                nombre_completo: data.nombre_completo,
-                                cedula: data.cedula,
-                                correo_electronico: data.correo_electronico,
-                                nombre_usuario: data.nombre_usuario,
-                                rol: data.rol,
-                                password: '',
-                                password_confirmation: '',
-                                auto_llamado_activo: data.auto_llamado_activo ? true : false,
-                                auto_llamado_minutos: parseInt(data.auto_llamado_minutos) || 10
-                            };
-                            this.loading = false;
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            this.loading = false;
-                        });
-                },
+    Alpine.data('eliminarUsuario', () => ({
+        abierto: false, u: null, impacto: null, cargando: false, trabajando: false, error: '', confirmacion: '',
+        abrir({ usuario }) {
+            this.u = usuario; this.impacto = null; this.error = ''; this.confirmacion = ''; this.trabajando = false; this.cargando = true; this.abierto = true;
+            fetch(USUARIOS_URL + '/' + usuario.id, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+                .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                .then(d => { this.impacto = d.impacto; })
+                .catch(e => { this.error = e === 419 ? mensajeDe(419, {}) : 'No se pudo revisar el usuario. Inténtalo de nuevo.'; })
+                .finally(() => { this.cargando = false; });
+        },
+        cerrar() { if (!this.trabajando) this.abierto = false; },
+        miles(n) { return Number(n).toLocaleString('es-CO'); },
+        puedeEliminar() { return !!this.impacto && (!this.impacto.turnos || this.confirmacion.trim() === this.u.usuario); },
+        confirmar() {
+            this.trabajando = true; this.error = '';
+            const cuerpo = new FormData(); cuerpo.append('_method', 'DELETE'); cuerpo.append('confirmar', this.confirmacion.trim());
+            fetch(USUARIOS_URL + '/' + this.u.id, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) { recargarCon('Usuario eliminado.'); return; }
+                    this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo eliminar el usuario.');
+                })
+                .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
+        },
+    }));
+});
+</script>
 
-                submitForm() {
-                    // Crear un nuevo FormData y token CSRF
-                    const formData = new FormData();
-                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+@push('estilos')
+<style>
+[x-cloak] { display: none !important; }
+.envoltorio-modal { display: contents; }
+.usuarios-vista { font-variant-numeric: tabular-nums; }
+.usuarios-vista .buscador { flex-basis: 12rem; }
 
-                    // Añadir los campos al FormData
-                    formData.append('nombre_completo', this.userData.nombre_completo);
-                    formData.append('cedula', this.userData.cedula);
-                    formData.append('correo_electronico', this.userData.correo_electronico);
-                    formData.append('nombre_usuario', this.userData.nombre_usuario);
-                    formData.append('rol', this.userData.rol);
+.tabla-usuarios td { height: 2.375rem; padding-top: .25rem; padding-bottom: .25rem; white-space: nowrap; }
+.usuario-nombre { font-weight: 600; color: #0f2547; }
+.usuario-cedula { margin-left: .5rem; font-size: .75rem; color: #6b7280; }
+.marca-yo { margin-left: .4rem; font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #064b9e; }
+.usuario-login { color: #4b5563; }
+.rol-admin { font-weight: 600; color: #064b9e; }
+.codigos-servicio { font-weight: 600; letter-spacing: .04em; color: #0f2547; }
+.codigos-servicio:hover, .sin-asesor:hover { text-decoration: underline; }
+.sin-asesor { display: inline-block; padding: .15rem .45rem; border-radius: .375rem; font-size: .75rem; font-weight: 600; background: #ffe2e2; color: #9f0712; }
+.codigos-servicio:focus-visible, .sin-asesor:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
+.actividad { display: inline-flex; align-items: center; gap: .4rem; color: #4b5563; }
+.actividad__punto { width: .45rem; height: .45rem; border-radius: 9999px; background: #9ca3af; }
+.actividad--atendiendo .actividad__punto { background: #d08700; }
+.actividad--libre .actividad__punto { background: #00a63e; }
+.actividad--descanso .actividad__punto { background: #155dfc; }
+.actividad--canal .actividad__punto { background: #f54900; }
+.actividad[class*="actividad--"] { color: #111827; font-weight: 500; }
+.tabla-usuarios .celda-acciones { width: 1%; padding-right: .75rem; }
+.tabla-usuarios .celda-acciones .accion-icono { opacity: 0; transition: opacity .15s ease; }
+.tabla-usuarios tr:hover .accion-icono, .tabla-usuarios tr:focus-within .accion-icono { opacity: 1; }
+@media (hover: none) { .tabla-usuarios .celda-acciones .accion-icono { opacity: 1; } }
+.fila-esqueleto td { height: 2.375rem; }
+.vacio-usuarios { padding: 2rem; text-align: center; font-size: .875rem; color: #6b7280; }
 
-                    // Añadir auto_llamado
-                    if (this.userData.auto_llamado_activo) {
-                        formData.append('auto_llamado_activo', '1');
-                    }
-                    // Asegurar que el valor sea un número entero válido entre 1 y 60
-                    const minutos = Math.max(1, Math.min(60, parseInt(this.userData.auto_llamado_minutos) || 10));
-                    formData.append('auto_llamado_minutos', minutos);
-
-                    // Añadir contraseña solo si se ha cambiado
-                    if (this.userData.password) {
-                        formData.append('password', this.userData.password);
-                        formData.append('password_confirmation', this.userData.password_confirmation);
-                    }
-
-                    // Añadir el método PUT para Laravel
-                    formData.append('_method', 'PUT');
-
-                    // Enviar la petición
-                    fetch(`/admin/usuarios/${this.userId}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': token,
-                            'Accept': 'application/json'
-                        },
-                        body: formData
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.json().then(err => {
-                                throw err;
-                            });
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        this.isOpen = false;
-                        // Recargar la página para mostrar la actualización
-                        window.location.reload();
-                    })
-                    .catch(error => {
-                        if (error.errors) {
-                            this.errors = error.errors;
-                        }
-                    });
-                }
-            }));
-
-            Alpine.data('deleteUserModal', () => ({
-                isOpen: false,
-                userId: null,
-                userName: '',
-
-                init() {
-                    this.$watch('$store.modals.deleteUser.isOpen', value => {
-                        if (value) {
-                            this.userId = Alpine.store('modals').deleteUser.userId;
-                            this.userName = Alpine.store('modals').deleteUser.userName;
-                            this.isOpen = true;
-                        } else {
-                            this.isOpen = false;
-                        }
-                    });
-
-                    this.$watch('isOpen', value => {
-                        if (!value) {
-                            Alpine.store('modals').deleteUser.isOpen = false;
-                        }
-                    });
-                },
-
-                deleteUser() {
-                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-                    // Verificar que tenemos el userId
-                    if (!this.userId) {
-                        console.error('Error: userId is null or undefined');
-                        return;
-                    }
-
-                    console.log('Deleting user with ID:', this.userId);
-
-                    fetch(`/admin/usuarios/${this.userId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'X-CSRF-TOKEN': token,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        return response.json().then(data => {
-                            if (response.ok) {
-                                // Cerrar el modal
-                                this.isOpen = false;
-                                // Recargar la página para mostrar los cambios
-                                window.location.reload();
-                            } else {
-                                console.error('Error response:', response.status, data.message);
-                                alert('Error: ' + (data.message || 'No se pudo eliminar el usuario'));
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Fetch error:', error);
-                        alert('Error de conexión. Inténtalo de nuevo.');
-                    });
-                }
-            }));
-        });
-    </script>
-
+/* Formulario */
+.form-seccion { margin-top: .2rem; font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; }
+.form-seccion:first-child { margin-top: 0; }
+.form-opcional { font-weight: 400; color: #9ca3af; }
+.enlace-contrasena { align-self: flex-start; font-size: .8125rem; }
+.segmentado { display: inline-flex; padding: .2rem; gap: .2rem; border-radius: .6rem; background: #eef1f6; }
+.segmentado--ancho button { flex: 1; }
+.segmentado button { height: 2.1rem; padding: 0 .9rem; border-radius: .45rem; font-size: .875rem; font-weight: 600; color: #4b5563; cursor: pointer; }
+.segmentado button[aria-checked="true"] { background: #ffffff; color: #064b9e; box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
+.segmentado button:focus-visible { outline: 2px solid #064b9e; outline-offset: 1px; }
+.fila-auto { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-top: .5rem; }
+.minutos-auto { display: inline-flex; align-items: center; gap: .4rem; font-size: .875rem; color: #374151; white-space: nowrap; }
+.minutos-auto .campo { width: 4.5rem; height: 2.25rem; }
+.modal-panel__pie--separado { align-items: center; }
+.espaciador { flex: 1; }
+.enlace-peligro { font-size: .875rem; font-weight: 600; color: #b7191c; cursor: pointer; }
+.enlace-peligro:hover { text-decoration: underline; }
+.enlace-peligro:focus-visible { outline: 2px solid #b7191c; outline-offset: 2px; }
+.impacto-esqueleto { display: flex; flex-direction: column; gap: .6rem; padding: .25rem 0 .5rem; }
+</style>
+@endpush
 @endsection

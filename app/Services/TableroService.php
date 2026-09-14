@@ -390,7 +390,7 @@ class TableroService
                     'servicio' => $fila['nombre'],
                     'en_cola' => $fila['en_cola'],
                     'turno' => $primero ? $primero->codigo_completo : null,
-                    'accion' => ['texto' => 'Asignar asesor', 'url' => route('admin.asignacion-servicios', [], false)],
+                    'accion' => ['texto' => 'Asignar asesor', 'url' => route('admin.asignacion-servicios', ['servicio' => $fila['id']], false)],
                 ];
             }
         }

@@ -29,12 +29,49 @@ class GraficosController extends Controller
     }
 
     /**
-     * Mostrar la vista principal de gráficos (unificada con analytics históricos)
+     * Gráficos: un periodo y un servicio gobiernan todos los bloques (App\Services\GraficosService).
+     * La página llega con los datos ya calculados; al cambiar el periodo, la misma URL responde JSON.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        return view('admin.graficos', compact('user'));
+
+        // Parámetros de la URL saneados (una fecha mal escrita cae en hoy; no se redirige: es un GET).
+        $fecha = function ($valor) {
+            try {
+                return $valor ? Carbon::createFromFormat('!Y-m-d', (string) $valor) : null;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+        $desde = $fecha($request->query('desde')) ?? Carbon::today();
+        $hasta = $fecha($request->query('hasta')) ?? $desde->copy();
+        if ($hasta->lt($desde)) {
+            [$desde, $hasta] = [$hasta, $desde];
+        }
+        if ($desde->diffInDays($hasta, true) > 731) {
+            $desde = $hasta->copy()->subDays(731);   // tope de dos años
+        }
+        $servicioId = (int) $request->query('servicio') ?: null;
+        if ($servicioId && !Servicio::whereKey($servicioId)->exists()) {
+            $servicioId = null;
+        }
+
+        $datos = app(\App\Services\GraficosService::class)->generar($desde, $hasta, $servicioId);
+
+        if ($request->wantsJson()) {
+            return response()->json($datos);
+        }
+
+        // Filtro de servicio: cada sección (toma sus subservicios) con sus subservicios debajo.
+        $servicios = Servicio::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'nivel', 'servicio_padre_id', 'estado']);
+        $hijosDe = $servicios->whereNotNull('servicio_padre_id')->groupBy('servicio_padre_id');
+        $opciones = $servicios->filter(fn ($s) => !$s->servicio_padre_id || !$servicios->contains('id', $s->servicio_padre_id))
+            ->flatMap(fn ($s) => collect([['id' => $s->id, 'nombre' => $s->nombre, 'seccion' => $hijosDe->has($s->id), 'activo' => $s->estado === 'activo']])
+                ->concat($hijosDe->get($s->id, collect())->map(fn ($h) => ['id' => $h->id, 'nombre' => $h->nombre, 'hijo' => true, 'activo' => $h->estado === 'activo'])))
+            ->values()->all();
+
+        return view('admin.graficos', compact('user', 'datos', 'opciones'));
     }
 
     /**

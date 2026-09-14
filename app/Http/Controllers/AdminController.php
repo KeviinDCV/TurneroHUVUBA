@@ -41,114 +41,160 @@ class AdminController extends Controller
     }
 
     /**
-     * Mostrar listado de usuarios con buscador
+     * Usuarios en una sola vista: todos (son pocos; la búsqueda y los filtros van en el navegador) con lo que sirve
+     * para operar: rol, servicios asignados, si está conectado ahora y, en huvuba, el auto-llamado.
+     * Solo se mandan a la vista los campos que se pintan (nada de session_id ni IP).
      */
     public function users(Request $request)
     {
         $user = Auth::user();
-        $search = $request->input('search');
+        $search = (string) $request->input('search', '');
 
-        $query = User::query();
+        $usuarios = User::orderBy('nombre_completo')->get();
 
-        // Aplicar filtro de búsqueda si existe
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('nombre_completo', 'like', "%{$search}%")
-                  ->orWhere('cedula', 'like', "%{$search}%")
-                  ->orWhere('correo_electronico', 'like', "%{$search}%")
-                  ->orWhere('nombre_usuario', 'like', "%{$search}%")
-                  ->orWhere('rol', 'like', "%{$search}%");
-            });
+        // Servicios asignados: lo que el kiosco reparte (una sección con subservicios solo agrupa, no se lista).
+        $conHijos = Servicio::whereNotNull('servicio_padre_id')->distinct()->pluck('servicio_padre_id')->flip();
+        $asignados = DB::table('user_servicio')
+            ->join('servicios', 'servicios.id', '=', 'user_servicio.servicio_id')
+            ->where('servicios.estado', 'activo')
+            ->orderBy('servicios.orden')
+            ->get(['user_servicio.user_id', 'servicios.id', 'servicios.codigo', 'servicios.nombre'])
+            ->reject(fn ($s) => isset($conHijos[$s->id]))
+            ->groupBy('user_id');
+
+        // Quién está conectado ahora (módulo y estado), con el mismo cálculo del Inicio.
+        try {
+            $conectados = collect(app(\App\Services\TableroService::class)->generar()['asesores'])->keyBy('id');
+        } catch (\Throwable $e) {
+            report($e);
+            $conectados = collect();
         }
 
-        // Obtener usuarios paginados
-        $users = $query->paginate(10);
+        // El auto-llamado de turnos solo existe en el turnero que tiene AsesorController::autoLlamarTurno.
+        $autoLlamado = method_exists(AsesorController::class, 'autoLlamarTurno');
 
-        return view('admin.users', compact('user', 'users', 'search'));
+        $filas = $usuarios->map(fn (User $u) => [
+            'id' => (int) $u->id,
+            'nombre' => $u->nombre_completo,
+            'usuario' => $u->nombre_usuario,
+            'cedula' => $u->cedula,
+            'correo' => $u->correo_electronico,
+            'rol' => $u->rol,
+            'servicios' => $asignados->get($u->id, collect())->map(fn ($s) => ['codigo' => $s->codigo, 'nombre' => $s->nombre])->values()->all(),
+            'ultima_actividad' => $u->last_activity?->toIso8601String(),
+            'conectado' => $conectados->has($u->id)
+                ? ['modulo' => $conectados->get($u->id)['modulo'], 'estado' => $conectados->get($u->id)['estado']]
+                : null,
+            'auto_llamado' => $autoLlamado ? (bool) $u->auto_llamado_activo : null,
+            'auto_llamado_minutos' => (int) ($u->auto_llamado_minutos ?: 10),
+            'yo' => (int) $u->id === (int) $user->id,
+        ])->values();
+
+        return view('admin.users', compact('user', 'filas', 'search', 'autoLlamado'));
     }
 
     // Ya no necesitamos el método createUser() porque usamos un modal en la misma página
 
     /**
-     * Procesar la creación de un nuevo usuario
+     * Crear un usuario. La contraseña es opcional: sin ella la cuenta no puede iniciar sesión (el login la exige)
+     * hasta que se le asigne una. NUNCA se registra en el log (antes quedaba en claro en laravel.log).
      */
     public function storeUser(Request $request)
     {
-        // Log para debugging
-        \Log::info('Intento de creación de usuario', [
-            'datos_recibidos' => $request->all(),
-            'usuario_actual' => Auth::user()->nombre_usuario ?? 'No autenticado'
-        ]);
+        $rules = [
+            'nombre_completo' => 'required|string|max:255',
+            'cedula' => 'nullable|string|max:20',
+            'correo_electronico' => 'nullable|string|max:255',
+            'nombre_usuario' => 'required|string|max:255|unique:users,nombre_usuario',
+            'rol' => 'required|in:Administrador,Asesor',
+            'password' => 'nullable|string|confirmed',
+        ];
+
+        // Solo validar unique si el campo no está vacío
+        if ($request->filled('cedula')) {
+            $rules['cedula'] .= '|unique:users,cedula';
+        }
+        if ($request->filled('correo_electronico')) {
+            $rules['correo_electronico'] .= '|unique:users,correo_electronico';
+        }
+
+        $validated = $request->validate($rules, [
+            'nombre_usuario.unique' => 'Ya existe un usuario con ese nombre de usuario.',
+            'password.confirmed' => 'Las dos contraseñas no coinciden.',
+        ], $this->atributosUsuario());
 
         try {
-            // Validar los datos del formulario
-            $rules = [
-                'nombre_completo' => 'required|string|max:255',
-                'cedula' => 'nullable|string|max:20',
-                'correo_electronico' => 'nullable|string|max:255',
-                'nombre_usuario' => 'required|string|max:255|unique:users,nombre_usuario',
-                'rol' => 'required|in:Administrador,Asesor',
-                'password' => 'nullable|string|confirmed',
-            ];
-            
-            // Solo validar unique si el campo no está vacío
-            if ($request->filled('cedula')) {
-                $rules['cedula'] .= '|unique:users,cedula';
-            }
-            
-            if ($request->filled('correo_electronico')) {
-                $rules['correo_electronico'] .= '|unique:users,correo_electronico';
-            }
-            
-            $validated = $request->validate($rules);
-
-            \Log::info('Validación exitosa', ['datos_validados' => $validated]);
-
-            // Crear nuevo usuario
-            // Si no se proporciona contraseña, usar una cadena vacía hasheada
-            $password = $request->filled('password') ? $validated['password'] : '';
-            
             $nuevoUsuario = User::create([
                 'nombre_completo' => $validated['nombre_completo'],
                 'cedula' => $validated['cedula'] ?? null,
                 'correo_electronico' => $validated['correo_electronico'] ?? null,
                 'nombre_usuario' => $validated['nombre_usuario'],
                 'rol' => $validated['rol'],
-                'password' => Hash::make($password),
+                'password' => Hash::make($request->filled('password') ? $validated['password'] : ''),
             ]);
-
-            \Log::info('Usuario creado exitosamente', ['usuario_id' => $nuevoUsuario->id]);
-
-            // Redireccionar con mensaje de éxito
-            return redirect()->route('admin.users')
-                ->with('success', 'Usuario creado correctamente');
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Error de validación al crear usuario', [
-                'errores' => $e->errors(),
-                'datos' => $request->all()
-            ]);
-            throw $e;
-        } catch (\Exception $e) {
-            \Log::error('Error inesperado al crear usuario', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'datos' => $request->all()
-            ]);
-
-            return redirect()->back()
-                ->withInput()
+        } catch (\Throwable $e) {
+            \Log::error('Error inesperado al crear usuario', ['usuario' => $request->input('nombre_usuario'), 'error' => $e->getMessage()]);
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No se pudo crear el usuario. Inténtalo de nuevo.'], 500);
+            }
+            return redirect()->back()->withInput($request->except('password', 'password_confirmation'))
                 ->withErrors(['error' => 'Ocurrió un error inesperado al crear el usuario. Por favor, inténtalo de nuevo.']);
         }
+
+        \Log::info('Usuario creado', ['id' => $nuevoUsuario->id, 'usuario' => $nuevoUsuario->nombre_usuario, 'rol' => $nuevoUsuario->rol,
+            'por' => Auth::user()->nombre_usuario ?? null]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Usuario creado', 'id' => $nuevoUsuario->id]);
+        }
+
+        return redirect()->route('admin.users')->with('success', 'Usuario creado correctamente');
     }
 
     /**
-     * Obtener datos de un usuario para editar
+     * Nombres de los campos en los mensajes de validación.
+     */
+    private function atributosUsuario(): array
+    {
+        return [
+            'nombre_completo' => 'nombre',
+            'cedula' => 'cédula',
+            'correo_electronico' => 'correo',
+            'nombre_usuario' => 'usuario',
+            'rol' => 'rol',
+            'password' => 'contraseña',
+        ];
+    }
+
+    /**
+     * Un usuario: solo los campos del formulario y lo que se perdería al eliminarlo.
      */
     public function getUser($id)
     {
-        $userToEdit = User::findOrFail($id);
-        return response()->json($userToEdit);
+        $u = User::findOrFail($id);
+
+        try {
+            $canal = \App\Models\CanalNoPresencialHistorial::where('user_id', $u->id)->count();
+        } catch (\Throwable $e) {
+            $canal = 0;
+        }
+
+        return response()->json([
+            'id' => $u->id,
+            'nombre_completo' => $u->nombre_completo,
+            'cedula' => $u->cedula,
+            'correo_electronico' => $u->correo_electronico,
+            'nombre_usuario' => $u->nombre_usuario,
+            'rol' => $u->rol,
+            'auto_llamado_activo' => (bool) $u->auto_llamado_activo,
+            'auto_llamado_minutos' => (int) ($u->auto_llamado_minutos ?: 10),
+            'impacto' => [
+                'turnos' => Turno::where('asesor_id', $u->id)->count(),
+                'atendidos' => Turno::where('asesor_id', $u->id)->where('estado', 'atendido')->count(),
+                'servicios' => DB::table('user_servicio')->where('user_id', $u->id)->count(),
+                'canal' => $canal,
+            ],
+        ]);
     }
 
     /**
@@ -181,7 +227,10 @@ class AdminController extends Controller
             $rules['password'] = 'nullable|string|confirmed';
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'nombre_usuario.unique' => 'Ya existe un usuario con ese nombre de usuario.',
+            'password.confirmed' => 'Las dos contraseñas no coinciden.',
+        ], $this->atributosUsuario());
 
         // Preparar datos para actualizar
         $updateData = [
@@ -194,8 +243,8 @@ class AdminController extends Controller
             'auto_llamado_minutos' => max(1, min(60, intval($request->input('auto_llamado_minutos', 10)))),
         ];
 
-        // Actualizar contraseña si el campo está presente (incluso si está vacío)
-        if ($request->has('password')) {
+        // La contraseña solo cambia si llega escrita (un campo vacío no la borra)
+        if ($request->filled('password')) {
             $password = $request->input('password', '');
             $updateData['password'] = Hash::make($password);
         }
@@ -231,6 +280,15 @@ class AdminController extends Controller
 
             return redirect()->route('admin.users')
                 ->with('error', 'No puedes eliminar tu propio usuario');
+        }
+
+        // Sus turnos quedan sin asesor en Reportes y Gráficos: con turnos, solo escribiendo su usuario para confirmar.
+        if (Turno::where('asesor_id', $userToDelete->id)->exists()
+            && trim((string) $request->input('confirmar')) !== $userToDelete->nombre_usuario) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Escribe el usuario «' . $userToDelete->nombre_usuario . '» para confirmar.',
+            ], 422);
         }
 
         $userToDelete->delete();

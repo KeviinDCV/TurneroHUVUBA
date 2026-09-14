@@ -1,489 +1,318 @@
 @extends('layouts.admin')
 
 @section('title', 'Reportes')
+
 @section('content')
+{{-- Informe de turnos en una sola vista: periodo, qué incluir y formato. Se descarga con fetch para saber de verdad
+     cuándo terminó (o por qué falló). ReportesController::generarReporte arma el Excel o el PDF. --}}
+<div class="reportes-vista max-w-7xl mx-auto" x-data="informeTurnos(@js($secciones), @js($asesores), @js($inicial))">
+    <h1 class="sr-only">Reportes</h1>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Análisis</p>
-            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Reportes del Sistema</h1>
-        </div>
-    </div>
-
-    <!-- Formulario de Reportes -->
-    {{-- GET: los parámetros viajan en la URL para que un gestor de descargas pueda reintentarla.
-         Generar un reporte es de solo lectura, así que GET es correcto y no necesita CSRF. --}}
-    <form id="reporteForm" action="{{ route('admin.reportes.generar') }}" method="GET" class="space-y-6">
-
-        <!-- Selección de Fechas -->
-        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-            <div class="bg-hospital-blue text-white px-6 py-4">
-                <h3 class="text-lg font-semibold flex items-center">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    Rango de Fechas
-                </h3>
-                <p class="text-blue-100 text-sm mt-1">Seleccione el período para el reporte</p>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 mb-2">
-                            <svg class="w-4 h-4 inline mr-1 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            Fecha de Inicio
-                        </label>
-                        <input type="date"
-                               id="fecha_inicio"
-                               name="fecha_inicio"
-                               class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue transition-colors"
-                               value="{{ date('Y-m-d', strtotime('-7 days')) }}"
-                               required>
-                    </div>
-
-                    <div>
-                        <label for="fecha_fin" class="block text-sm font-medium text-gray-700 mb-2">
-                            <svg class="w-4 h-4 inline mr-1 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            Fecha Final
-                        </label>
-                        <input type="date"
-                               id="fecha_fin"
-                               name="fecha_fin"
-                               class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue transition-colors"
-                               value="{{ date('Y-m-d') }}"
-                               required>
-                    </div>
+    <form class="informe-rejilla" @submit.prevent="generar()" novalidate>
+        <div class="informe-columna">
+            <!-- Periodo -->
+            <section class="superficie bloque-informe">
+                <h2 class="bloque-informe__titulo">Periodo</h2>
+                <div class="filtros-rapidos atajos" role="group" aria-label="Atajos de periodo">
+                    @foreach (['hoy' => 'Hoy', 'ayer' => 'Ayer', 'semana' => 'Esta semana', 'semana_pasada' => 'Semana pasada', 'mes' => 'Este mes', 'mes_anterior' => 'Mes anterior'] as $clave => $rotulo)
+                        <button type="button" class="filtro-rapido" :aria-pressed="(atajo === '{{ $clave }}').toString()" @click="elegirAtajo('{{ $clave }}')">{{ $rotulo }}</button>
+                    @endforeach
                 </div>
-            </div>
-        </div>
-
-        <!-- Filtros Opcionales -->
-        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-            <div class="bg-hospital-blue text-white px-6 py-4">
-                <h3 class="text-lg font-semibold flex items-center">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z"></path>
-                    </svg>
-                    Filtros Opcionales
-                </h3>
-                <p class="text-blue-100 text-sm mt-1">Filtre por usuarios y servicios específicos</p>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Usuarios -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-3">
-                            <svg class="w-4 h-4 inline mr-1 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                            </svg>
-                            Usuarios
-                        </label>
-                        <div class="max-h-48 overflow-y-auto border border-gray-300 bg-gray-50">
-                            <!-- Seleccionar todos -->
-                            <div class="sticky top-0 bg-hospital-blue text-white p-3 border-b border-gray-300">
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="checkbox"
-                                           id="seleccionar-todos-usuarios"
-                                           class="border-gray-300 text-white focus:ring-white focus:ring-offset-0"
-                                           onchange="toggleAllCheckboxes('usuarios[]', this.checked)">
-                                    <span class="ml-3 text-sm font-medium">Seleccionar todos</span>
-                                </label>
-                            </div>
-                            <div class="p-4 space-y-3">
-                                @foreach($usuarios as $usuario)
-                                    <label class="flex items-center p-2 hover:bg-white transition-colors cursor-pointer">
-                                        <input type="checkbox"
-                                               name="usuarios[]"
-                                               value="{{ $usuario->id }}"
-                                               class="border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0"
-                                               onchange="updateSelectAllState('usuarios[]', 'seleccionar-todos-usuarios')">
-                                        <div class="ml-3">
-                                            <span class="text-sm font-medium text-gray-900">{{ $usuario->nombre_completo }}</span>
-                                            <span class="text-xs text-gray-500 block">({{ $usuario->nombre_usuario }})</span>
-                                        </div>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2 flex items-center">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Deje vacío para incluir todos los usuarios
-                        </p>
-                    </div>
-
-                    <!-- Servicios -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-3">
-                            <svg class="w-4 h-4 inline mr-1 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                            </svg>
-                            Servicios
-                        </label>
-                        <div class="max-h-48 overflow-y-auto border border-gray-300 bg-gray-50">
-                            <!-- Seleccionar todos -->
-                            <div class="sticky top-0 bg-hospital-blue text-white p-3 border-b border-gray-300">
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="checkbox"
-                                           id="seleccionar-todos-servicios"
-                                           class="border-gray-300 text-white focus:ring-white focus:ring-offset-0"
-                                           onchange="toggleAllCheckboxes('servicios[]', this.checked)">
-                                    <span class="ml-3 text-sm font-medium">Seleccionar todos</span>
-                                </label>
-                            </div>
-                            <div class="p-4 space-y-3">
-                                @foreach($servicios as $servicio)
-                                    <label class="flex items-center p-2 hover:bg-white transition-colors cursor-pointer">
-                                        <input type="checkbox"
-                                               name="servicios[]"
-                                               value="{{ $servicio->id }}"
-                                               class="border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0"
-                                               onchange="updateSelectAllState('servicios[]', 'seleccionar-todos-servicios')">
-                                        <span class="ml-3 text-sm font-medium text-gray-900">{{ $servicio->nombre }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2 flex items-center">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Deje vacío para incluir todos los servicios
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reportes Adicionales -->
-        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-            <div class="bg-hospital-blue text-white px-6 py-4">
-                <h3 class="text-lg font-semibold flex items-center">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-                    </svg>
-                    Opciones Avanzadas
-                </h3>
-                <p class="text-blue-100 text-sm mt-1">Incluya análisis adicionales en su reporte</p>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
-                        <input type="checkbox"
-                               name="incluir_calificaciones"
-                               value="1"
-                               class="mt-1 border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0">
-                        <div class="ml-3">
-                            <span class="text-sm font-medium text-gray-900 group-hover:text-hospital-blue">Reportes de Calificaciones</span>
-                            <p class="text-xs text-gray-500 mt-1">Incluye análisis de satisfacción del usuario</p>
-                        </div>
+                <div class="form-panel__fila">
+                    <label class="form-campo">Desde
+                        <input type="date" class="campo" x-model="desde" :max="hoy()" @input="atajo = atajoDe()" required>
                     </label>
-
-                    <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
-                        <input type="checkbox"
-                               name="incluir_tiempos_detallados"
-                               value="1"
-                               class="mt-1 border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0">
-                        <div class="ml-3">
-                            <span class="text-sm font-medium text-gray-900 group-hover:text-hospital-blue">Análisis de Tiempos</span>
-                            <p class="text-xs text-gray-500 mt-1">Tiempos detallados de espera y atención</p>
-                        </div>
-                    </label>
-
-                    <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:border-hospital-blue hover:bg-hospital-blue-light transition-all cursor-pointer group">
-                        <input type="checkbox"
-                               name="incluir_estadisticas_avanzadas"
-                               value="1"
-                               class="mt-1 border-gray-300 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0">
-                        <div class="ml-3">
-                            <span class="text-sm font-medium text-gray-900 group-hover:text-hospital-blue">Estadísticas Avanzadas</span>
-                            <p class="text-xs text-gray-500 mt-1">Métricas adicionales y comparativas</p>
-                        </div>
+                    <label class="form-campo">Hasta
+                        <input type="date" class="campo" x-model="hasta" :max="hoy()" :min="desde" @input="atajo = atajoDe()" required>
                     </label>
                 </div>
-            </div>
-        </div>
+                <p class="form-ayuda" :class="{ 'form-error': !periodoValido() }" x-text="textoPeriodo()"></p>
+            </section>
 
-        <!-- Formato de Exportación -->
-        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-            <div class="bg-hospital-blue text-white px-6 py-4">
-                <h3 class="text-lg font-semibold flex items-center">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Formato de Exportación
-                </h3>
-                <p class="text-blue-100 text-sm mt-1">Seleccione el formato de salida del reporte</p>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <label class="relative flex items-start p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-hospital-blue hover:shadow-md transition-all group">
-                        <input type="radio"
-                               name="formato"
-                               value="excel"
-                               class="mt-1 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0"
-                               checked>
-                        <div class="ml-4">
-                            <div class="flex items-center mb-2">
-                                <div class="w-8 h-8 bg-green-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                                    </svg>
-                                </div>
-                                <span class="font-semibold text-gray-900 group-hover:text-hospital-blue">Excel (.xlsx)</span>
-                            </div>
-                            <p class="text-sm text-gray-600">Ideal para análisis de datos, cálculos y manipulación de información</p>
-                            <div class="mt-2 flex items-center text-xs text-green-600">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                Recomendado para análisis
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="relative flex items-start p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-hospital-blue hover:shadow-md transition-all group">
-                        <input type="radio"
-                               name="formato"
-                               value="pdf"
-                               class="mt-1 text-hospital-blue focus:ring-hospital-blue focus:ring-offset-0">
-                        <div class="ml-4">
-                            <div class="flex items-center mb-2">
-                                <div class="w-8 h-8 bg-red-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                                    </svg>
-                                </div>
-                                <span class="font-semibold text-gray-900 group-hover:text-hospital-blue">PDF (.pdf)</span>
-                            </div>
-                            <p class="text-sm text-gray-600">Perfecto para presentaciones, informes ejecutivos y documentación</p>
-                            <div class="mt-2 flex items-center text-xs text-red-600">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                Ideal para presentaciones
-                            </div>
-                        </div>
-                    </label>
+            <!-- Formato -->
+            <section class="superficie bloque-informe">
+                <h2 class="bloque-informe__titulo">Formato</h2>
+                <div class="segmentado" role="radiogroup" aria-label="Formato del archivo">
+                    <button type="button" role="radio" :aria-checked="(formato === 'excel').toString()" @click="formato = 'excel'">Excel</button>
+                    <button type="button" role="radio" :aria-checked="(formato === 'pdf').toString()" @click="formato = 'pdf'">PDF</button>
                 </div>
-            </div>
-        </div>
+                <p class="form-ayuda" x-show="formato === 'excel'">Hojas: Resumen, Detalle de turnos, Por servicio, Por asesor y una hoja por asesor con sus turnos.</p>
+                <p class="form-ayuda" x-show="formato === 'pdf'" x-cloak>Resumen, tablas por servicio y por asesor, y los 50 turnos más recientes (el Excel trae todos).</p>
+            </section>
 
-        <!-- Botones de Acción -->
-        <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden p-6">
-            <div class="flex flex-col sm:flex-row gap-4">
-                <button type="submit"
-                        class="flex-1 bg-hospital-blue hover:bg-hospital-blue-hover text-white font-semibold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <span>Generar Reporte</span>
+            <!-- Resumen y acción: siempre a la vista -->
+            <div class="superficie bloque-informe bloque-informe--accion">
+                <p class="resumen-informe">
+                    <b>Informe de turnos</b> · {{ config('panel.unidad_nombre', 'Turnero') }}<br>
+                    <span x-text="textoPeriodoCorto()"></span> · <span x-text="textoAlcance()"></span> · <span x-text="formato === 'excel' ? 'Excel' : 'PDF'"></span>
+                </p>
+                <button type="submit" class="btn-primario btn-generar" :disabled="!listo() || trabajando">
+                    <span x-text="trabajando ? 'Generando…' : 'Generar informe'"></span>
                 </button>
-
-                <button type="button"
-                        onclick="limpiarFormulario()"
-                        class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    <span>Limpiar Formulario</span>
-                </button>
-            </div>
-
-            <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-start">
-                    <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <div class="text-sm text-blue-800">
-                        <p class="font-medium mb-1">Información importante:</p>
-                        <ul class="list-disc list-inside space-y-1 text-blue-700">
-                            <li>Los reportes pueden tardar unos minutos en generarse dependiendo del rango de fechas</li>
-                            <li>Los archivos Excel incluyen múltiples hojas con diferentes análisis</li>
-                            <li>Los reportes PDF están optimizados para impresión y presentación</li>
-                        </ul>
-                    </div>
-                </div>
+                <p class="estado-informe" :class="'estado-informe--' + (estado ? estado.tipo : '')" role="status" aria-live="polite" x-show="estado" x-cloak x-text="estado && estado.texto"></p>
+                <p class="form-ayuda" x-show="!listo() && !trabajando" x-text="faltante()"></p>
             </div>
         </div>
+
+        <!-- Qué incluir -->
+        <section class="superficie bloque-informe bloque-informe--alcance">
+            <h2 class="bloque-informe__titulo">Qué incluir</h2>
+            <div class="segmentado segmentado--ancho" role="radiogroup" aria-label="Alcance del informe">
+                <button type="button" role="radio" :aria-checked="(alcance === 'todo').toString()" @click="alcance = 'todo'">Todo el turnero</button>
+                <button type="button" role="radio" :aria-checked="(alcance === 'servicios').toString()" @click="alcance = 'servicios'">Por servicio</button>
+                <button type="button" role="radio" :aria-checked="(alcance === 'asesores').toString()" @click="alcance = 'asesores'">Por asesor</button>
+            </div>
+            <p class="form-ayuda" x-text="{ todo: 'Todos los turnos del periodo, de todos los servicios y asesores.',
+                servicios: 'Solo los turnos de los servicios marcados. Marcar una sección incluye todos sus subservicios.',
+                asesores: 'Solo los turnos que llamaron o atendieron los asesores marcados (no incluye los que nadie llamó).' }[alcance]"></p>
+
+            <!-- Servicios agrupados por sección -->
+            <div class="selector" x-show="alcance === 'servicios'" x-cloak>
+                <div class="selector__barra">
+                    <input type="search" class="campo" placeholder="Buscar servicio" x-model="buscarServicio" aria-label="Buscar servicio">
+                    <span class="selector__cuenta" x-text="serviciosMarcados().length + ' de ' + hojas().length"></span>
+                    <button type="button" class="enlace-panel" @click="marcarServicios(true)">Todos</button>
+                    <button type="button" class="enlace-panel" @click="marcarServicios(false)">Ninguno</button>
+                </div>
+                <ul class="selector__lista">
+                    <template x-for="s in seccionesVisibles()" :key="s.id">
+                        <li>
+                            <label class="selector__opcion selector__opcion--seccion">
+                                <input type="checkbox" :checked="estadoSeccion(s) === 'todo'" x-effect="$el.indeterminate = estadoSeccion(s) === 'parte'" @change="alternarSeccion(s, $event.target.checked)">
+                                <span x-text="s.nombre"></span><span class="texto-mudo" x-show="!s.activo"> · inactivo</span>
+                                <span class="selector__nota" x-show="s.hijos.length" x-text="contarMarcados(s) + ' de ' + s.hijos.length"></span>
+                            </label>
+                            <ul x-show="s.hijos.length">
+                                <template x-for="h in hijosVisibles(s)" :key="h.id">
+                                    <li><label class="selector__opcion">
+                                        <input type="checkbox" :value="h.id" x-model.number="servicios">
+                                        <span x-text="h.nombre"></span><span class="texto-mudo" x-show="!h.activo"> · inactivo</span>
+                                    </label></li>
+                                </template>
+                            </ul>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
+            <!-- Asesores -->
+            <div class="selector" x-show="alcance === 'asesores'" x-cloak>
+                <div class="selector__barra">
+                    <input type="search" class="campo" placeholder="Buscar asesor" x-model="buscarAsesor" aria-label="Buscar asesor">
+                    <span class="selector__cuenta" x-text="usuarios.length + ' de ' + asesores.length"></span>
+                    <button type="button" class="enlace-panel" @click="usuarios = asesores.map(a => a.id)">Todos</button>
+                    <button type="button" class="enlace-panel" @click="usuarios = []">Ninguno</button>
+                </div>
+                <ul class="selector__lista selector__lista--columnas">
+                    <template x-for="a in asesoresVisibles()" :key="a.id">
+                        <li><label class="selector__opcion">
+                            <input type="checkbox" :value="a.id" x-model.number="usuarios">
+                            <span x-text="a.nombre"></span> <span class="texto-mudo" x-text="a.usuario"></span>
+                        </label></li>
+                    </template>
+                </ul>
+            </div>
+
+            <div class="alcance-todo" x-show="alcance === 'todo'">
+                <b x-text="hojas().length"></b> servicios y <b x-text="asesores.length"></b> asesores entran en el informe.
+            </div>
+        </section>
     </form>
 </div>
 
 <script>
-// Función para seleccionar/deseleccionar todos los checkboxes de un grupo
-function toggleAllCheckboxes(groupName, checked) {
-    document.querySelectorAll(`input[name="${groupName}"]`).forEach(checkbox => {
-        checkbox.checked = checked;
-    });
-}
+document.addEventListener('alpine:init', () => {
+    const URL_GENERAR = @json(route('admin.reportes.generar'));
+    const TOKEN = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    // Fechas LOCALES (new Date('AAAA-MM-DD') es UTC y en Bogotá cae en el día anterior).
+    const aFecha = t => { const [a, m, d] = t.split('-').map(Number); return new Date(a, m - 1, d); };
+    const aTexto = f => f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+    const sumar = (f, dias) => { const x = new Date(f); x.setDate(x.getDate() + dias); return x; };
+    const nombreDe = cabecera => {
+        const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cabecera || '');
+        return m ? decodeURIComponent(m[1]) : null;
+    };
 
-// Función para actualizar el estado del checkbox "Seleccionar todos"
-function updateSelectAllState(groupName, selectAllId) {
-    const checkboxes = document.querySelectorAll(`input[name="${groupName}"]`);
-    const selectAllCheckbox = document.getElementById(selectAllId);
-    
-    const totalCheckboxes = checkboxes.length;
-    const checkedCheckboxes = document.querySelectorAll(`input[name="${groupName}"]:checked`).length;
-    
-    if (checkedCheckboxes === 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
-    } else if (checkedCheckboxes === totalCheckboxes) {
-        selectAllCheckbox.checked = true;
-        selectAllCheckbox.indeterminate = false;
-    } else {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = true;
-    }
-}
+    Alpine.data('informeTurnos', (secciones, asesores, inicial) => ({
+        secciones, asesores,
+        desde: '', hasta: '', atajo: 'mes',
+        formato: 'excel',
+        alcance: 'todo',
+        servicios: [],
+        usuarios: [],
+        buscarServicio: '', buscarAsesor: '',
+        trabajando: false,
+        estado: null,
+        init() {
+            if (inicial.desde && inicial.hasta) { this.desde = inicial.desde; this.hasta = inicial.hasta; this.atajo = this.atajoDe(); }
+            else this.elegirAtajo('mes');
+            // Desde Gráficos con un servicio: ese servicio (y sus subservicios) ya marcado.
+            if (inicial.servicio) {
+                const s = this.secciones.find(s => s.id === inicial.servicio);
+                const ids = s ? (s.hijos.length ? s.hijos.map(h => h.id) : [s.id]) : [inicial.servicio];
+                if (this.hojas().some(h => ids.includes(h.id))) { this.alcance = 'servicios'; this.servicios = ids; }
+            }
+        },
+        hoy() { return aTexto(new Date()); },
+        rango(clave) {
+            const h = new Date(); h.setHours(0, 0, 0, 0);
+            const lunes = sumar(h, -((h.getDay() + 6) % 7));
+            return {
+                hoy: [h, h], ayer: [sumar(h, -1), sumar(h, -1)],
+                semana: [lunes, h], semana_pasada: [sumar(lunes, -7), sumar(lunes, -1)],
+                mes: [new Date(h.getFullYear(), h.getMonth(), 1), h],
+                mes_anterior: [new Date(h.getFullYear(), h.getMonth() - 1, 1), new Date(h.getFullYear(), h.getMonth(), 0)],
+            }[clave];
+        },
+        elegirAtajo(clave) { const [d, h] = this.rango(clave); this.desde = aTexto(d); this.hasta = aTexto(h); this.atajo = clave; },
+        atajoDe() {
+            return ['hoy', 'ayer', 'semana', 'semana_pasada', 'mes', 'mes_anterior']
+                .find(c => { const [d, h] = this.rango(c); return aTexto(d) === this.desde && aTexto(h) === this.hasta; }) || null;
+        },
+        periodoValido() { return this.desde && this.hasta && this.desde <= this.hasta && this.hasta <= this.hoy(); },
+        dias() { return this.periodoValido() ? Math.round((aFecha(this.hasta) - aFecha(this.desde)) / 864e5) + 1 : 0; },
+        fecha(t, anio = true) { const f = aFecha(t); return f.getDate() + ' ' + MESES[f.getMonth()] + (anio ? ' ' + f.getFullYear() : ''); },
+        textoPeriodoCorto() {
+            if (!this.periodoValido()) return 'Periodo sin definir';
+            if (this.desde === this.hasta) return this.fecha(this.desde);
+            const d = aFecha(this.desde), h = aFecha(this.hasta);
+            if (d.getFullYear() === h.getFullYear() && d.getMonth() === h.getMonth()) return d.getDate() + ' – ' + this.fecha(this.hasta);
+            return this.fecha(this.desde, d.getFullYear() !== h.getFullYear()) + ' – ' + this.fecha(this.hasta);
+        },
+        textoPeriodo() {
+            if (!this.desde || !this.hasta) return 'Elige las dos fechas.';
+            if (this.desde > this.hasta) return 'La fecha final es anterior a la inicial.';
+            if (this.hasta > this.hoy()) return 'El periodo no puede terminar después de hoy.';
+            return this.dias() === 1 ? 'Un día.' : this.dias() + ' días, del ' + this.fecha(this.desde, false) + ' al ' + this.fecha(this.hasta) + '.';
+        },
 
-function limpiarFormulario() {
-    // Resetear fechas a valores por defecto
-    document.getElementById('fecha_inicio').value = '{{ date('Y-m-d', strtotime('-7 days')) }}';
-    document.getElementById('fecha_fin').value = '{{ date('Y-m-d') }}';
+        // ---- servicios (se envían los subservicios; una sección sin subservicios va sola)
+        hojas() { return this.secciones.flatMap(s => s.hijos.length ? s.hijos : [s]); },
+        idsDe(s) { return s.hijos.length ? s.hijos.map(h => h.id) : [s.id]; },
+        contarMarcados(s) { return this.idsDe(s).filter(id => this.servicios.includes(id)).length; },
+        estadoSeccion(s) { const n = this.contarMarcados(s), t = this.idsDe(s).length; return n === 0 ? 'nada' : n === t ? 'todo' : 'parte'; },
+        alternarSeccion(s, marcar) {
+            const ids = this.idsDe(s);
+            this.servicios = marcar ? [...new Set([...this.servicios, ...ids])] : this.servicios.filter(id => !ids.includes(id));
+        },
+        marcarServicios(marcar) { this.servicios = marcar ? this.hojas().map(h => h.id) : []; },
+        serviciosMarcados() { return this.servicios; },
+        seccionesVisibles() {
+            const q = normal(this.buscarServicio);
+            return q ? this.secciones.filter(s => normal(s.nombre).includes(q) || s.hijos.some(h => normal(h.nombre).includes(q))) : this.secciones;
+        },
+        hijosVisibles(s) {
+            const q = normal(this.buscarServicio);
+            return !q || normal(s.nombre).includes(q) ? s.hijos : s.hijos.filter(h => normal(h.nombre).includes(q));
+        },
+        asesoresVisibles() {
+            const q = normal(this.buscarAsesor);
+            return q ? this.asesores.filter(a => normal(a.nombre + ' ' + a.usuario).includes(q)) : this.asesores;
+        },
 
-    // Desmarcar todos los checkboxes y resetear estados indeterminate
-    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.checked = false;
-        checkbox.indeterminate = false;
-    });
+        textoAlcance() {
+            if (this.alcance === 'servicios') return this.servicios.length ? this.servicios.length + ' servicio(s)' : 'sin servicios';
+            if (this.alcance === 'asesores') return this.usuarios.length ? this.usuarios.length + ' asesor(es)' : 'sin asesores';
+            return 'todo el turnero';
+        },
+        listo() {
+            return this.periodoValido() && (this.alcance === 'todo' || (this.alcance === 'servicios' ? this.servicios.length : this.usuarios.length) > 0);
+        },
+        faltante() {
+            if (!this.periodoValido()) return 'Revisa el periodo.';
+            if (this.alcance === 'servicios') return 'Marca al menos un servicio.';
+            if (this.alcance === 'asesores') return 'Marca al menos un asesor.';
+            return '';
+        },
 
-    // Seleccionar Excel por defecto
-    document.querySelector('input[name="formato"][value="excel"]').checked = true;
-
-    // Mostrar mensaje de confirmación
-    mostrarNotificacion('Formulario limpiado correctamente', 'success');
-}
-
-function mostrarNotificacion(mensaje, tipo = 'info') {
-    // Crear elemento de notificación
-    const notificacion = document.createElement('div');
-    notificacion.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full`;
-
-    if (tipo === 'success') {
-        notificacion.className += ' bg-green-500 text-white';
-    } else if (tipo === 'error') {
-        notificacion.className += ' bg-red-500 text-white';
-    } else {
-        notificacion.className += ' bg-blue-500 text-white';
-    }
-
-    notificacion.innerHTML = `
-        <div class="flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            ${mensaje}
-        </div>
-    `;
-
-    document.body.appendChild(notificacion);
-
-    // Animar entrada
-    setTimeout(() => {
-        notificacion.classList.remove('translate-x-full');
-    }, 100);
-
-    // Remover después de 3 segundos
-    setTimeout(() => {
-        notificacion.classList.add('translate-x-full');
-        setTimeout(() => {
-            document.body.removeChild(notificacion);
-        }, 300);
-    }, 3000);
-}
-
-// Validación de fechas mejorada
-document.getElementById('fecha_inicio').addEventListener('change', function() {
-    const fechaInicio = new Date(this.value);
-    const fechaFin = new Date(document.getElementById('fecha_fin').value);
-
-    if (fechaInicio > fechaFin) {
-        document.getElementById('fecha_fin').value = this.value;
-        mostrarNotificacion('Fecha final ajustada automáticamente', 'info');
-    }
-
-    // Validar que no sea una fecha futura
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    if (fechaInicio > hoy) {
-        this.value = hoy.toISOString().split('T')[0];
-        mostrarNotificacion('No se pueden seleccionar fechas futuras', 'error');
-    }
-});
-
-document.getElementById('fecha_fin').addEventListener('change', function() {
-    const fechaInicio = new Date(document.getElementById('fecha_inicio').value);
-    const fechaFin = new Date(this.value);
-
-    if (fechaFin < fechaInicio) {
-        document.getElementById('fecha_inicio').value = this.value;
-        mostrarNotificacion('Fecha inicial ajustada automáticamente', 'info');
-    }
-
-    // Validar que no sea una fecha futura
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    if (fechaFin > hoy) {
-        this.value = hoy.toISOString().split('T')[0];
-        mostrarNotificacion('No se pueden seleccionar fechas futuras', 'error');
-    }
-});
-
-// Mostrar loading al enviar formulario
-document.getElementById('reporteForm').addEventListener('submit', function(e) {
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalContent = submitBtn.innerHTML;
-
-    // Validar que al menos un rango de fechas esté seleccionado
-    const fechaInicio = document.getElementById('fecha_inicio').value;
-    const fechaFin = document.getElementById('fecha_fin').value;
-
-    if (!fechaInicio || !fechaFin) {
-        e.preventDefault();
-        mostrarNotificacion('Por favor seleccione un rango de fechas válido', 'error');
-        return;
-    }
-
-    // VALIDAR que al menos un usuario O servicio esté seleccionado
-    const usuariosSeleccionados = this.querySelectorAll('input[name="usuarios[]"]:checked').length;
-    const serviciosSeleccionados = this.querySelectorAll('input[name="servicios[]"]:checked').length;
-
-    if (usuariosSeleccionados === 0 && serviciosSeleccionados === 0) {
-        e.preventDefault();
-        mostrarNotificacion('Debe seleccionar al menos un usuario o un servicio para generar el reporte', 'error');
-        return;
-    }
-
-    // Mostrar estado de carga
-    submitBtn.innerHTML = `
-        <svg class="animate-spin w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span>Generando Reporte...</span>
-    `;
-    submitBtn.disabled = true;
-
-    // Restaurar botón después de 30 segundos (timeout de seguridad)
-    setTimeout(() => {
-        submitBtn.innerHTML = originalContent;
-        submitBtn.disabled = false;
-    }, 30000);
-});
-
-// Inicializar estado del formulario
-document.addEventListener('DOMContentLoaded', function() {
-    // El formulario está listo para usar
-    console.log('Formulario de reportes inicializado');
+        // Se pide el archivo por fetch: así se sabe cuándo terminó y, si falla, por qué.
+        generar() {
+            if (!this.listo() || this.trabajando) return;
+            this.trabajando = true;
+            this.estado = { tipo: 'trabajando', texto: 'Generando el informe' + (this.dias() > 31 ? '; con un periodo largo puede tardar un poco.' : '…') };
+            const cuerpo = new FormData();
+            cuerpo.append('fecha_inicio', this.desde);
+            cuerpo.append('fecha_fin', this.hasta);
+            cuerpo.append('formato', this.formato);
+            cuerpo.append('alcance', this.alcance);
+            if (this.alcance === 'servicios') this.servicios.forEach(id => cuerpo.append('servicios[]', id));
+            if (this.alcance === 'asesores') this.usuarios.forEach(id => cuerpo.append('usuarios[]', id));
+            fetch(URL_GENERAR, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+                .then(async r => {
+                    const tipo = r.headers.get('Content-Type') || '';
+                    if (!r.ok || tipo.includes('application/json') || tipo.includes('text/html')) {
+                        const d = await r.json().catch(() => ({}));
+                        const primero = d.errors ? Object.values(d.errors)[0] : null;
+                        throw new Error(r.status === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.'
+                            : (primero ? (Array.isArray(primero) ? primero[0] : primero) : (d.message || 'No se pudo generar el informe (error ' + r.status + ').')));
+                    }
+                    const archivo = await r.blob();
+                    const nombre = nombreDe(r.headers.get('Content-Disposition')) || ('informe_turnos.' + (this.formato === 'excel' ? 'xlsx' : 'pdf'));
+                    const enlace = document.createElement('a');
+                    enlace.href = URL.createObjectURL(archivo);
+                    enlace.download = nombre;
+                    document.body.appendChild(enlace); enlace.click(); enlace.remove();
+                    setTimeout(() => URL.revokeObjectURL(enlace.href), 60000);
+                    this.estado = { tipo: 'ok', texto: 'Listo: ' + nombre };
+                })
+                .catch(e => { this.estado = { tipo: 'error', texto: e instanceof TypeError ? 'No hay conexión con el servidor. Inténtalo de nuevo.' : e.message }; })
+                .finally(() => { this.trabajando = false; });
+        },
+    }));
 });
 </script>
 
+@push('estilos')
+<style>
+[x-cloak] { display: none !important; }
+.reportes-vista { font-variant-numeric: tabular-nums; }
+
+/* Dos columnas: periodo, formato y acción a la izquierda; qué incluir a la derecha */
+.informe-rejilla { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: .75rem; align-items: start; }
+@media (max-width: 1023px) { .informe-rejilla { grid-template-columns: minmax(0, 1fr); } }
+.informe-columna { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.bloque-informe { display: flex; flex-direction: column; gap: .7rem; padding: .9rem 1.1rem 1rem; min-width: 0; border: 0; margin: 0; }
+.bloque-informe__titulo { font-size: .875rem; font-weight: 650; color: #0f2547; }
+.atajos .filtro-rapido { height: 2.1rem; padding: 0 .7rem; font-size: .8125rem; }
+
+/* Control segmentado: el elegido con el azul claro institucional */
+.segmentado { display: inline-flex; padding: .2rem; gap: .2rem; border-radius: .6rem; background: #eef1f6; align-self: flex-start; }
+.segmentado--ancho { align-self: stretch; }
+.segmentado--ancho button { flex: 1; }
+.segmentado button { height: 2.1rem; padding: 0 1rem; border-radius: .45rem; font-size: .875rem; font-weight: 600; color: #4b5563; cursor: pointer; white-space: nowrap; }
+.segmentado button:hover { color: #064b9e; }
+.segmentado button[aria-checked="true"] { background: #ffffff; color: #064b9e; box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
+.segmentado button:focus-visible { outline: 2px solid #064b9e; outline-offset: 1px; }
+
+.bloque-informe--accion { gap: .6rem; }
+.resumen-informe { font-size: .875rem; line-height: 1.5; color: #374151; }
+.resumen-informe b { color: #0f2547; }
+.btn-generar { height: 2.75rem; font-size: .9375rem; }
+.estado-informe { font-size: .8125rem; font-weight: 500; padding: .45rem .7rem; border-radius: .45rem; }
+.estado-informe--trabajando { background: #eef4fc; color: #0f2547; }
+.estado-informe--ok { background: #e4faec; color: #005d38; }
+.estado-informe--error { background: #ffefed; color: #901e1c; }
+
+/* Qué incluir: la lista ocupa el alto disponible y se desplaza por dentro */
+.bloque-informe--alcance { min-height: 100%; }
+.selector { display: flex; flex-direction: column; gap: .5rem; min-height: 0; }
+.selector__barra { display: flex; align-items: center; gap: .75rem; }
+.selector__barra .campo { flex: 1; height: 2.25rem; }
+.selector__cuenta { font-size: .8125rem; color: #6b7280; white-space: nowrap; }
+.selector__barra .enlace-panel { font-size: .8125rem; }
+.selector__lista { max-height: calc(100vh - var(--admin-header-h, 3.25rem) - 17rem); min-height: 10rem; overflow-y: auto; padding: .25rem .1rem;
+                   border-top: 1px solid #eef1f6; }
+.selector__lista ul { padding-left: 1.6rem; }
+.selector__lista--columnas { columns: 2; column-gap: 1.5rem; }
+.selector__lista--columnas li { break-inside: avoid; }
+.selector__opcion { display: flex; align-items: center; gap: .55rem; padding: .3rem .25rem; border-radius: .35rem; font-size: .875rem; color: #111827; cursor: pointer; }
+.selector__opcion:hover { background: #f5f8fc; }
+.selector__opcion input { width: 1rem; height: 1rem; accent-color: #064b9e; flex-shrink: 0; }
+.selector__opcion--seccion { font-weight: 600; color: #0f2547; }
+.selector__nota { margin-left: auto; font-size: .75rem; font-weight: 500; color: #6b7280; }
+.alcance-todo { padding: 1rem; border-radius: .5rem; background: #f6f8fc; font-size: .875rem; color: #374151; }
+</style>
+@endpush
 @endsection

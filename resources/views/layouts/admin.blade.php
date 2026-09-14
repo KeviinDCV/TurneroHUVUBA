@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{-- La letra se pide antes que todo lo demás: así ya está cuando se pinta la página (ver @font-face más abajo) --}}
+    <link rel="preload" href="{{ asset('fonts/InterVariable.woff2') }}" as="font" type="font/woff2" crossorigin>
     <title>@yield('title', 'Turnero HUV') - Turnero HUV</title>
     @include('components.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -641,7 +643,8 @@
         @font-face {
             font-family: 'Inter';
             src: url('{{ asset('fonts/InterVariable.woff2') }}') format('woff2');
-            font-weight: 100 900; font-style: normal; font-display: swap;
+            /* block, no swap: con swap se pintaba primero con Segoe UI y al llegar Inter las letras "crecían" */
+            font-weight: 100 900; font-style: normal; font-display: block;
         }
         html { font-feature-settings: 'cv05' 1; }   /* l minúscula con cola: "lcruz" ya no se lee "Icruz" */
 
@@ -698,6 +701,88 @@
         body.sidebar-is-collapsed .sidebar-user-card,
         body.sidebar-is-collapsed .sidebar-logout { justify-content: center; }
         body.sidebar-is-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+
+        /* 7. Piezas compartidas de las vistas (Servicios, Asignación…): el mismo material de Módulos y del Inicio. */
+        .barra-vista { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+        .filtros-rapidos { display: flex; flex-wrap: wrap; gap: .375rem; }
+        .filtro-rapido {
+            display: inline-flex; align-items: center; gap: .4rem; height: 2.5rem; padding: 0 .9rem; border-radius: .5rem;
+            background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
+            font-size: .875rem; font-weight: 600; color: #374151; cursor: pointer;
+        }
+        .filtro-rapido:hover { color: #064b9e; }
+        .filtro-rapido[aria-pressed="true"] { background: #064b9e; color: #ffffff; }
+        .filtro-rapido__n { font-weight: 500; opacity: .75; }
+        .buscador { position: relative; flex: 1 1 16rem; max-width: 22rem; margin-left: auto; }
+        .buscador__icono { position: absolute; left: .75rem; top: 50%; width: 1rem; height: 1rem; transform: translateY(-50%); color: #6b7280; pointer-events: none; }
+        .campo {
+            width: 100%; height: 2.5rem; padding: 0 .75rem; font-size: .875rem; color: #111827; background: #ffffff;
+            border: 1px solid #d1d5db; border-radius: .5rem;
+        }
+        .buscador .campo { padding-left: 2.25rem; }
+        .campo:focus { outline: none; border-color: #064b9e; box-shadow: 0 0 0 3px rgba(6, 75, 158, .18); }
+        .campo:disabled { background: #f3f5f9; color: #6b7280; }
+        .campo--area { height: auto; padding: .5rem .75rem; resize: vertical; }
+        .campo--mono { text-transform: uppercase; letter-spacing: .08em; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .btn-primario, .btn-secundario, .btn-peligro {
+            display: inline-flex; align-items: center; justify-content: center; gap: .4rem; height: 2.5rem; padding: 0 1rem;
+            border-radius: .5rem; font-size: .875rem; font-weight: 600; cursor: pointer; transition: background-color .15s ease;
+        }
+        .btn-primario { background: #064b9e; color: #ffffff; }
+        .btn-primario:hover { background: #053d7a; }
+        .btn-secundario { background: #eef1f6; color: #374151; }
+        .btn-secundario:hover { background: #e2e8f2; }
+        .btn-peligro { background: #b7191c; color: #ffffff; }
+        .btn-peligro:hover { background: #9a1518; }
+        .btn-primario:disabled, .btn-secundario:disabled, .btn-peligro:disabled { opacity: .6; cursor: default; }
+        .filtro-rapido:focus-visible, .btn-primario:focus-visible, .btn-secundario:focus-visible, .btn-peligro:focus-visible,
+        .accion-icono:focus-visible, .enlace-panel:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
+        .enlace-panel { color: #064b9e; font-weight: 600; cursor: pointer; }
+        .enlace-panel:hover { text-decoration: underline; }
+
+        .superficie { background: #ffffff; border-radius: .75rem; box-shadow: 0 1px 2px rgba(16, 24, 40, .06); }
+        .tabla-panel { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
+        .tabla-panel th {
+            background: #f6f8fc; color: #6b7280; font-size: .75rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: .04em; text-align: left; padding: .6rem 1rem; white-space: nowrap;
+        }
+        .tabla-panel td { padding: .5rem 1rem; border-top: 1px solid #eef1f6; color: #111827; vertical-align: middle; }
+        .tabla-panel tbody tr:hover > td { background: #f8fafd; }
+        .accion-icono { width: 1.75rem; height: 1.75rem; border-radius: .375rem; display: inline-grid; place-items: center; color: #6b7280; cursor: pointer; }
+        .accion-icono:hover { background: #eef1f6; color: #064b9e; }
+        .accion-icono--peligro:hover { background: #fdecec; color: #b7191c; }
+        .texto-mudo { color: #6b7280; }
+        .texto-alerta { color: #b45309; font-weight: 600; }
+        .texto-error { color: #b7191c; font-weight: 600; }
+
+        .modal-panel {
+            position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;
+            background: rgba(15, 23, 42, .35); backdrop-filter: blur(2px);
+        }
+        .modal-panel__caja { width: 100%; max-width: 36rem; max-height: calc(100vh - 2rem); overflow-y: auto; background: #ffffff; border-radius: .875rem; box-shadow: 0 24px 48px -12px rgba(16, 24, 40, .28); }
+        .modal-panel__caja--angosta { max-width: 28rem; }
+        .modal-panel__cabeza { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .25rem; }
+        .modal-panel__cabeza h2 { font-size: 1.05rem; font-weight: 700; color: #0f2547; }
+        .form-panel { display: flex; flex-direction: column; gap: .8rem; padding: .75rem 1.25rem 1.25rem; }
+        .form-panel__fila { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+        @media (max-width: 639px) { .form-panel__fila { grid-template-columns: minmax(0, 1fr); } }
+        .form-campo { display: flex; flex-direction: column; gap: .3rem; font-size: .75rem; font-weight: 600; color: #374151; }
+        .form-campo small, .form-error { color: #b7191c; font-size: .75rem; font-weight: 500; }
+        .form-ayuda { color: #6b7280; font-size: .75rem; font-weight: 400; line-height: 1.4; }
+        .form-casilla { display: flex; align-items: flex-start; gap: .6rem; font-size: .875rem; color: #111827; cursor: pointer; }
+        .form-casilla input { width: 1rem; height: 1rem; margin-top: .15rem; accent-color: #064b9e; flex-shrink: 0; }
+        .form-texto { font-size: .875rem; line-height: 1.5; color: #374151; }
+        .modal-panel__pie { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .25rem; }
+
+        .aviso-flotante {
+            position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 60; display: flex; align-items: center; gap: .9rem;
+            max-width: 26rem; padding: .7rem 1rem; border-radius: .625rem; background: #0f2547; color: #ffffff;
+            font-size: .875rem; line-height: 1.4; box-shadow: 0 12px 28px -10px rgba(15, 37, 71, .45);
+        }
+        .aviso-flotante--error { background: #9a1518; }
+        .aviso-flotante button { color: #a9c7f5; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .aviso-flotante--error button { color: #ffd4d4; }
+        .aviso-flotante button:hover { color: #ffffff; text-decoration: underline; }
     </style>
     {{-- Estilos propios de cada vista (@push('estilos')): aquí, después de los del layout, para que se apliquen
          desde el primer pintado. Al final del cuerpo, las transiciones de borde se veían como bordes negros al cargar. --}}

@@ -60,10 +60,15 @@
         }
         
         .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            /* dompdf no entiende display:grid: dos columnas con inline-block */
             margin-bottom: 20px;
+        }
+        .summary-grid .summary-item {
+            display: inline-block;
+            box-sizing: border-box;
+            width: 47%;
+            margin: 0 2% 12px 0;
+            vertical-align: top;
         }
         
         .summary-item {
@@ -177,12 +182,13 @@
     <!-- Header -->
     <div class="header">
         <div class="hospital-name">HOSPITAL UNIVERSITARIO DEL VALLE</div>
-        <div class="report-title">REPORTE DE TURNOS</div>
+        <div class="report-title">INFORME DE TURNOS{{ !empty($contexto['unidad']) ? ' · ' . mb_strtoupper($contexto['unidad'], 'UTF-8') : '' }}</div>
         <div class="report-period">
             Período: {{ $fecha_inicio->format('d/m/Y') }} - {{ $fecha_fin->format('d/m/Y') }}
         </div>
+        <div class="report-period">Alcance: {{ $contexto['alcance'] ?? 'Todo el turnero' }}</div>
         <div class="generation-date">
-            Generado el {{ $fecha_generacion->format('d/m/Y') }} a las {{ $fecha_generacion->format('H:i:s') }}
+            Generado el {{ $fecha_generacion->format('d/m/Y') }} a las {{ $fecha_generacion->format('H:i:s') }}{{ !empty($contexto['generado_por']) ? ' por ' . $contexto['generado_por'] : '' }}
         </div>
     </div>
 
@@ -192,23 +198,23 @@
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="summary-label">Total de Turnos</div>
-                <div class="summary-value">{{ number_format($estadisticas['resumen']['total_turnos']) }}</div>
+                <div class="summary-value">{{ number_format($estadisticas['resumen']['total_turnos'], 0, ',', '.') }}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Turnos Atendidos</div>
-                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_atendidos']) }}</div>
+                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_atendidos'], 0, ',', '.') }}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Turnos Pendientes</div>
-                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_pendientes']) }}</div>
+                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_pendientes'], 0, ',', '.') }}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Porcentaje de Atención</div>
-                <div class="summary-value">{{ $estadisticas['resumen']['porcentaje_atencion'] }}%</div>
+                <div class="summary-value">{{ number_format($estadisticas['resumen']['porcentaje_atencion'], 1, ',', '.') }} %</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Turnos Transferidos</div>
-                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_transferidos'] ?? 0) }}</div>
+                <div class="summary-value">{{ number_format($estadisticas['resumen']['turnos_transferidos'] ?? 0, 0, ',', '.') }}</div>
             </div>
         </div>
         
@@ -307,7 +313,7 @@
     <!-- Detalle de Turnos (Solo primeros 50 para evitar PDF muy largo) -->
     @if($turnos->count() > 0)
     <div class="section page-break">
-        <div class="section-title">DETALLE DE TURNOS (Primeros 50 registros)</div>
+        <div class="section-title">DETALLE DE TURNOS (los 50 más recientes; el Excel trae todos)</div>
         <table>
             <thead>
                 <tr>
@@ -326,14 +332,14 @@
                 <tr>
                     <td>{{ $turno->codigo }}-{{ $turno->numero }}</td>
                     <td>{{ $turno->servicio->nombre ?? 'N/A' }}</td>
-                    <td>{{ $turno->asesor->nombre_usuario ?? 'N/A' }}</td>
+                    <td>{{ $turno->asesor->nombre_completo ?? ($turno->asesor->nombre_usuario ?? 'N/A') }}</td>
                     <td>
                         <span class="status-badge status-{{ strtolower($turno->estado) }}">
                             {{ strtoupper($turno->estado) }}
                         </span>
                     </td>
-                    <td class="priority-{{ strtolower($turno->prioridad) }}">
-                        {{ strtoupper($turno->prioridad) }}
+                    <td class="{{ $turno->prioridad >= 4 ? 'priority-prioritaria' : 'priority-normal' }}">
+                        {{ $turno->prioridad >= 4 ? 'Prioritario' : 'Normal' }}
                     </td>
                     <td>{{ $turno->fecha_creacion ? \Carbon\Carbon::parse($turno->fecha_creacion)->format('d/m/Y H:i') : 'N/A' }}</td>
                     <td class="text-center">

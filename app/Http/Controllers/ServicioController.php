@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Servicio;
+use App\Models\Turno;
+use App\Models\TurnoHistorial;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ServicioController extends Controller
 {
@@ -14,181 +18,135 @@ class ServicioController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Catálogo en una sola vista: cada sección del kiosco con sus subservicios debajo (sin paginar: son pocos)
+     * y lo que importa en la operación: código del ticket, asesores asignados, cola de hoy, TV y prioridad.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $search = $request->get('search');
+        $search = (string) $request->get('search', '');
 
-        $query = Servicio::with('servicioPadre');
+        $servicios = Servicio::orderBy('orden')->orderBy('nombre')->get();
 
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('nombre', 'like', "%{$search}%")
-                  ->orWhere('descripcion', 'like', "%{$search}%")
-                  ->orWhere('codigo', 'like', "%{$search}%")
-                  ->orWhere('nivel', 'like', "%{$search}%");
-            });
-        }
+        // Asesores con el servicio asignado (solo rol Asesor: son los que llaman turnos).
+        $asesores = DB::table('user_servicio')
+            ->join('users', 'users.id', '=', 'user_servicio.user_id')
+            ->where('users.rol', 'Asesor')
+            ->groupBy('user_servicio.servicio_id')
+            ->selectRaw('user_servicio.servicio_id, COUNT(*) AS n')
+            ->pluck('n', 'servicio_id');
 
-        $servicios = $query->orderBy('nivel')
-                          ->orderBy('servicio_padre_id')
-                          ->orderBy('orden')
-                          ->paginate(10);
+        // En cola hoy: en espera + aplazados de hoy (por created_at: fecha_creacion se reescribe sola).
+        $enCola = Turno::whereIn('estado', ['pendiente', 'aplazado'])
+            ->whereBetween('created_at', [now()->startOfDay(), now()->endOfDay()])
+            ->groupBy('servicio_id')
+            ->selectRaw('servicio_id, COUNT(*) AS n')
+            ->pluck('n', 'servicio_id');
 
-        // Obtener servicios principales para el select de servicios padre
-        $serviciosPrincipales = Servicio::servicios()->activos()->orderBy('nombre')->get();
+        $fila = function (Servicio $s) use ($asesores, $enCola) {
+            // huvuba imprime en el ticket a dónde ir según el NOMBRE de la sección (Servicio::ubicacionAtencion).
+            $ubicacion = null;
+            if ($s->nivel === 'servicio' && method_exists($s, 'ubicacionAtencion')) {
+                $u = $s->ubicacionAtencion();
+                $ubicacion = $u ? trim($u['sitio'] . ' ' . $u['rango']) : null;
+            }
 
-        return view('admin.servicios', compact('servicios', 'search', 'user', 'serviciosPrincipales'));
+            return [
+                'id' => (int) $s->id,
+                'nombre' => $s->nombre,
+                'codigo' => $s->codigo,
+                'descripcion' => $s->descripcion,
+                'padre_id' => $s->servicio_padre_id ? (int) $s->servicio_padre_id : null,
+                'activo' => $s->estado === 'activo',
+                'orden' => $s->orden,
+                'ocultar_turno' => (bool) $s->ocultar_turno,
+                'requiere_priorizacion' => (bool) $s->requiere_priorizacion,
+                'asesores' => (int) ($asesores[$s->id] ?? 0),
+                'en_cola' => (int) ($enCola[$s->id] ?? 0),
+                'ubicacion' => $ubicacion,
+            ];
+        };
+
+        // Árbol: secciones (nivel servicio) y, debajo, sus subservicios. Un subservicio cuyo padre ya no existe
+        // se muestra como sección para que no desaparezca de la lista.
+        $existe = $servicios->pluck('id')->flip();
+        $hijosDe = $servicios->filter(fn ($s) => $s->nivel === 'subservicio' && $s->servicio_padre_id && isset($existe[$s->servicio_padre_id]))
+            ->groupBy('servicio_padre_id');
+
+        $secciones = $servicios
+            ->reject(fn ($s) => $s->nivel === 'subservicio' && $s->servicio_padre_id && isset($existe[$s->servicio_padre_id]))
+            ->map(function (Servicio $s) use ($fila, $hijosDe) {
+                $seccion = $fila($s);
+                $seccion['hijos'] = $hijosDe->get($s->id, collect())->map($fila)->values()->all();
+                return $seccion;
+            })
+            ->values()
+            ->all();
+
+        return view('admin.servicios', compact('user', 'secciones', 'search'));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Crear un servicio. El nivel sale de "Pertenece a": sin sección es una sección del kiosco; con sección, un subservicio.
      */
     public function store(Request $request)
     {
-        $rules = [
-            'nombre' => 'required|string|max:255',
-            'nivel' => 'required|in:servicio,subservicio',
-            'codigo' => 'nullable|string|max:50|unique:servicios',
-            'estado' => 'required|in:activo,inactivo',
-            'descripcion' => 'nullable|string|max:500',
-            'orden' => 'nullable|integer|min:0',
-            'ocultar_turno' => 'boolean',
-            'requiere_priorizacion' => 'boolean'
-        ];
+        $datos = $this->validar($request, null);
 
-        // Si es subservicio, el servicio_padre_id es requerido
-        if ($request->nivel === 'subservicio') {
-            $rules['servicio_padre_id'] = 'required|exists:servicios,id';
+        if ($datos['orden'] === null) {
+            $datos['orden'] = (Servicio::where('servicio_padre_id', $datos['servicio_padre_id'])->max('orden') ?? 0) + 1;
         }
 
-        $request->validate($rules);
+        Servicio::create($datos);
+        $this->quitarPrioridadAlPadre($datos['servicio_padre_id']);
 
-        // Preparar datos
-        $data = [
-            'nombre' => $request->nombre,
-            'nivel' => $request->nivel,
-            'codigo' => $request->codigo,
-            'estado' => $request->estado,
-            'descripcion' => $request->descripcion,
-            'orden' => $request->orden,
-            'ocultar_turno' => $request->has('ocultar_turno'),
-            // Solo se permite priorización si no va a tener subservicios (será validado después)
-            'requiere_priorizacion' => $request->has('requiere_priorizacion'),
-            'servicio_padre_id' => null, // Por defecto es servicio principal
-        ];
-
-        // Si es subservicio, asignar servicio padre
-        if ($request->nivel === 'subservicio') {
-            $data['servicio_padre_id'] = $request->servicio_padre_id;
-        }
-
-        // Si no se proporciona orden, calcular automáticamente
-        if (empty($data['orden'])) {
-            if ($request->nivel === 'servicio') {
-                $maxOrden = Servicio::where('servicio_padre_id', null)->max('orden');
-            } else {
-                $maxOrden = Servicio::where('servicio_padre_id', $request->servicio_padre_id)->max('orden');
-            }
-            $data['orden'] = ($maxOrden ?? 0) + 1;
-        }
-
-        $nuevoServicio = Servicio::create($data);
-
-        // Si es un subservicio, desactivar la priorización del servicio padre
-        if ($nuevoServicio->nivel === 'subservicio' && $nuevoServicio->servicio_padre_id) {
-            $servicioPadre = Servicio::find($nuevoServicio->servicio_padre_id);
-            if ($servicioPadre && $servicioPadre->requiere_priorizacion) {
-                $servicioPadre->update(['requiere_priorizacion' => false]);
-            }
-        }
-
-        // Si es una petición AJAX, devolver JSON
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Servicio creado correctamente'
-            ]);
-        }
-
-        return redirect()->route('admin.servicios')
-            ->with('success', 'Servicio creado correctamente');
+        return $this->respuesta($request, 'Servicio creado');
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualizar un servicio.
      */
     public function update(Request $request, Servicio $servicio)
     {
-        $rules = [
-            'nombre' => 'required|string|max:255',
-            'descripcion' => 'nullable|string|max:500',
-            'nivel' => 'required|in:servicio,subservicio',
-            'estado' => 'required|in:activo,inactivo',
-            'codigo' => 'nullable|string|max:50|unique:servicios,codigo,' . $servicio->id,
-            'orden' => 'nullable|integer|min:0',
-            'ocultar_turno' => 'boolean',
-            'requiere_priorizacion' => 'boolean'
-        ];
+        $datos = $this->validar($request, $servicio);
 
-        // Si es subservicio, el servicio_padre_id es requerido
-        if ($request->nivel === 'subservicio') {
-            $rules['servicio_padre_id'] = 'required|exists:servicios,id';
+        // Con subservicios activos, la prioridad la piden ellos, no la sección.
+        if ($servicio->subservicios()->where('estado', 'activo')->exists()) {
+            $datos['requiere_priorizacion'] = false;
         }
 
-        $request->validate($rules);
+        $servicio->update($datos);
+        $this->quitarPrioridadAlPadre($datos['servicio_padre_id']);
 
-        $data = $request->all();
-
-        // Manejar checkboxes
-        $data['ocultar_turno'] = $request->has('ocultar_turno');
-        
-        // Verificar si el servicio tiene subservicios activos
-        $tieneSubservicios = $servicio->subservicios()->where('estado', 'activo')->count() > 0;
-        
-        // Solo permitir priorización si NO tiene subservicios
-        $data['requiere_priorizacion'] = !$tieneSubservicios ? $request->has('requiere_priorizacion') : false;
-
-        // Si es servicio principal, asegurar que servicio_padre_id sea null
-        if ($request->nivel === 'servicio') {
-            $data['servicio_padre_id'] = null;
-        }
-
-        $servicio->update($data);
-
-        // Si es una petición AJAX, devolver JSON
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Servicio actualizado correctamente'
-            ]);
-        }
-
-        return redirect()->route('admin.servicios')
-            ->with('success', 'Servicio actualizado correctamente');
+        return $this->respuesta($request, 'Servicio actualizado');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Eliminar. Los turnos, su historial (base de Reportes y Gráficos) y las asignaciones se borran EN CASCADA
+     * con el servicio, así que solo se elimina un servicio sin turnos y sin subservicios. Para el resto: desactivarlo.
      */
     public function destroy(Servicio $servicio)
     {
-        // Verificar si el servicio tiene subservicios
-        if ($servicio->esServicioPrincipal() && $servicio->subservicios()->count() > 0) {
+        $impacto = $this->impacto($servicio);
+
+        if ($impacto['hijos'] > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se puede eliminar el servicio porque tiene subservicios asociados'
-            ], 400);
+                'message' => "Tiene {$impacto['hijos']} subservicio(s). Elimínalos o muévelos a otra sección primero.",
+            ], 422);
+        }
+
+        if ($impacto['turnos'] > 0 || $impacto['historial'] > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tiene turnos registrados: al eliminarlo se borrarían también de Reportes y Gráficos. Desactívalo en su lugar.',
+                'puede_desactivar' => true,
+            ], 422);
         }
 
         $servicio->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Servicio eliminado correctamente'
-        ]);
+        return response()->json(['success' => true, 'message' => 'Servicio eliminado']);
     }
 
     /**
@@ -201,7 +159,7 @@ class ServicioController extends Controller
         $query = Servicio::with('servicioPadre');
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
                   ->orWhere('descripcion', 'like', "%{$search}%")
                   ->orWhere('codigo', 'like', "%{$search}%");
@@ -217,15 +175,105 @@ class ServicioController extends Controller
     }
 
     /**
-     * Get a specific servicio for editing
+     * Un servicio con lo que se perdería al eliminarlo (lo usa la confirmación de eliminar).
      */
     public function show(Servicio $servicio)
     {
         $servicio->load('servicioPadre', 'subservicios');
-        
-        // Agregar campo calculado para verificar si tiene subservicios
         $servicio->tiene_subservicios = $servicio->subservicios()->where('estado', 'activo')->count() > 0;
-        
+        $servicio->impacto = $this->impacto($servicio);
+
         return response()->json($servicio);
+    }
+
+    /**
+     * Valida y normaliza el formulario (crear o editar) y devuelve los datos para guardar.
+     */
+    private function validar(Request $request, ?Servicio $servicio): array
+    {
+        $codigo = strtoupper(trim((string) $request->input('codigo', '')));
+        $request->merge(['codigo' => $codigo === '' ? null : $codigo]);
+
+        // El código es la letra del ticket (C-001) y la voz del TV la deletrea: solo letras. A un código antiguo que
+        // no cumpla (p. ej. con guion) no se le exige nada mientras no se cambie, para no bloquear la edición.
+        $cambiaCodigo = !$servicio || $codigo !== strtoupper((string) $servicio->codigo);
+
+        $validador = validator($request->all(), [
+            'nombre' => 'required|string|max:255',
+            'codigo' => $cambiaCodigo
+                ? ['required', 'regex:/^[A-Z]{1,10}$/', Rule::unique('servicios', 'codigo')->ignore($servicio?->id)]
+                : ['nullable'],
+            'servicio_padre_id' => ['nullable', 'integer', Rule::exists('servicios', 'id')->where('nivel', 'servicio')],
+            'descripcion' => 'nullable|string|max:500',
+            'orden' => 'nullable|integer|min:0|max:9999',
+        ], [
+            'codigo.required' => 'Escribe el código: son las letras del ticket (la C de C-001).',
+            'codigo.regex' => 'Solo letras, sin guiones ni números: la voz del TV las deletrea antes del número.',
+            'codigo.unique' => 'Ya hay un servicio con ese código.',
+            'servicio_padre_id.exists' => 'Elige una sección de la lista.',
+        ], [
+            'orden' => 'posición',
+            'descripcion' => 'descripción',
+        ]);
+
+        $validador->after(function ($v) use ($request, $servicio) {
+            $padreId = $request->input('servicio_padre_id');
+            if (!$servicio || !$padreId) {
+                return;
+            }
+            if ((int) $padreId === (int) $servicio->id) {
+                $v->errors()->add('servicio_padre_id', 'Un servicio no puede estar dentro de sí mismo.');
+            } elseif ($servicio->subservicios()->exists()) {
+                $v->errors()->add('servicio_padre_id', 'Tiene subservicios: una sección con subservicios no puede ir dentro de otra.');
+            }
+        });
+
+        $validador->validate();
+
+        $padreId = $request->filled('servicio_padre_id') ? (int) $request->input('servicio_padre_id') : null;
+
+        return [
+            'nombre' => trim((string) $request->input('nombre')),
+            'codigo' => $cambiaCodigo ? $codigo : $servicio->codigo,
+            'nivel' => $padreId ? 'subservicio' : 'servicio',
+            'servicio_padre_id' => $padreId,
+            'estado' => $request->boolean('activo') ? 'activo' : 'inactivo',
+            'descripcion' => trim((string) $request->input('descripcion')) ?: null,
+            'orden' => $request->filled('orden') ? (int) $request->input('orden') : $servicio?->orden,
+            'ocultar_turno' => $request->boolean('ocultar_turno'),
+            'requiere_priorizacion' => $request->boolean('requiere_priorizacion'),
+        ];
+    }
+
+    /**
+     * Una sección con subservicios no pide prioridad en el kiosco: la piden sus subservicios.
+     */
+    private function quitarPrioridadAlPadre(?int $padreId): void
+    {
+        if ($padreId) {
+            Servicio::where('id', $padreId)->where('requiere_priorizacion', true)->update(['requiere_priorizacion' => false]);
+        }
+    }
+
+    /**
+     * Lo que depende del servicio y se borraría en cascada con él.
+     */
+    private function impacto(Servicio $servicio): array
+    {
+        return [
+            'hijos' => $servicio->subservicios()->count(),
+            'turnos' => Turno::where('servicio_id', $servicio->id)->count(),
+            'historial' => TurnoHistorial::where('servicio_id', $servicio->id)->count(),
+            'asesores' => DB::table('user_servicio')->where('servicio_id', $servicio->id)->count(),
+        ];
+    }
+
+    private function respuesta(Request $request, string $mensaje)
+    {
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $mensaje]);
+        }
+
+        return redirect()->route('admin.servicios')->with('success', $mensaje);
     }
 }

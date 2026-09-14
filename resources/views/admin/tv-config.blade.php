@@ -1,1252 +1,462 @@
 @extends('layouts.admin')
 
-@section('title', 'Configuración TV')
-
-@section('styles')
-    <style>
-        :root {
-            --hospital-blue: #064b9e;
-            --hospital-blue-hover: #053d7a;
-            --hospital-blue-light: #e6f0ff;
-        }
-
-        .bg-hospital-blue {
-            background-color: var(--hospital-blue);
-        }
-
-        .text-hospital-blue {
-            color: var(--hospital-blue);
-        }
-
-        .border-hospital-blue {
-            border-color: var(--hospital-blue);
-        }
-
-        .hover\:bg-hospital-blue-hover:hover {
-            background-color: var(--hospital-blue-hover);
-        }
-
-        .bg-hospital-blue-light {
-            background-color: var(--hospital-blue-light);
-        }
-
-        /* Animaciones suaves */
-        .transition-all {
-            transition: all 0.3s ease;
-        }
-
-        /* Mejora del scroll en la sidebar */
-        .sidebar-nav::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .sidebar-nav::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-        }
-
-        .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.5);
-        }
-
-        .modal-overlay {
-            background-color: rgba(100, 116, 139, 0.25) !important;
-            backdrop-filter: blur(2px) !important;
-            -webkit-backdrop-filter: blur(2px) !important;
-        }
-
-        /* Responsive sidebar */
-        @media (max-width: 768px) {
-            .sidebar-mobile {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease-in-out;
-            }
-
-            .sidebar-mobile.open {
-                transform: translateX(0);
-            }
-        }
-
-        /* Estilos adicionales para la sidebar */
-        .sidebar-item {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .sidebar-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            transition: left 0.5s;
-        }
-
-        .sidebar-item:hover::before {
-            left: 100%;
-        }
-
-        /* Animación suave para el indicador activo */
-        .active-indicator {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        /* Estilos para tabs */
-        .tab-content {
-            display: block;
-        }
-
-        .tab-content.hidden {
-            display: none;
-        }
-
-        /* Estilos para multimedia */
-        .file-preview {
-            max-width: 100px;
-            max-height: 100px;
-            object-fit: cover;
-        }
-
-        .video-preview {
-            max-width: 100px;
-            max-height: 100px;
-        }
-
-        .sortable-item {
-            cursor: move;
-            transition: all 0.2s ease;
-        }
-
-        .sortable-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .sortable-item[draggable="true"]:hover .drag-handle {
-            color: var(--hospital-blue);
-        }
-
-        .sortable-item.dragging {
-            opacity: 0.5;
-            transform: rotate(5deg);
-        }
-
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
-@endsection
+@section('title', 'Config TV')
 
 @section('content')
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
-                    <!-- Header -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Pantallas</p>
-                            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Configuración del TV</h1>
-                        </div>
-                        <a href="{{ route('tv.display') }}" target="_blank" class="bg-hospital-blue text-white px-4 py-2 rounded-lg cursor-pointer w-full sm:w-auto flex items-center justify-center focus:outline-none">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                            </svg>
-                            Ver TV
-                        </a>
-                    </div>
+{{-- Config TV en una sola vista: a la izquierda la cinta de avisos (con vista previa), a la derecha la lista de
+     reproducción. Todo se guarda por fetch, sin recargar; los errores se ven junto a lo que falló. --}}
+<div class="tv-vista max-w-7xl mx-auto space-y-4"
+     x-data="configTv(@js(['ticker_message' => $tvConfig->ticker_message, 'ticker_speed' => (int) $tvConfig->ticker_speed, 'ticker_enabled' => (bool) $tvConfig->ticker_enabled]), @js($multimedia))">
+    <h1 class="sr-only">Configuración del TV</h1>
+    <div class="aviso-flotante" :class="{ 'aviso-flotante--error': aviso && aviso.error }" role="status" x-show="aviso" x-transition.opacity x-cloak>
+        <span x-text="aviso && aviso.texto"></span>
+    </div>
 
-                    <!-- Tabs Navigation -->
-                    <div class="border-b border-gray-200 mb-6">
-                        <nav class="-mb-px flex space-x-8">
-                            <button onclick="showTab('ticker')" id="ticker-tab" class="tab-button border-b-2 border-hospital-blue text-hospital-blue py-2 px-1 text-sm font-medium">
-                                Mensaje Ticker
-                            </button>
-                            <button onclick="showTab('multimedia')" id="multimedia-tab" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-2 px-1 text-sm font-medium">
-                                Multimedia
-                            </button>
-                        </nav>
-                    </div>
-
-                    <!-- Tab Content: Ticker -->
-                    <div id="ticker-content" class="tab-content">
-                        <!-- Formulario de configuración del ticker -->
-                        <form id="tvConfigForm" method="POST" action="{{ route('admin.tv-config.update') }}" class="space-y-6">
-                        @csrf
-                        
-                        <!-- Mensaje del ticker -->
-                        <div>
-                            <label for="ticker_message" class="block text-sm font-medium text-gray-700 mb-2">
-                                Mensaje del Ticker
-                            </label>
-                            <textarea 
-                                id="ticker_message" 
-                                name="ticker_message" 
-                                rows="4" 
-                                class="form-input w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-hospital-blue"
-                                placeholder="Ingrese el mensaje que aparecerá en el ticker del TV..."
-                                required
-                            >{{ old('ticker_message', $tvConfig->ticker_message) }}</textarea>
-                            <p class="mt-1 text-sm text-gray-500">Este mensaje se mostrará corriendo de derecha a izquierda en la parte inferior del TV.</p>
-                        </div>
-
-                        <!-- Velocidad del ticker -->
-                        <div>
-                            <label for="ticker_speed" class="block text-sm font-medium text-gray-700 mb-2">
-                                Velocidad del Ticker (segundos)
-                            </label>
-                            <div class="flex items-center space-x-4">
-                                <input 
-                                    type="range" 
-                                    id="ticker_speed" 
-                                    name="ticker_speed" 
-                                    min="10" 
-                                    max="120" 
-                                    value="{{ old('ticker_speed', $tvConfig->ticker_speed) }}"
-                                    class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                    oninput="updateSpeedValue(this.value)"
-                                >
-                                <span id="speed_value" class="text-sm font-medium text-gray-700 min-w-[60px]">{{ $tvConfig->ticker_speed }}s</span>
-                            </div>
-                            <p class="mt-1 text-sm text-gray-500">Controla qué tan rápido se mueve el mensaje. Menor valor = más rápido.</p>
-                        </div>
-
-                        <!-- Estado del ticker -->
-                        <div>
-                            <label class="flex items-center">
-                                <input 
-                                    type="checkbox" 
-                                    name="ticker_enabled" 
-                                    value="1"
-                                    {{ old('ticker_enabled', $tvConfig->ticker_enabled) ? 'checked' : '' }}
-                                    class="rounded border-gray-300 text-hospital-blue shadow-sm focus:border-hospital-blue focus:ring focus:ring-hospital-blue focus:ring-opacity-50"
-                                >
-                                <span class="ml-2 text-sm font-medium text-gray-700">Activar ticker</span>
-                            </label>
-                            <p class="mt-1 text-sm text-gray-500">Desmarque para ocultar completamente el ticker del TV.</p>
-                        </div>
-
-                        <!-- Botones -->
-                        <div class="flex justify-end space-x-3 pt-4 border-t">
-                            <button
-                                type="button"
-                                onclick="resetForm()"
-                                class="px-4 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 focus:outline-none"
-                            >
-                                Restablecer
-                            </button>
-                            <button
-                                type="submit"
-                                id="submitBtn"
-                                class="bg-hospital-blue text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
-                            >
-                                <span id="submitText">Guardar Configuración</span>
-                                <span id="loadingText" class="hidden">Guardando...</span>
-                            </button>
-                        </div>
-                        </form>
-                    </div>
-
-                    <!-- Tab Content: Multimedia -->
-                    <div id="multimedia-content" class="tab-content hidden">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-lg font-semibold text-gray-800">Gestión de Multimedia</h2>
-                            @if($multimedia->count() > 0)
-                            <button onclick="showUploadModal()" class="bg-hospital-blue text-white px-4 py-2 rounded-lg cursor-pointer flex items-center focus:outline-none">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Subir Archivo
-                            </button>
-                            @endif
-                        </div>
-
-                        <!-- Lista de multimedia -->
-                        <div id="multimediaList" class="space-y-4">
-                            @forelse($multimedia as $item)
-                                <div class="sortable-item bg-gray-50 border border-gray-200 rounded-lg p-4 transition-all duration-200" data-id="{{ $item->id }}" data-order="{{ $item->orden }}" draggable="true">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-4">
-                                            <!-- Drag handle -->
-                                            <div class="drag-handle cursor-move text-gray-400 hover:text-gray-600">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
-                                                </svg>
-                                            </div>
-
-                                            <!-- Preview -->
-                                            <div class="flex-shrink-0">
-                                                @if($item->tipo === 'imagen')
-                                                    <img src="{{ $item->url }}" alt="{{ $item->nombre }}" class="file-preview rounded border">
-                                                @else
-                                                    <video class="video-preview rounded border" muted>
-                                                        <source src="{{ $item->url }}" type="video/{{ $item->extension }}">
-                                                    </video>
-                                                @endif
-                                            </div>
-
-                                            <!-- Info -->
-                                            <div class="flex-1">
-                                                <h3 class="font-medium text-gray-900">{{ $item->nombre }}</h3>
-                                                <p class="text-sm text-gray-500">
-                                                    {{ ucfirst($item->tipo) }} • {{ $item->extension }} • {{ $item->tamaño_formateado }}
-                                                    @if($item->tipo === 'imagen')
-                                                        • {{ $item->duracion }}s
-                                                    @endif
-                                                </p>
-                                                <p class="text-xs text-gray-400">Orden: {{ $item->orden }}</p>
-                                            </div>
-                                        </div>
-
-                                        <!-- Actions -->
-                                        <div class="flex items-center space-x-2">
-                                            <!-- Toggle activo -->
-                                            <button onclick="toggleActive({{ $item->id }})"
-                                                    class="px-3 py-1 rounded text-xs font-medium {{ $item->activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }} focus:outline-none">
-                                                {{ $item->activo ? 'Activo' : 'Inactivo' }}
-                                            </button>
-
-                                            <!-- Eliminar -->
-                                            <button onclick="confirmDelete({{ $item->id }}, '{{ addslashes($item->nombre) }}')"
-                                                    class="px-3 py-1 bg-red-100 text-red-800 rounded text-xs font-medium focus:outline-none">
-                                                Eliminar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="text-center py-12">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V1a1 1 0 011-1h2a1 1 0 011 1v18a1 1 0 01-1 1H4a1 1 0 01-1-1V1a1 1 0 011-1h2a1 1 0 011 1v3m0 0h8m-8 0V1"></path>
-                                    </svg>
-                                    <h3 class="mt-2 text-sm font-medium text-gray-900">No hay archivos multimedia</h3>
-                                    <p class="mt-1 text-sm text-gray-500">Comience subiendo imágenes o videos para mostrar en el TV.</p>
-                                    <div class="mt-6">
-                                        <button onclick="showUploadModal()" class="bg-hospital-blue text-white px-4 py-2 rounded-lg cursor-pointer flex items-center mx-auto focus:outline-none">
-                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                            </svg>
-                                            Subir Archivo
-                                        </button>
-                                    </div>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-@endsection
-
-@section('scripts')
-    <!-- Modal de éxito -->
-    <div id="successModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="p-6">
-                <div class="mb-4">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-green-100 rounded-full">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                    <h3 class="mt-3 text-lg font-medium text-center text-gray-900">Configuración Guardada</h3>
-                    <p class="mt-2 text-sm text-center text-gray-500">
-                        La configuración del TV se ha actualizado correctamente.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-center">
-                    <button onclick="closeSuccessModal()" class="bg-hospital-blue text-white px-4 py-2 rounded-lg cursor-pointer focus:outline-none">
-                        Aceptar
+    <!-- Confirmar eliminación de un archivo -->
+    <div class="envoltorio-modal" @keydown.escape.window="porEliminar = null">
+        <div class="modal-panel" x-show="porEliminar" x-cloak x-transition.opacity @click.self="porEliminar = null">
+            <div class="modal-panel__caja modal-panel__caja--angosta" role="dialog" aria-modal="true" aria-labelledby="t-eliminar-medio">
+                <div class="modal-panel__cabeza">
+                    <h2 id="t-eliminar-medio">Eliminar archivo</h2>
+                    <button type="button" class="accion-icono" aria-label="Cerrar" @click="porEliminar = null">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
+                </div>
+                <div class="form-panel">
+                    <p class="form-texto">Se quita del TV y se borra del servidor <b x-text="porEliminar && porEliminar.nombre"></b>. No se puede deshacer.
+                        <span x-show="porEliminar && porEliminar.activo" class="texto-mudo"> Si solo quieres sacarlo un tiempo, apaga «En pantalla».</span></p>
+                    <div class="modal-panel__pie">
+                        <button type="button" class="btn-secundario" @click="porEliminar = null">Cancelar</button>
+                        <button type="button" class="btn-peligro" :disabled="eliminando" @click="eliminar()" x-text="eliminando ? 'Eliminando…' : 'Eliminar'"></button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // Variable global para almacenar el ID del elemento a eliminar
-        let deleteItemId = null;
+    <div class="tv-rejilla">
+        <!-- Cinta de avisos -->
+        <section class="superficie bloque-tv" aria-labelledby="t-cinta">
+            <header class="bloque-tv__cabeza">
+                <h2 id="t-cinta">Cinta de avisos</h2>
+                <label class="interruptor">
+                    <input type="checkbox" role="switch" x-model="cinta.ticker_enabled" :aria-checked="cinta.ticker_enabled.toString()">
+                    <span class="interruptor__pista" aria-hidden="true"></span>
+                    <span x-text="cinta.ticker_enabled ? 'Al aire' : 'Apagada'"></span>
+                </label>
+            </header>
 
-        // Actualizar valor de velocidad en tiempo real
-        function updateSpeedValue(value) {
-            document.getElementById('speed_value').textContent = value + 's';
-        }
+            <!-- Vista previa con el mismo azul y el mismo movimiento del TV -->
+            <div class="cinta-previa" :class="{ 'cinta-previa--apagada': !cinta.ticker_enabled }" aria-hidden="true">
+                <template x-for="v in [vueltaPrevia]" :key="v">
+                    <div class="cinta-previa__contenido" :style="'animation-duration:' + cinta.ticker_speed + 's; animation-delay:-' + (cinta.ticker_speed * .2) + 's'">
+                        <span class="cinta-previa__texto" x-text="cinta.ticker_message || 'Escribe el mensaje de la cinta…'"></span>
+                    </div>
+                </template>
+            </div>
+            <p class="form-ayuda" x-show="!cinta.ticker_enabled">La cinta está apagada: el TV no la muestra.</p>
 
-        // Restablecer formulario
-        function resetForm() {
-            document.getElementById('tvConfigForm').reset();
-            updateSpeedValue({{ $tvConfig->ticker_speed }});
-        }
+            <label class="form-campo">Mensaje
+                <textarea class="campo campo--area campo-cinta" rows="4" maxlength="1000" x-model="cinta.ticker_message"></textarea>
+                <span class="contador" :class="{ 'contador--limite': cinta.ticker_message.length > 950 }" x-text="cinta.ticker_message.length + ' / 1000'"></span>
+                <small x-show="errores.ticker_message" x-text="errores.ticker_message"></small>
+            </label>
 
-        // Mostrar modal de éxito
-        function showSuccessModal() {
-            document.getElementById('successModal').style.display = 'flex';
-        }
+            <div class="form-campo">
+                <span class="fila-rotulo"><span>Duración de una vuelta</span> <b x-text="cinta.ticker_speed + ' s'"></b></span>
+                <input type="range" class="rango" min="10" max="120" step="5" x-model.number="cinta.ticker_speed" @change="vueltaPrevia++" aria-label="Duración de una vuelta en segundos">
+                <span class="rango-extremos"><span>Rápida</span><span>Lenta</span></span>
+                <span class="form-ayuda">Tiempo que tarda el mensaje en cruzar la pantalla. Con mensajes largos, súbela para que se alcance a leer.</span>
+                <small x-show="errores.ticker_speed" x-text="errores.ticker_speed"></small>
+            </div>
 
-        // Cerrar modal de éxito
-        function closeSuccessModal() {
-            document.getElementById('successModal').style.display = 'none';
-        }
+            <div class="bloque-tv__pie">
+                <a class="enlace-panel" href="{{ route('tv.display') }}" target="_blank" rel="noopener">Ver el TV ↗</a>
+                <span class="espaciador"></span>
+                <button type="button" class="btn-secundario" :disabled="!cintaCambiada() || guardandoCinta" @click="descartarCinta()">Descartar cambios</button>
+                <button type="button" class="btn-primario" :disabled="!cintaCambiada() || guardandoCinta" @click="guardarCinta()" x-text="guardandoCinta ? 'Guardando…' : 'Guardar'"></button>
+            </div>
+            <p class="estado-guardado" :class="{ 'estado-guardado--error': estadoCinta && estadoCinta.error }" role="status" x-show="estadoCinta" x-cloak x-text="estadoCinta && estadoCinta.texto"></p>
+        </section>
 
-        // Función para mostrar pestañas
-        function showTab(tabName) {
-            // Ocultar todos los contenidos de pestañas
-            const tabContents = document.querySelectorAll('.tab-content');
-            tabContents.forEach(content => {
-                content.classList.add('hidden');
-            });
+        <!-- Lista de reproducción -->
+        <section class="superficie bloque-tv" aria-labelledby="t-lista">
+            <header class="bloque-tv__cabeza">
+                <div>
+                    <h2 id="t-lista">Lista de reproducción</h2>
+                    <p class="bloque-tv__resumen" x-text="resumenLista()"></p>
+                </div>
+                <button type="button" class="btn-primario" @click="abrirSubida()" x-show="!subida.abierta">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Subir archivo
+                </button>
+            </header>
 
-            // Remover clases activas de todos los botones de pestañas
-            const tabButtons = document.querySelectorAll('.tab-button');
-            tabButtons.forEach(button => {
-                button.classList.remove('border-hospital-blue', 'text-hospital-blue');
-                button.classList.add('border-transparent', 'text-gray-500');
-            });
+            <!-- Subida: en la misma página, con los errores a la vista -->
+            <form class="subida" x-show="subida.abierta" x-cloak @submit.prevent="subir()" novalidate>
+                <label class="subida__zona" :class="{ 'subida__zona--encima': subida.encima, 'subida__zona--lista': subida.archivo }"
+                       @dragover.prevent="subida.encima = true" @dragleave="subida.encima = false" @drop.prevent="subida.encima = false; elegirArchivo($event.dataTransfer.files[0])">
+                    <input type="file" class="sr-only" x-ref="archivo" accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.webm" @change="elegirArchivo($event.target.files[0])">
+                    <template x-if="!subida.archivo">
+                        <span class="subida__invitacion">Arrastra aquí una imagen o un video, o <b>elige un archivo</b>.<br>
+                            <span class="texto-mudo">JPG, PNG, GIF o WEBP · MP4 o WEBM · hasta 500 MB</span></span>
+                    </template>
+                    <template x-if="subida.archivo">
+                        <span class="subida__elegido">
+                            <img x-show="subida.tipo === 'imagen'" :src="subida.vista" alt="">
+                            <span class="subida__icono-video" x-show="subida.tipo === 'video'" aria-hidden="true">▶</span>
+                            <span><b x-text="subida.archivo.name"></b><br><span class="texto-mudo" x-text="(subida.tipo === 'video' ? 'Video' : 'Imagen') + ' · ' + tamano(subida.archivo.size) + (subida.tipo === 'video' && subida.duracion ? ' · ' + duracion(subida.duracion) : '')"></span></span>
+                        </span>
+                    </template>
+                </label>
+                <small class="form-error" role="alert" x-show="subida.errores.archivo" x-text="subida.errores.archivo"></small>
+                <div class="form-panel__fila subida__campos">
+                    <label class="form-campo">Nombre
+                        <input type="text" class="campo" x-model="subida.nombre" maxlength="255">
+                        <small x-show="subida.errores.nombre" x-text="subida.errores.nombre"></small>
+                    </label>
+                    <label class="form-campo" x-show="subida.tipo !== 'video'">Segundos en pantalla
+                        <input type="number" class="campo" min="1" max="300" x-model.number="subida.duracion">
+                        <small x-show="subida.errores.duracion" x-text="subida.errores.duracion"></small>
+                    </label>
+                    <div class="form-campo" x-show="subida.tipo === 'video'">Duración
+                        <span class="dato-fijo" x-text="subida.duracion ? duracion(subida.duracion) + ' (la del video)' : 'Leyendo el video…'"></span>
+                    </div>
+                </div>
+                <div class="progreso" x-show="subida.enviando" role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="subida.progreso">
+                    <span class="progreso__barra" :style="'width:' + subida.progreso + '%'"></span>
+                </div>
+                <p class="form-ayuda" x-show="subida.enviando" x-text="subida.progreso < 100 ? 'Subiendo… ' + subida.progreso + ' %' : 'Guardando en el servidor…'"></p>
+                <p class="form-error" role="alert" x-show="subida.errores.general" x-text="subida.errores.general"></p>
+                <div class="modal-panel__pie">
+                    <button type="button" class="btn-secundario" @click="cerrarSubida()" x-text="subida.enviando ? 'Cancelar subida' : 'Cancelar'"></button>
+                    <button type="submit" class="btn-primario" :disabled="!subidaLista() || subida.enviando">Subir</button>
+                </div>
+            </form>
 
-            // Mostrar el contenido de la pestaña seleccionada
-            const selectedContent = document.getElementById(tabName + '-content');
-            if (selectedContent) {
-                selectedContent.classList.remove('hidden');
-            }
+            <p class="vacio-lista" x-show="!lista.length" x-cloak>La lista está vacía: el TV muestra el logo del hospital.</p>
+            <ol class="lista-medios" @dragover.prevent>
+                <template x-for="(m, i) in lista" :key="m.id">
+                    <li class="medio" :class="{ 'medio--pausado': !m.activo, 'medio--nuevo': m.id === resaltado, 'medio--antes': destino === i && arrastrado !== null && arrastrado > i, 'medio--despues': destino === i && arrastrado !== null && arrastrado < i }"
+                        draggable="true" @dragstart="arrastrado = i; $event.dataTransfer.effectAllowed = 'move'" @dragend="arrastrado = null; destino = null"
+                        @dragover.prevent="destino = i" @drop.prevent="soltar(i)">
+                        <span class="medio__asa" title="Arrastra para cambiar el orden" aria-hidden="true">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                        </span>
+                        <span class="medio__orden" x-text="i + 1"></span>
+                        <span class="medio__miniatura" :class="'medio__miniatura--' + m.tipo">
+                            <template x-if="m.tipo === 'imagen'"><img :src="m.url" alt="" loading="lazy" x-on:error="$el.remove()"></template>
+                            <span class="medio__play" x-show="m.tipo === 'video'" aria-hidden="true">▶</span>
+                        </span>
+                        <div class="medio__info">
+                            <p class="medio__nombre" x-text="m.nombre"></p>
+                            <p class="medio__meta" x-text="meta(m)"></p>
+                            <p class="medio__aviso" x-show="m.formato !== 'ok'" x-text="m.formato === 'no'
+                                ? 'El TV no puede reproducir ' + m.extension.toUpperCase() + ': lo salta. Súbelo en MP4.'
+                                : 'MOV solo se reproduce si viene en H.264; mejor súbelo en MP4.'"></p>
+                        </div>
+                        <label class="interruptor interruptor--fila" :title="m.activo ? 'Se muestra en el TV' : 'Pausado: no se muestra'">
+                            <input type="checkbox" role="switch" :checked="m.activo" :aria-checked="m.activo.toString()" :aria-label="'Mostrar ' + m.nombre + ' en el TV'" @change="alternar(m)">
+                            <span class="interruptor__pista" aria-hidden="true"></span>
+                            <span class="interruptor__texto" x-text="m.activo ? 'En pantalla' : 'Pausado'"></span>
+                        </label>
+                        <div class="medio__acciones">
+                            <button type="button" class="accion-icono" :disabled="i === 0" :aria-label="'Subir ' + m.nombre" title="Subir" @click="mover(i, -1)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                            </button>
+                            <button type="button" class="accion-icono" :disabled="i === lista.length - 1" :aria-label="'Bajar ' + m.nombre" title="Bajar" @click="mover(i, 1)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <button type="button" class="accion-icono accion-icono--peligro" :aria-label="'Eliminar ' + m.nombre" title="Eliminar" @click="porEliminar = m">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </li>
+                </template>
+            </ol>
+            <p class="estado-orden" role="status" x-text="estadoOrden"></p>
+        </section>
+    </div>
+</div>
 
-            // Activar el botón de la pestaña seleccionada
-            const selectedButton = document.getElementById(tabName + '-tab');
-            if (selectedButton) {
-                selectedButton.classList.remove('border-transparent', 'text-gray-500');
-                selectedButton.classList.add('border-hospital-blue', 'text-hospital-blue');
-            }
-        }
+<script>
+document.addEventListener('alpine:init', () => {
+    const URL_CINTA = @json(route('admin.tv-config.update'));
+    const URL_SUBIR = @json(route('admin.tv-config.multimedia.store'));
+    const URL_ORDEN = @json(route('admin.tv-config.multimedia.order'));
+    const URL_MEDIO = @json(url('tv-config/multimedia'));
+    const TOKEN = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const CABECERAS = () => ({ 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' });
+    const decimal = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 });
+    const IMAGENES = ['jpg', 'jpeg', 'png', 'gif', 'webp'], VIDEOS = ['mp4', 'webm'];
+    const primerError = datos => { const e = datos && datos.errors ? Object.values(datos.errors)[0] : null; return e ? (Array.isArray(e) ? e[0] : e) : null; };
+    const mensajeDe = (estado, datos, porDefecto) => estado === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.'
+        : estado === 413 ? 'El archivo es demasiado grande para el servidor.' : (primerError(datos) || (datos && datos.message) || porDefecto);
+    const subidaVacia = () => ({ abierta: false, archivo: null, tipo: null, vista: null, nombre: '', duracion: 10, enviando: false, progreso: 0, encima: false, errores: {}, xhr: null });
 
-        // Función para mostrar modal de subida de archivos
-        function showUploadModal() {
-            const modal = document.getElementById('uploadModal');
-            if (modal) modal.style.display = 'flex';
-        }
+    Alpine.data('configTv', (config, multimedia) => ({
+        cinta: { ...config },
+        guardada: { ...config },
+        guardandoCinta: false, estadoCinta: null, errores: {}, vueltaPrevia: 0,
+        lista: multimedia,
+        subida: subidaVacia(),
+        porEliminar: null, eliminando: false,
+        arrastrado: null, destino: null, resaltado: null, estadoOrden: '',
+        aviso: null,
 
-        // Cerrar modal de subida
-        function closeUploadModal() {
-            const modal = document.getElementById('uploadModal');
-            const form = document.getElementById('uploadForm');
-            if (modal) modal.style.display = 'none';
-            if (form) form.reset();
-            hideUploadProgress();
-            hideFilePreview();
-        }
+        avisar(texto, error = false) { this.aviso = { texto, error }; clearTimeout(this._aviso); this._aviso = setTimeout(() => this.aviso = null, error ? 6000 : 3500); },
+        duracion(seg) {
+            seg = Math.round(seg || 0);
+            if (seg < 60) return seg + ' s';
+            const m = Math.floor(seg / 60), s = seg % 60;
+            return m + ' min' + (s ? ' ' + s + ' s' : '');
+        },
+        tamano(b) {
+            if (!b) return '—';
+            const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+            return decimal.format(b) + ' ' + u[i];
+        },
+        meta(m) { return (m.tipo === 'video' ? 'Video' : 'Imagen') + ' · ' + this.duracion(m.duracion) + ' · ' + this.tamano(m.tamano) + (m.activo ? '' : ' · no se muestra'); },
+        resumenLista() {
+            const al = this.lista.filter(m => m.activo && m.formato !== 'no');
+            if (!this.lista.length) return 'Sin archivos';
+            if (!al.length) return 'Nada en pantalla: el TV muestra el logo del hospital';
+            return al.length + ' en pantalla · la ronda completa dura ' + this.duracion(al.reduce((s, m) => s + (m.duracion || 0), 0));
+        },
 
-        // Subir archivo
-        function uploadFile() {
-            const form = document.getElementById('uploadForm');
+        // ---- cinta
+        cintaCambiada() { return JSON.stringify(this.cinta) !== JSON.stringify(this.guardada); },
+        descartarCinta() { this.cinta = { ...this.guardada }; this.errores = {}; this.estadoCinta = null; this.vueltaPrevia++; },
+        guardarCinta() {
+            this.guardandoCinta = true; this.errores = {}; this.estadoCinta = null;
+            const cuerpo = new FormData();
+            cuerpo.append('ticker_message', this.cinta.ticker_message);
+            cuerpo.append('ticker_speed', this.cinta.ticker_speed);
+            if (this.cinta.ticker_enabled) cuerpo.append('ticker_enabled', '1');
+            fetch(URL_CINTA, { method: 'POST', body: cuerpo, headers: CABECERAS() })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) {
+                        this.guardada = { ...this.cinta };
+                        this.estadoCinta = { texto: 'Guardado. El TV lo mostrará en menos de un minuto.' };
+                        return;
+                    }
+                    const e = datos.errors || {};
+                    this.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+                    if (!Object.keys(this.errores).length) this.estadoCinta = { texto: mensajeDe(estado, datos, 'No se pudo guardar la cinta.'), error: true };
+                })
+                .catch(() => { this.estadoCinta = { texto: 'No hay conexión con el servidor. Inténtalo de nuevo.', error: true }; })
+                .finally(() => { this.guardandoCinta = false; });
+        },
 
-            // Validar que todos los campos estén llenos antes de enviar
-            const archivo = document.getElementById('archivo').files[0];
-            const nombre = document.getElementById('nombre').value.trim();
-            const duracion = document.getElementById('duracion').value;
+        // ---- lista: encender/apagar, ordenar y eliminar sin recargar
+        alternar(m) {
+            m.activo = !m.activo;
+            fetch(URL_MEDIO + '/' + m.id + '/toggle', { method: 'POST', headers: CABECERAS() })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (!ok || datos.success === false) throw new Error(mensajeDe(estado, datos, 'No se pudo cambiar el estado.'));
+                    m.activo = !!datos.activo;
+                    this.avisar(m.nombre + (m.activo ? ' vuelve al TV.' : ' queda pausado.'));
+                })
+                .catch(e => { m.activo = !m.activo; this.avisar(e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message, true); });
+        },
+        mover(i, delta) {
+            const j = i + delta;
+            if (j < 0 || j >= this.lista.length) return;
+            const l = this.lista.slice(); [l[i], l[j]] = [l[j], l[i]]; this.lista = l;
+            this.guardarOrden();
+        },
+        soltar(i) {
+            if (this.arrastrado === null || this.arrastrado === i) { this.arrastrado = this.destino = null; return; }
+            const l = this.lista.slice(); const [m] = l.splice(this.arrastrado, 1); l.splice(i, 0, m); this.lista = l;
+            this.arrastrado = this.destino = null;
+            this.guardarOrden();
+        },
+        // Se guarda solo, un momento después del último cambio; el estado se ve bajo la lista.
+        guardarOrden() {
+            this.estadoOrden = 'Guardando el orden…';
+            clearTimeout(this._orden);
+            this._orden = setTimeout(() => {
+                fetch(URL_ORDEN, { method: 'POST', headers: { ...CABECERAS(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: this.lista.map((m, k) => ({ id: m.id, orden: k + 1 })) }) })
+                    .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                    .then(({ ok, estado, datos }) => {
+                        if (!ok || datos.success === false) throw new Error(mensajeDe(estado, datos, 'No se pudo guardar el orden.'));
+                        this.lista.forEach((m, k) => m.orden = k + 1);
+                        this.estadoOrden = 'Orden guardado.';
+                    })
+                    .catch(e => { this.estadoOrden = ''; this.avisar((e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message) + ' Recarga para ver el orden real.', true); });
+            }, 500);
+        },
+        eliminar() {
+            const m = this.porEliminar; if (!m) return;
+            this.eliminando = true;
+            fetch(URL_MEDIO + '/' + m.id, { method: 'DELETE', headers: CABECERAS() })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (!ok || datos.success === false) throw new Error(mensajeDe(estado, datos, 'No se pudo eliminar el archivo.'));
+                    this.lista = this.lista.filter(x => x.id !== m.id);
+                    this.porEliminar = null;
+                    this.avisar('Archivo eliminado.');
+                })
+                .catch(e => { this.avisar(e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message, true); })
+                .finally(() => { this.eliminando = false; });
+        },
 
-            if (!archivo) {
-                showUploadErrorModal('Por favor seleccione un archivo');
+        // ---- subida
+        abrirSubida() { this.subida = { ...subidaVacia(), abierta: true }; },
+        cerrarSubida() {
+            if (this.subida.xhr) this.subida.xhr.abort();
+            if (this.subida.vista) URL.revokeObjectURL(this.subida.vista);
+            this.subida = subidaVacia();
+        },
+        elegirArchivo(archivo) {
+            if (!archivo) return;
+            const ext = (archivo.name.split('.').pop() || '').toLowerCase();
+            const s = this.subida;
+            if (s.vista) URL.revokeObjectURL(s.vista);
+            Object.assign(s, { archivo: null, tipo: null, vista: null, errores: {} });
+            if (!IMAGENES.includes(ext) && !VIDEOS.includes(ext)) {
+                s.errores = { archivo: ext === 'avi' || ext === 'mov'
+                    ? 'El TV no reproduce ' + ext.toUpperCase() + ' de forma fiable. Conviértelo a MP4 y vuelve a intentarlo.'
+                    : 'Formato no admitido. Usa JPG, PNG, GIF o WEBP para imágenes y MP4 o WEBM para videos.' };
                 return;
             }
-
-            if (!nombre) {
-                showUploadErrorModal('Por favor ingrese un nombre para el archivo');
-                return;
-            }
-
-            if (!duracion || duracion < 1 || duracion > 300) {
-                showUploadErrorModal('La duración debe estar entre 1 y 300 segundos');
-                return;
-            }
-
-            // Verificar tamaño del archivo (500MB = 524288000 bytes)
-            const maxSize = 524288000; // 500MB en bytes
-            if (archivo.size > maxSize) {
-                const sizeMB = (archivo.size / 1024 / 1024).toFixed(2);
-                showUploadErrorModal(`El archivo es demasiado grande (${sizeMB}MB). El tamaño máximo permitido es 500MB.`);
-                return;
-            }
-
-            const formData = new FormData(form);
-
-            showUploadProgress();
-
-            // Usar XMLHttpRequest para tener progreso real
+            if (archivo.size > 500 * 1024 * 1024) { s.errores = { archivo: 'El archivo pesa ' + this.tamano(archivo.size) + '; el máximo es 500 MB.' }; return; }
+            s.archivo = archivo;
+            s.tipo = IMAGENES.includes(ext) ? 'imagen' : 'video';
+            s.vista = URL.createObjectURL(archivo);
+            if (!s.nombre) s.nombre = archivo.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+            if (s.tipo === 'imagen') { s.duracion = s.duracion && s.duracion <= 300 ? s.duracion : 10; return; }
+            // Video: se lee su duración real; si este navegador no lo puede abrir, el TV (también Chrome) tampoco.
+            s.duracion = null;
+            const v = document.createElement('video');
+            v.preload = 'metadata';
+            v.onloadedmetadata = () => { s.duracion = Math.max(1, Math.round(v.duration)); };
+            v.onerror = () => { s.archivo = null; s.errores = { archivo: 'Este video no se puede reproducir en el navegador, así que el TV tampoco podrá. Conviértelo a MP4 (H.264).' }; };
+            v.src = s.vista;
+        },
+        subidaLista() { const s = this.subida; return s.archivo && s.nombre.trim() && s.duracion >= 1 && (s.tipo === 'video' || s.duracion <= 300); },
+        subir() {
+            if (!this.subidaLista()) return;
+            const s = this.subida;
+            s.enviando = true; s.progreso = 0; s.errores = {};
+            const cuerpo = new FormData();
+            cuerpo.append('archivo', s.archivo);
+            cuerpo.append('nombre', s.nombre.trim());
+            cuerpo.append('duracion', s.duracion);
             const xhr = new XMLHttpRequest();
-
-            // Configurar progreso de subida
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    updateUploadProgress(percentComplete);
-                }
-            });
-
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 413) {
-                    hideUploadProgress();
-                    showUploadErrorModal('El archivo es demasiado grande. El tamaño máximo permitido es 500MB.');
+            s.xhr = xhr;
+            xhr.upload.onprogress = e => { if (e.lengthComputable) s.progreso = Math.round(e.loaded / e.total * 100); };
+            xhr.onload = () => {
+                let datos = {}; try { datos = JSON.parse(xhr.responseText); } catch (e) {}
+                s.enviando = false; s.xhr = null;
+                if (xhr.status >= 200 && xhr.status < 300 && datos.success !== false && datos.multimedia) {
+                    this.lista = [...this.lista, datos.multimedia];
+                    this.resaltado = datos.multimedia.id; setTimeout(() => this.resaltado = null, 2500);
+                    this.cerrarSubida();
+                    this.avisar('Subido. El TV lo mostrará en su próxima ronda.');
                     return;
                 }
-
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    if (data.success) {
-                        closeUploadModal();
-                        showUploadSuccessModal();
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        hideUploadProgress();
-                        let errorMessage = data.message || 'Error al subir el archivo';
-
-                        // Si hay errores de validación específicos, mostrarlos
-                        if (data.errors) {
-                            const errorList = Object.values(data.errors).flat();
-                            errorMessage = 'Errores de validación: ' + errorList.join(', ');
-                        }
-
-                        showUploadErrorModal(errorMessage);
-                    }
-                } catch (error) {
-                    hideUploadProgress();
-                    showUploadErrorModal('Error al procesar la respuesta del servidor');
-                }
-            });
-
-            xhr.addEventListener('error', function() {
-                hideUploadProgress();
-                showUploadErrorModal('Error de conexión al subir el archivo');
-            });
-
-            xhr.addEventListener('timeout', function() {
-                hideUploadProgress();
-                showUploadErrorModal('Tiempo de espera agotado. El archivo puede ser demasiado grande.');
-            });
-
-            // Configurar y enviar la petición
-            xhr.open('POST', '/tv-config/multimedia');
-            xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-            xhr.timeout = 600000; // 10 minutos de timeout
-            xhr.send(formData);
-        }
-
-        // Mostrar progreso de subida
-        function showUploadProgress() {
-            const progress = document.getElementById('uploadProgress');
-            const btn = document.getElementById('uploadBtn');
-            const btnText = document.getElementById('uploadBtnText');
-            const btnLoading = document.getElementById('uploadBtnLoading');
-
-            if (progress) progress.style.display = 'block';
-            if (btn) btn.disabled = true;
-            if (btnText) btnText.style.display = 'none';
-            if (btnLoading) btnLoading.style.display = 'inline';
-
-            // Resetear progreso
-            updateUploadProgress(0);
-        }
-
-        // Actualizar progreso de subida
-        function updateUploadProgress(percent) {
-            const progressBar = document.querySelector('#uploadProgress .bg-hospital-blue');
-            const progressText = document.getElementById('progressText');
-
-            if (progressBar) {
-                progressBar.style.width = percent + '%';
-            }
-
-            if (progressText) {
-                if (percent < 100) {
-                    progressText.textContent = `Subiendo archivo... ${Math.round(percent)}%`;
-                } else {
-                    progressText.textContent = 'Procesando archivo...';
-                }
-            }
-        }
-
-        // Ocultar progreso de subida
-        function hideUploadProgress() {
-            const progress = document.getElementById('uploadProgress');
-            const btn = document.getElementById('uploadBtn');
-            const btnText = document.getElementById('uploadBtnText');
-            const btnLoading = document.getElementById('uploadBtnLoading');
-
-            if (progress) progress.style.display = 'none';
-            if (btn) btn.disabled = false;
-            if (btnText) btnText.style.display = 'inline';
-            if (btnLoading) btnLoading.style.display = 'none';
-        }
-
-        // Mostrar modal de éxito de subida
-        function showUploadSuccessModal() {
-            const modal = document.getElementById('uploadSuccessModal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        // Cerrar modal de éxito de subida
-        function closeUploadSuccessModal() {
-            const modal = document.getElementById('uploadSuccessModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        // Mostrar modal de error de subida
-        function showUploadErrorModal(message) {
-            const messageEl = document.getElementById('uploadErrorMessage');
-            const modal = document.getElementById('uploadErrorModal');
-            if (messageEl) messageEl.textContent = message;
-            if (modal) modal.style.display = 'flex';
-        }
-
-        // Cerrar modal de error de subida
-        function closeUploadErrorModal() {
-            const modal = document.getElementById('uploadErrorModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        // Mostrar modal de error de archivo (para validaciones de selección)
-        function showFileErrorModal(message) {
-            const messageEl = document.getElementById('fileErrorMessage');
-            const modal = document.getElementById('fileErrorModal');
-            if (messageEl) messageEl.textContent = message;
-            if (modal) modal.style.display = 'flex';
-        }
-
-        // Cerrar modal de error de archivo
-        function closeFileErrorModal() {
-            const modal = document.getElementById('fileErrorModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        // Confirmar eliminación
-        function confirmDelete(id, nombre) {
-            deleteItemId = id;
-            const fileName = document.getElementById('deleteFileName');
-            const modal = document.getElementById('deleteModal');
-            if (fileName) fileName.textContent = nombre;
-            if (modal) modal.style.display = 'flex';
-        }
-
-        // Cerrar modal de eliminación
-        function closeDeleteModal() {
-            const modal = document.getElementById('deleteModal');
-            if (modal) modal.style.display = 'none';
-            deleteItemId = null;
-        }
-
-        // Eliminar archivo
-        function deleteFile() {
-            if (!deleteItemId) return;
-
-            fetch(`{{ url('/tv-config/multimedia') }}/${deleteItemId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    closeDeleteModal();
-                    showDeleteSuccessModal();
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    showDeleteErrorModal(data.message || 'Error al eliminar el archivo');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showDeleteErrorModal('Error de conexión al eliminar el archivo');
-            });
-        }
-
-        // Mostrar modal de éxito de eliminación
-        function showDeleteSuccessModal() {
-            const modal = document.getElementById('deleteSuccessModal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        // Cerrar modal de éxito de eliminación
-        function closeDeleteSuccessModal() {
-            const modal = document.getElementById('deleteSuccessModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        // Mostrar modal de error de eliminación
-        function showDeleteErrorModal(message) {
-            const messageEl = document.getElementById('deleteErrorMessage');
-            const modal = document.getElementById('deleteErrorModal');
-            if (messageEl) messageEl.textContent = message;
-            if (modal) modal.style.display = 'flex';
-        }
-
-        // Cerrar modal de error de eliminación
-        function closeDeleteErrorModal() {
-            const modal = document.getElementById('deleteErrorModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        // Manejar selección de archivo
-        function handleFileSelect(input) {
-            const file = input.files[0];
-            if (!file) {
-                hideFilePreview();
-                // Limpiar campo nombre también
-                const nombreField = document.getElementById('nombre');
-                if (nombreField) nombreField.value = '';
-                return;
-            }
-
-            const fileName = file.name;
-            const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
-            const fileExtension = fileName.split('.').pop().toLowerCase();
-
-            // Determinar si es imagen o video
-            const imageExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-            const videoExtensions = ['mp4', 'mov', 'avi'];
-
-            const isImage = imageExtensions.includes(fileExtension);
-            const isVideo = videoExtensions.includes(fileExtension);
-
-            if (!isImage && !isVideo) {
-                showFileErrorModal('Formato de archivo no válido. Use: JPG, PNG, GIF, MP4, MOV, AVI');
-                input.value = '';
-                hideFilePreview();
-                const nombreField = document.getElementById('nombre');
-                if (nombreField) nombreField.value = '';
-                return;
-            }
-
-            // Verificar tamaño del archivo (500MB = 524288000 bytes)
-            const maxSize = 524288000; // 500MB en bytes
-            if (file.size > maxSize) {
-                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                showFileErrorModal(`El archivo es demasiado grande (${sizeMB}MB). El tamaño máximo permitido es 500MB.`);
-                input.value = '';
-                hideFilePreview();
-                const nombreField = document.getElementById('nombre');
-                if (nombreField) nombreField.value = '';
-                return;
-            }
-
-            // Llenar automáticamente el campo nombre con el nombre del archivo (sin extensión)
-            const fileNameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'));
-            const nombreField = document.getElementById('nombre');
-            if (nombreField) nombreField.value = fileNameWithoutExtension;
-
-            // Mostrar preview
-            showFilePreview(file, fileName, fileSize, isImage, isVideo);
-
-            // Configurar campo de duración según el tipo
-            if (isImage) {
-                setupImageDuration();
-            } else if (isVideo) {
-                setupVideoDuration(file);
-            }
-        }
-
-        // Mostrar preview del archivo
-        function showFilePreview(file, fileName, fileSize, isImage, isVideo) {
-            const preview = document.getElementById('filePreview');
-            const container = document.getElementById('previewContainer');
-            const nameElement = document.getElementById('fileName');
-            const infoElement = document.getElementById('fileInfo');
-
-            nameElement.textContent = fileName;
-            infoElement.textContent = `${fileSize} MB • ${isImage ? 'Imagen' : 'Video'}`;
-
-            // Crear preview visual
-            container.innerHTML = '';
-
-            if (isImage) {
-                const img = document.createElement('img');
-                const objectURL = URL.createObjectURL(file);
-                img.src = objectURL;
-                img.className = 'w-12 h-12 object-cover rounded';
-                img.onload = () => {
-                    // Revocar URL después de un pequeño delay para asegurar que se cargue
-                    setTimeout(() => URL.revokeObjectURL(objectURL), 100);
-                };
-                img.onerror = () => {
-                    URL.revokeObjectURL(objectURL);
-                };
-                container.appendChild(img);
-            } else {
-                const videoIcon = document.createElement('div');
-                videoIcon.className = 'w-12 h-12 bg-blue-100 rounded flex items-center justify-center';
-                videoIcon.innerHTML = `
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                `;
-                container.appendChild(videoIcon);
-            }
-
-            preview.classList.remove('hidden');
-        }
-
-        // Ocultar preview del archivo
-        function hideFilePreview() {
-            const preview = document.getElementById('filePreview');
-            if (preview) preview.classList.add('hidden');
-            resetDurationField();
-        }
-
-        // Configurar duración para imágenes
-        function setupImageDuration() {
-            const duracionInput = document.getElementById('duracion');
-            const duracionLabel = document.getElementById('duracionLabel');
-            const duracionHelp = document.getElementById('duracionHelp');
-
-            if (duracionLabel) duracionLabel.textContent = 'Duración (segundos)';
-            if (duracionHelp) duracionHelp.textContent = 'Entre 1 y 300 segundos - Tiempo que se mostrará la imagen';
-
-            if (duracionInput) {
-                duracionInput.disabled = false;
-                duracionInput.readOnly = false;
-                duracionInput.value = 10;
-                duracionInput.min = 1;
-                duracionInput.max = 300;
-                duracionInput.className = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent';
-            }
-        }
-
-        // Configurar duración para videos
-        function setupVideoDuration(file) {
-            const duracionInput = document.getElementById('duracion');
-            const duracionLabel = document.getElementById('duracionLabel');
-            const duracionHelp = document.getElementById('duracionHelp');
-
-            if (duracionLabel) duracionLabel.textContent = 'Duración (automática)';
-            if (duracionHelp) duracionHelp.textContent = 'La duración se detectará automáticamente del video';
-
-            // Crear elemento video temporal para obtener duración
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-
-            const objectURL = URL.createObjectURL(file);
-
-            video.onloadedmetadata = function() {
-                const duration = Math.ceil(video.duration);
-                if (duracionInput) {
-                    duracionInput.value = duration;
-                    // NO deshabilitar el campo para que se envíe en el formulario
-                    duracionInput.readOnly = true;
-                    duracionInput.className = 'w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed';
-                }
-
-                if (duracionHelp) duracionHelp.textContent = `Duración detectada: ${duration} segundos`;
-
-                // Limpiar objeto URL después de un delay
-                setTimeout(() => URL.revokeObjectURL(objectURL), 100);
+                const e = datos.errors || {};
+                s.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+                if (!Object.keys(s.errores).length) s.errores = { general: mensajeDe(xhr.status, datos, 'No se pudo subir el archivo (error ' + xhr.status + ').') };
             };
+            xhr.onerror = () => { s.enviando = false; s.xhr = null; s.errores = { general: 'Se perdió la conexión durante la subida. Inténtalo de nuevo.' }; };
+            xhr.ontimeout = () => { s.enviando = false; s.xhr = null; s.errores = { general: 'La subida tardó demasiado. Prueba con un archivo más liviano.' }; };
+            xhr.open('POST', URL_SUBIR);
+            Object.entries(CABECERAS()).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+            xhr.timeout = 600000;
+            xhr.send(cuerpo);
+        },
+    }));
+});
+</script>
 
-            video.onerror = function() {
-                if (duracionHelp) duracionHelp.textContent = 'No se pudo detectar la duración. Ingrese manualmente.';
-                if (duracionInput) {
-                    duracionInput.readOnly = false;
-                    duracionInput.value = 30;
-                    duracionInput.className = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent';
-                }
-                URL.revokeObjectURL(objectURL);
-            };
+@push('estilos')
+<style>
+[x-cloak] { display: none !important; }
+.envoltorio-modal { display: contents; }
+.tv-vista { font-variant-numeric: tabular-nums; }
+.tv-rejilla { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: .75rem; align-items: start; }
+@media (max-width: 1023px) { .tv-rejilla { grid-template-columns: minmax(0, 1fr); } }
+.bloque-tv { display: flex; flex-direction: column; gap: .8rem; padding: .9rem 1.1rem 1rem; min-width: 0; }
+.bloque-tv__cabeza { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.bloque-tv__cabeza h2 { font-size: .9375rem; font-weight: 650; color: #0f2547; }
+.bloque-tv__resumen { margin-top: .1rem; font-size: .8125rem; color: #6b7280; }
+.bloque-tv__pie { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.espaciador { flex: 1; }
 
-            video.src = objectURL;
-        }
+/* Interruptor con el azul institucional */
+.interruptor { display: inline-flex; align-items: center; gap: .5rem; font-size: .8125rem; font-weight: 600; color: #374151; cursor: pointer; white-space: nowrap; }
+.interruptor input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.interruptor__pista { position: relative; width: 2.1rem; height: 1.2rem; border-radius: 9999px; background: #c9d2df; transition: background-color .15s ease; flex-shrink: 0; }
+.interruptor__pista::after { content: ''; position: absolute; top: .15rem; left: .15rem; width: .9rem; height: .9rem; border-radius: 9999px; background: #ffffff;
+                             box-shadow: 0 1px 2px rgba(16, 24, 40, .25); transition: transform .15s ease; }
+.interruptor input:checked + .interruptor__pista { background: #064b9e; }
+.interruptor input:checked + .interruptor__pista::after { transform: translateX(.9rem); }
+.interruptor input:focus-visible + .interruptor__pista { outline: 2px solid #064b9e; outline-offset: 2px; }
 
-        // Resetear campo de duración
-        function resetDurationField() {
-            const duracionInput = document.getElementById('duracion');
-            const duracionLabel = document.getElementById('duracionLabel');
-            const duracionHelp = document.getElementById('duracionHelp');
+/* Vista previa de la cinta: mismo azul, mismo movimiento que el TV */
+.cinta-previa { position: relative; overflow: hidden; white-space: nowrap; height: 2.5rem; border-radius: .5rem;
+                background: linear-gradient(135deg, #064b9e 0%, #0a5fb4 100%); display: flex; align-items: center; }
+.cinta-previa--apagada { filter: grayscale(1); opacity: .45; }
+.cinta-previa__contenido { display: inline-block; padding-left: 100%; animation: cinta-previa 35s linear infinite; }
+.cinta-previa__texto { color: #ffffff; font-weight: 600; font-size: .95rem; letter-spacing: .3px; text-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
+@keyframes cinta-previa { 0% { transform: translateX(100%); } 15% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
+@media (prefers-reduced-motion: reduce) { .cinta-previa__contenido { animation: none; padding-left: .75rem; } }
+.campo-cinta { min-height: 6rem; line-height: 1.5; }
+.contador { align-self: flex-end; font-size: .75rem; font-weight: 500; color: #6b7280; }
+.contador--limite { color: #b45309; }
+.fila-rotulo { display: flex; justify-content: space-between; }
+.fila-rotulo b { color: #064b9e; }
+.rango { width: 100%; accent-color: #064b9e; }
+.rango-extremos { display: flex; justify-content: space-between; font-size: .75rem; font-weight: 400; color: #6b7280; margin-top: -.2rem; }
+.estado-guardado { font-size: .8125rem; font-weight: 500; padding: .45rem .7rem; border-radius: .45rem; background: #e4faec; color: #005d38; }
+.estado-guardado--error { background: #ffefed; color: #901e1c; }
 
-            if (duracionLabel) duracionLabel.textContent = 'Duración (segundos)';
-            if (duracionHelp) duracionHelp.textContent = 'Entre 1 y 300 segundos';
+/* Subida */
+.subida { display: flex; flex-direction: column; gap: .7rem; padding: .9rem; border-radius: .6rem; background: #f6f8fc; }
+.subida__zona { display: flex; align-items: center; justify-content: center; min-height: 5.5rem; padding: .9rem; border: 1.5px dashed #b9c3d3; border-radius: .55rem;
+                background: #ffffff; text-align: center; font-size: .875rem; color: #374151; cursor: pointer; }
+.subida__zona:hover, .subida__zona--encima { border-color: #064b9e; background: #eef4fc; }
+.subida__zona--lista { justify-content: flex-start; text-align: left; border-style: solid; }
+.subida__zona b { color: #064b9e; }
+.subida__elegido { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+.subida__elegido img { width: 4.5rem; height: 3rem; object-fit: cover; border-radius: .35rem; background: #eef1f6; }
+.subida__icono-video { display: grid; place-items: center; width: 4.5rem; height: 3rem; border-radius: .35rem; background: #0f2547; color: #ffffff; font-size: 1rem; }
+.subida__campos { grid-template-columns: minmax(0, 1fr) 11rem; }
+.dato-fijo { display: flex; align-items: center; height: 2.5rem; font-weight: 500; color: #374151; }
+.progreso { height: .45rem; border-radius: 9999px; background: #e3e8f0; overflow: hidden; }
+.progreso__barra { display: block; height: 100%; background: #064b9e; transition: width .2s ease; }
 
-            if (duracionInput) {
-                duracionInput.disabled = false;
-                duracionInput.readOnly = false;
-                duracionInput.value = 10;
-                duracionInput.min = 1;
-                duracionInput.max = 300;
-                duracionInput.className = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent';
-            }
-        }
-
-        // Activar/desactivar archivo multimedia
-        function toggleActive(id) {
-            fetch(`{{ url('/tv-config/multimedia') }}/${id}/toggle`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Mostrar mensaje de éxito y recargar la página
-                    showSuccessModal();
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    alert('Error al cambiar el estado: ' + (data.message || 'Error desconocido'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error de conexión al cambiar el estado');
-            });
-        }
-
-        // Inicializar funcionalidad de ordenamiento
-        function initializeSortable() {
-            const list = document.getElementById('multimediaList');
-            if (!list || list.children.length === 0) return;
-
-            // Implementación simple de drag and drop
-            let draggedElement = null;
-
-            list.addEventListener('dragstart', function(e) {
-                if (e.target.classList.contains('sortable-item')) {
-                    draggedElement = e.target;
-                    e.target.classList.add('dragging');
-                }
-            });
-
-            list.addEventListener('dragend', function(e) {
-                if (e.target.classList.contains('sortable-item')) {
-                    e.target.classList.remove('dragging');
-                    draggedElement = null;
-                }
-            });
-
-            list.addEventListener('dragover', function(e) {
-                e.preventDefault();
-            });
-
-            list.addEventListener('drop', function(e) {
-                e.preventDefault();
-
-                if (!draggedElement) return;
-
-                const afterElement = getDragAfterElement(list, e.clientY);
-
-                if (afterElement == null) {
-                    list.appendChild(draggedElement);
-                } else {
-                    list.insertBefore(draggedElement, afterElement);
-                }
-
-                // Actualizar orden en el servidor
-                updateMultimediaOrder();
-            });
-        }
-
-        // Obtener elemento después del cual insertar
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.sortable-item:not(.dragging)')];
-
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        // Actualizar orden en el servidor
-        function updateMultimediaOrder() {
-            const items = document.querySelectorAll('.sortable-item');
-            const orderData = [];
-
-            items.forEach((item, index) => {
-                orderData.push({
-                    id: parseInt(item.dataset.id),
-                    orden: index + 1
-                });
-            });
-
-            fetch('{{ route('admin.tv-config.multimedia.order') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({ items: orderData })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Mostrar mensaje de éxito
-                    showSuccessModal();
-                } else {
-                    alert('Error al actualizar el orden');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error de conexión al actualizar el orden');
-            });
-        }
-
-        // Inicializar la primera pestaña como activa al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
-            showTab('ticker');
-            // Inicializar funcionalidad de ordenamiento
-            initializeSortable();
-        });
-
-        // Manejar envío del formulario
-        const tvConfigForm = document.getElementById('tvConfigForm');
-        if (tvConfigForm) {
-            tvConfigForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const submitBtn = document.getElementById('submitBtn');
-            const submitText = document.getElementById('submitText');
-            const loadingText = document.getElementById('loadingText');
-
-            // Mostrar estado de carga
-            if (submitBtn) submitBtn.disabled = true;
-            if (submitText) submitText.classList.add('hidden');
-            if (loadingText) loadingText.classList.remove('hidden');
-
-            const formData = new FormData(this);
-
-            fetch(this.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    showSuccessModal();
-                } else {
-                    alert('Error al guardar la configuración: ' + (data.message || 'Error desconocido'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error de conexión: ' + error.message);
-            })
-            .finally(() => {
-                // Restaurar estado del botón
-                if (submitBtn) submitBtn.disabled = false;
-                if (submitText) submitText.classList.remove('hidden');
-                if (loadingText) loadingText.classList.add('hidden');
-            });
-            });
-        }
-
-        // Mostrar mensaje de éxito si viene de redirección
-        @if(session('success'))
-            showSuccessModal();
-        @endif
-    </script>
-
-    <!-- Modales -->
-    <!-- Modal de subida de archivos -->
-    <div id="uploadModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="p-6">
-                <div class="mb-4">
-                    <h3 class="text-lg font-medium text-center text-gray-900">Subir Archivo Multimedia</h3>
-                    <p class="mt-2 text-sm text-center text-gray-500">
-                        Sube imágenes (JPG, PNG, GIF) o videos (MP4, MOV, AVI) para mostrar en el TV.
-                    </p>
-                </div>
-
-                <form id="uploadForm" enctype="multipart/form-data">
-                    @csrf
-                    <div class="space-y-4">
-                        <div>
-                            <label for="archivo" class="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
-                            <input type="file" id="archivo" name="archivo" accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.avi" required
-                                   onchange="handleFileSelect(this)"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                            <p class="mt-1 text-xs text-gray-500">Máximo 500MB. Formatos: JPG, PNG, GIF, MP4, MOV, AVI</p>
-
-                            <!-- Preview del archivo -->
-                            <div id="filePreview" class="mt-3 hidden">
-                                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
-                                    <div id="previewContainer" class="flex-shrink-0"></div>
-                                    <div class="flex-1">
-                                        <p id="fileName" class="text-sm font-medium text-gray-900"></p>
-                                        <p id="fileInfo" class="text-xs text-gray-500"></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                            <input type="text" id="nombre" name="nombre" required
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"
-                                   placeholder="Nombre descriptivo del archivo">
-                        </div>
-
-                        <div>
-                            <label for="duracion" class="block text-sm font-medium text-gray-700 mb-1">
-                                <span id="duracionLabel">Duración (segundos)</span>
-                            </label>
-                            <input type="number" id="duracion" name="duracion" min="1" max="300" value="10" required
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"
-                                   placeholder="Tiempo de visualización en segundos">
-                            <p id="duracionHelp" class="mt-1 text-xs text-gray-500">Entre 1 y 300 segundos</p>
-                        </div>
-                    </div>
-
-                    <!-- Barra de progreso -->
-                    <div id="uploadProgress" class="mt-4" style="display: none;">
-                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                            <div class="bg-hospital-blue h-3 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
-                        </div>
-                        <p id="progressText" class="text-sm text-gray-600 mt-2 text-center">Preparando subida...</p>
-                    </div>
-                </form>
-
-                <div class="mt-6 flex justify-center space-x-3">
-                    <button onclick="closeUploadModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">
-                        Cancelar
-                    </button>
-                    <button onclick="uploadFile()" id="uploadBtn" class="px-4 py-2 bg-hospital-blue text-white rounded-md text-sm font-medium focus:outline-none">
-                        <span id="uploadBtnText">Subir Archivo</span>
-                        <span id="uploadBtnLoading" class="hidden">Subiendo...</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de confirmación de eliminación -->
-    <div id="deleteModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="p-6">
-                <div class="mb-4">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h3 class="mt-3 text-lg font-medium text-center text-gray-900">¿Eliminar este archivo?</h3>
-                    <p class="mt-2 text-sm text-center text-gray-500">
-                        Estás a punto de eliminar el archivo <span class="font-medium" id="deleteFileName"></span>.<br>
-                        Esta acción no se puede deshacer.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-center space-x-4">
-                    <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer focus:outline-none">
-                        Cancelar
-                    </button>
-                    <button onclick="deleteFile()" class="px-4 py-2 bg-red-600 text-white rounded cursor-pointer focus:outline-none">
-                        Eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de éxito de eliminación -->
-    <div id="deleteSuccessModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="p-6">
-                <div class="mb-4">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-green-100 rounded-full">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-center text-gray-900 mt-2">¡Archivo eliminado!</h3>
-                    <p class="mt-2 text-sm text-center text-gray-500">
-                        El archivo se ha eliminado correctamente.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-center">
-                    <button onclick="closeDeleteSuccessModal()" class="px-4 py-2 bg-hospital-blue text-white rounded cursor-pointer focus:outline-none">
-                        Aceptar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de error de eliminación -->
-    <div id="deleteErrorModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="p-6">
-                <div class="mb-4">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-center text-gray-900 mt-2">Error al eliminar archivo</h3>
-                    <p id="deleteErrorMessage" class="mt-2 text-sm text-center text-gray-500">
-                        Ha ocurrido un error al eliminar el archivo.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-center">
-                    <button onclick="closeDeleteErrorModal()" class="px-4 py-2 bg-red-600 text-white rounded cursor-pointer focus:outline-none">
-                        Aceptar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de error de archivo -->
-    <div id="fileErrorModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="p-6">
-                <div class="mb-4">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-center text-gray-900 mt-2">Error de Archivo</h3>
-                    <p id="fileErrorMessage" class="mt-2 text-sm text-center text-gray-500">
-                        Ha ocurrido un error con el archivo seleccionado.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-center">
-                    <button onclick="closeFileErrorModal()" class="px-4 py-2 bg-red-600 text-white rounded cursor-pointer focus:outline-none">
-                        Aceptar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+/* Lista de reproducción */
+.lista-medios { display: flex; flex-direction: column; }
+.medio { position: relative; display: grid; grid-template-columns: auto 1.5rem 4.5rem minmax(0, 1fr) auto auto; align-items: center; gap: .7rem;
+         padding: .55rem .25rem; border-top: 1px solid #eef1f6; background: #ffffff; }
+.medio:first-child { border-top: 0; }
+.medio--pausado .medio__miniatura, .medio--pausado .medio__nombre { opacity: .5; }
+.medio--pausado .medio__miniatura { filter: grayscale(1); }
+.medio--nuevo { background: #eef4fc; transition: background-color 1.5s ease; }
+.medio--antes::before, .medio--despues::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: #064b9e; }
+.medio--antes::before { top: -1px; }
+.medio--despues::after { bottom: -1px; }
+.medio__asa { color: #b0b8c6; cursor: grab; }
+.medio__orden { font-size: 1.1rem; font-weight: 700; color: #0f2547; text-align: center; }
+.medio__miniatura { position: relative; display: grid; place-items: center; width: 4.5rem; height: 2.75rem; border-radius: .35rem; overflow: hidden; background: #eef1f6; }
+.medio__miniatura img { width: 100%; height: 100%; object-fit: cover; }
+.medio__miniatura--video { background: #0f2547; }
+.medio__play { color: #ffffff; font-size: .9rem; }
+.medio__nombre { font-size: .875rem; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.medio__meta { font-size: .75rem; color: #6b7280; }
+.medio__aviso { font-size: .75rem; font-weight: 600; color: #b45309; }
+.interruptor--fila { min-width: 7.5rem; }
+.interruptor--fila .interruptor__texto { font-weight: 500; color: #4b5563; }
+.medio__acciones { display: flex; gap: .1rem; }
+.medio__acciones .accion-icono:disabled { opacity: .3; cursor: default; }
+.estado-orden { min-height: 1rem; font-size: .75rem; color: #6b7280; }
+.vacio-lista { padding: 1.5rem; text-align: center; font-size: .875rem; color: #6b7280; }
+</style>
+@endpush
 @endsection

@@ -1,804 +1,465 @@
 @extends('layouts.admin')
 
-@section('title', 'Gestión de Servicios')
+@section('title', 'Servicios')
 
 @section('content')
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6 max-w-7xl mx-auto">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4" x-data="{ openModal: false }">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Operación</p>
-                            <h1 class="text-xl md:text-2xl font-bold text-gray-900 mt-1">Gestión de Servicios</h1>
-                        </div>
-                        <button @click="openModal = true" class="inline-flex items-center justify-center gap-2 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer w-full sm:w-auto">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Nuevo Servicio
-                        </button>
+{{-- Servicios en una sola vista: cada sección del kiosco con sus subservicios debajo (ServicioController::index),
+     con el código del ticket, los asesores asignados, la cola de hoy, el TV y la prioridad. --}}
+@php $totalServicios = collect($secciones)->sum(fn ($s) => 1 + count($s['hijos'])); @endphp
+<div class="servicios-vista max-w-7xl mx-auto space-y-4" x-data="serviciosVista(@js($secciones), @js($search))">
+    <h1 class="sr-only">Servicios</h1>
+    <!-- Aviso de lo que acaba de pasar (sobrevive a la recarga) -->
+    <div class="aviso-flotante" role="status" x-show="aviso" x-transition.opacity x-cloak>
+        <span x-text="aviso"></span>
+    </div>
 
-                        <!-- Modal Crear Servicio -->
-                        <div x-show="openModal"
-                             x-transition:enter="transition ease-out duration-300"
-                             x-transition:enter-start="opacity-0"
-                             x-transition:enter-end="opacity-100"
-                             x-transition:leave="transition ease-in duration-200"
-                             x-transition:leave-start="opacity-100"
-                             x-transition:leave-end="opacity-0"
-                             class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-                             style="display: none;">
-                            <div @click.away="openModal = false" class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
-                                <div class="p-6">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <h3 class="text-lg font-medium text-gray-900">Crear Nuevo Servicio</h3>
-                                        <button @click="openModal = false" class="text-gray-400 hover:text-gray-600">
-                                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <form id="createServicioForm" method="POST" action="{{ route('admin.servicios.store') }}"
-                                          x-data="{ nivel: 'servicio' }">
-                                        @csrf
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                                                <input type="text" id="nombre" name="nombre" required
-                                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                            </div>
-
-                                            <div>
-                                                <label for="codigo" class="block text-sm font-medium text-gray-700 mb-1">Código</label>
-                                                <input type="text" id="codigo" name="codigo"
-                                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                            </div>
-
-                                            <div>
-                                                <label for="nivel" class="block text-sm font-medium text-gray-700 mb-1">Nivel *</label>
-                                                <select id="nivel" name="nivel" required x-model="nivel"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                                    <option value="servicio">Servicio</option>
-                                                    <option value="subservicio">Subservicio</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Campo servicio padre que aparece solo para subservicios -->
-                                            <div x-show="nivel === 'subservicio'">
-                                                <label for="servicio_padre_id" class="block text-sm font-medium text-gray-700 mb-1">Servicio Padre *</label>
-                                                <select id="servicio_padre_id" name="servicio_padre_id"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                                    <option value="">Seleccionar servicio padre</option>
-                                                    @foreach($serviciosPrincipales as $servicioPadre)
-                                                        <option value="{{ $servicioPadre->id }}">{{ $servicioPadre->nombre }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <p class="text-xs text-gray-500 mt-1">El subservicio estará asociado a este servicio principal.</p>
-                                            </div>
-
-                                            <div>
-                                                <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
-                                                <select id="estado" name="estado" required
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                                    <option value="activo">Activo</option>
-                                                    <option value="inactivo">Inactivo</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label for="orden" class="block text-sm font-medium text-gray-700 mb-1">Orden</label>
-                                                <input type="number" id="orden" name="orden" min="0"
-                                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                                <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
-                                            </div>
-                                        </div>
-
-                                        <div class="mt-4">
-                                            <div class="flex items-center">
-                                                <input type="checkbox" id="ocultar_turno" name="ocultar_turno" value="1"
-                                                       class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
-                                                <label for="ocultar_turno" class="ml-2 block text-sm text-gray-700">
-                                                    Ocultar turno
-                                                </label>
-                                            </div>
-                                            <p class="text-xs text-gray-500 mt-1">Si está activado, los turnos de este servicio no se mostrarán en el TV ni se llamarán automáticamente.</p>
-                                        </div>
-
-                                        <div class="mt-4">
-                                            <div class="flex items-center">
-                                                <input type="checkbox" id="requiere_priorizacion" name="requiere_priorizacion" value="1"
-                                                       class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
-                                                <label for="requiere_priorizacion" class="ml-2 block text-sm text-gray-700">
-                                                    Requiere priorización
-                                                </label>
-                                            </div>
-                                            <p class="text-xs text-gray-500 mt-1">Si está activado, se solicitará seleccionar prioridad (A-E) al generar turnos. Solo disponible para servicios sin subservicios.</p>
-                                        </div>
-
-                                        <div class="mt-4">
-                                            <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                                            <textarea id="descripcion" name="descripcion" rows="3"
-                                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
-                                        </div>
-
-                                        <div class="flex justify-end space-x-3 mt-6">
-                                            <button type="button" @click="openModal = false"
-                                                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                                                Cancelar
-                                            </button>
-                                            <button type="submit"
-                                                    class="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-hover transition-colors">
-                                                Crear Servicio
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Aplicación Alpine.js para búsqueda en tiempo real -->
-                    <div x-data="{
-                        search: '{{ $search ?? '' }}',
-                        servicios: {{ json_encode($servicios->items()) }},
-                        allServicios: {{ json_encode($servicios->items()) }},
-
-                        init() {
-                            this.$watch('search', value => {
-                                if (value === '') {
-                                    this.servicios = this.allServicios;
-                                    return;
-                                }
-
-                                value = value.toLowerCase();
-                                this.servicios = this.allServicios.filter(servicio => {
-                                    return servicio.nombre.toLowerCase().includes(value) ||
-                                           servicio.descripcion?.toLowerCase().includes(value) ||
-                                           servicio.codigo?.toLowerCase().includes(value) ||
-                                           servicio.nivel.toLowerCase().includes(value) ||
-                                           servicio.estado.toLowerCase().includes(value) ||
-                                           (servicio.servicio_padre && servicio.servicio_padre.nombre.toLowerCase().includes(value));
-                                });
-                            });
-                        },
-
-                        async editServicio(id) {
-                            try {
-                                const response = await fetch(`/servicios/${id}`, {
-                                    headers: {
-                                        'X-Requested-With': 'XMLHttpRequest',
-                                        'Accept': 'application/json'
-                                    }
-                                });
-                                const servicio = await response.json();
-
-                                // Disparar evento para abrir modal de edición
-                                window.dispatchEvent(new CustomEvent('edit-servicio', {
-                                    detail: servicio
-                                }));
-                            } catch (error) {
-                                console.error('Error al cargar servicio:', error);
-                                window.dispatchEvent(new CustomEvent('show-error', {
-                                    detail: {
-                                        title: 'Error al cargar servicio',
-                                        message: 'No se pudieron cargar los datos del servicio. Verifique su conexión a internet.'
-                                    }
-                                }));
-                            }
-                        },
-
-                        deleteServicio(id, nombre) {
-                            // Disparar evento para abrir modal de eliminación
-                            window.dispatchEvent(new CustomEvent('delete-servicio', {
-                                detail: { id, nombre }
-                            }));
-                        }
-                    }">
-                        <!-- Buscador -->
-                        <div class="mb-6">
-                            <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm search-container">
-                                <div class="px-3 py-2 bg-gray-50">
-                                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    x-model="search"
-                                    placeholder="Buscar por nombre, código, nivel, estado o descripción..."
-                                    class="w-full px-4 py-2 focus:outline-none focus:border-hospital-blue"
-                                >
-                                <template x-if="search">
-                                    <button @click="search = ''" class="px-3 py-2 text-gray-500 hover:text-gray-700">
-                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Tabla de Servicios -->
-                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
-                            <div class="overflow-x-auto">
-                                <table class="w-full divide-y divide-gray-200">
-                                <thead>
-                                    <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
-                                        <th class="py-3 px-4 text-left font-semibold">SERVICIO</th>
-                                        <th class="py-3 px-4 text-left font-semibold">NIVEL</th>
-                                        <th class="py-3 px-4 text-left font-semibold hidden md:table-cell">CÓDIGO</th>
-                                        <th class="py-3 px-4 text-left font-semibold hidden lg:table-cell">ESTADO</th>
-                                        <th class="py-3 px-4 text-center font-semibold">OPCIONES</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <template x-if="servicios.length === 0">
-                                        <tr>
-                                            <td colspan="5" class="py-8 text-center text-gray-500">
-                                                <div class="flex flex-col items-center">
-                                                    <svg class="h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                                                    </svg>
-                                                    <p class="text-lg font-medium">No se encontraron servicios</p>
-                                                    <p class="text-sm">Intenta con otros términos de búsqueda</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                    <template x-for="(servicio, index) in servicios" :key="index">
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="py-3 px-4">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    <span x-show="servicio.nivel === 'subservicio'" class="text-gray-500 mr-2">└─</span>
-                                                    <span x-text="servicio.nombre"></span>
-                                                    <!-- Indicador de subservicios -->
-                                                    <template x-if="servicio.nivel === 'servicio'">
-                                                        <span
-                                                            x-data="{ count: 0, init() { fetch(`/servicios/${servicio.id}`, { headers: { 'Accept': 'application/json' } }) .then(r => r.json()) .then(data => { this.count = data.subservicios ? data.subservicios.length : 0; }); } }"
-                                                            x-show="count > 0"
-                                                            class="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full"
-                                                            x-text="`${count} subservicio${count > 1 ? 's' : ''}`"></span>
-                                                    </template>
-                                                </div>
-                                                <div x-show="servicio.descripcion" class="text-xs text-gray-500 mt-1" x-text="servicio.descripcion?.substring(0, 50) + (servicio.descripcion?.length > 50 ? '...' : '')"></div>
-                                                <div x-show="servicio.nivel === 'subservicio' && servicio.servicio_padre" class="text-xs text-blue-600 mt-1" x-text="servicio.servicio_padre?.nombre"></div>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="px-2 py-1 rounded text-sm"
-                                                      :class="servicio.nivel === 'servicio' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
-                                                      x-text="servicio.nivel.charAt(0).toUpperCase() + servicio.nivel.slice(1)">
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap hidden md:table-cell text-sm text-gray-900" x-text="servicio.codigo || '-'"></td>
-                                            <td class="py-3 px-4 whitespace-nowrap hidden lg:table-cell">
-                                                <span class="px-2 py-1 rounded text-sm"
-                                                      :class="servicio.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                                                      x-text="servicio.estado.charAt(0).toUpperCase() + servicio.estado.slice(1)">
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <div class="flex justify-center space-x-2">
-                                                    <button class="p-1 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                                            title="Editar"
-                                                            @click="editServicio(servicio.id)">
-                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                                        </svg>
-                                                    </button>
-                                                    <button class="p-1 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
-                                                            title="Eliminar"
-                                                            @click="deleteServicio(servicio.id, servicio.nombre)">
-                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Paginación -->
-                    @if($servicios->hasPages())
-                        <div class="mt-6">
-                            {{ $servicios->links() }}
-                        </div>
-                    @endif
-                </div>
-@endsection
-
-@section('scripts')
-
-    <!-- Modal Editar Servicio -->
-    <div x-data="{
-            showEditModal: false,
-            editingServicio: {
-                id: null,
-                nombre: '',
-                codigo: '',
-                nivel: 'servicio',
-                servicio_padre_id: '',
-                estado: 'activo',
-                orden: '',
-                descripcion: '',
-                ocultar_turno: false,
-                requiere_priorizacion: false,
-                tiene_subservicios: false
-            },
-            init() {
-                this.$watch('showEditModal', value => {
-                    if (!value) {
-                        this.resetForm();
-                    }
-                });
-            },
-            resetForm() {
-                this.editingServicio = {
-                    id: null,
-                    nombre: '',
-                    codigo: '',
-                    nivel: 'servicio',
-                    servicio_padre_id: '',
-                    estado: 'activo',
-                    orden: '',
-                    descripcion: '',
-                    ocultar_turno: false,
-                    requiere_priorizacion: false,
-                    tiene_subservicios: false
-                };
-            }
-         }"
-         x-show="showEditModal"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-         style="display: none;"
-         @edit-servicio.window="showEditModal = true; editingServicio = $event.detail">
-        <div @click.away="showEditModal = false" class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Editar Servicio</h3>
-                    <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+    <!-- Crear / editar -->
+    <div class="envoltorio-modal" x-data="formularioServicio(secciones)" @abrir-servicio.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+            <div class="modal-panel__caja" role="dialog" aria-modal="true" :aria-label="titulo()">
+                <div class="modal-panel__cabeza">
+                    <h2 x-text="titulo()"></h2>
+                    <button type="button" class="accion-icono" aria-label="Cerrar" @click="cerrar()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-
-                <!-- Mensaje de carga -->
-                <div x-show="!editingServicio.id" class="text-center py-4">
-                    <div class="inline-flex items-center">
-                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-hospital-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Cargando datos del servicio...
+                <form class="form-panel" @submit.prevent="guardar()" novalidate>
+                    <div class="form-panel__fila form-panel__fila--nombre">
+                        <label class="form-campo">Nombre
+                            <input type="text" class="campo" x-model="datos.nombre" x-ref="primero" maxlength="255" required>
+                            <small x-show="errores.nombre" x-text="errores.nombre"></small>
+                            <span class="form-ayuda form-ayuda--alerta" x-show="avisoUbicacion()">
+                                El ticket de esta sección indica <b x-text="original.ubicacion"></b> según su nombre: si lo cambias, el ticket dejará de indicar a dónde ir.
+                            </span>
+                        </label>
+                        <label class="form-campo">Código
+                            <input type="text" class="campo campo--mono" x-model="datos.codigo" maxlength="10" autocomplete="off" spellcheck="false"
+                                   @input="datos.codigo = datos.codigo.toUpperCase()">
+                            <small x-show="errores.codigo" x-text="errores.codigo"></small>
+                            <span class="form-ayuda" x-show="!errores.codigo && codigoValido()">Así sale en el ticket: <b x-text="datos.codigo.trim().toUpperCase() + '-001'"></b></span>
+                            <span class="form-ayuda form-ayuda--alerta" x-show="!errores.codigo && datos.codigo.trim() && !codigoValido()">Solo letras: la voz del TV las deletrea y luego dice el número.</span>
+                        </label>
                     </div>
-                </div>
-
-                <form x-show="editingServicio.id" method="POST" :action="`/servicios/${editingServicio.id}`">
-                    @csrf
-                    @method('PUT')
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="edit_nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                            <input type="text" id="edit_nombre" name="nombre" required
-                                   x-model="editingServicio.nombre"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                        </div>
-
-                        <div>
-                            <label for="edit_codigo" class="block text-sm font-medium text-gray-700 mb-1">Código</label>
-                            <input type="text" id="edit_codigo" name="codigo"
-                                   x-model="editingServicio.codigo"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                        </div>
-
-                        <div>
-                            <label for="edit_nivel" class="block text-sm font-medium text-gray-700 mb-1">Nivel *</label>
-                            <select id="edit_nivel" name="nivel" required x-model="editingServicio.nivel"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                <option value="servicio">Servicio</option>
-                                <option value="subservicio">Subservicio</option>
+                    <div class="form-panel__fila">
+                        <label class="form-campo">Pertenece a
+                            <select class="campo" x-model="datos.servicio_padre_id" :disabled="tieneHijos()">
+                                <option value="">Ninguna: es una sección del kiosco</option>
+                                <template x-for="p in padresPosibles()" :key="p.id">
+                                    <option :value="String(p.id)" x-text="p.nombre + (p.activo ? '' : ' (inactiva)')" :selected="String(p.id) === datos.servicio_padre_id"></option>
+                                </template>
                             </select>
-                        </div>
-
-                        <div x-show="editingServicio.nivel === 'subservicio'">
-                            <label for="edit_servicio_padre_id" class="block text-sm font-medium text-gray-700 mb-1">Servicio Padre *</label>
-                            <select id="edit_servicio_padre_id" name="servicio_padre_id"
-                                    x-model="editingServicio.servicio_padre_id"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                <option value="">Seleccionar servicio padre</option>
-                                @foreach($serviciosPrincipales as $servicioPadre)
-                                    <option value="{{ $servicioPadre->id }}">{{ $servicioPadre->nombre }}</option>
-                                @endforeach
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">El subservicio estará asociado a este servicio principal.</p>
-                        </div>
-
-                        <div>
-                            <label for="edit_estado" class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
-                            <select id="edit_estado" name="estado" required x-model="editingServicio.estado"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                                <option value="activo">Activo</option>
-                                <option value="inactivo">Inactivo</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="edit_orden" class="block text-sm font-medium text-gray-700 mb-1">Orden</label>
-                            <input type="number" id="edit_orden" name="orden" min="0"
-                                   x-model="editingServicio.orden"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent">
-                            <p class="text-xs text-gray-500 mt-1">Orden de aparición en menús y listas (opcional).</p>
-                        </div>
+                            <small x-show="errores.servicio_padre_id" x-text="errores.servicio_padre_id"></small>
+                            <span class="form-ayuda" x-show="tieneHijos()">Tiene subservicios: sigue siendo una sección.</span>
+                        </label>
+                        <label class="form-campo">Posición en el kiosco
+                            <input type="number" class="campo" x-model="datos.orden" min="0" max="9999" placeholder="Al final">
+                            <small x-show="errores.orden" x-text="errores.orden"></small>
+                        </label>
                     </div>
-
-                    <div class="mt-4">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="edit_ocultar_turno" name="ocultar_turno" value="1"
-                                   x-bind:checked="editingServicio.ocultar_turno"
-                                   class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
-                            <label for="edit_ocultar_turno" class="ml-2 block text-sm text-gray-700">
-                                Ocultar turno
-                            </label>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Si está activado, los turnos de este servicio no se mostrarán en el TV ni se llamarán automáticamente.</p>
+                    <div class="form-casillas">
+                        <label class="form-casilla"><input type="checkbox" x-model="datos.activo">
+                            <span>Activo <span class="form-ayuda">Sale en el kiosco y se puede asignar a los asesores.</span></span>
+                        </label>
+                        <label class="form-casilla"><input type="checkbox" x-model="datos.ocultar_turno">
+                            <span>Oculto en el TV <span class="form-ayuda">Sus turnos no salen en el TV ni se llaman solos; se llaman por código.</span></span>
+                        </label>
+                        <label class="form-casilla" x-show="!tieneHijosActivos()"><input type="checkbox" x-model="datos.requiere_priorizacion">
+                            <span>Pide prioridad en el kiosco <span class="form-ayuda">Al sacar el turno se elige Normal o Alta.</span></span>
+                        </label>
                     </div>
-
-                    <div class="mt-4" x-show="!editingServicio.tiene_subservicios">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="edit_requiere_priorizacion" name="requiere_priorizacion" value="1"
-                                   x-bind:checked="editingServicio.requiere_priorizacion"
-                                   class="h-4 w-4 text-hospital-blue focus:ring-hospital-blue border-gray-300 rounded">
-                            <label for="edit_requiere_priorizacion" class="ml-2 block text-sm text-gray-700">
-                                Requiere priorización
-                            </label>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Si está activado, se solicitará seleccionar prioridad (A-E) al generar turnos.</p>
-                    </div>
-
-                    <div class="mt-4" x-show="editingServicio.tiene_subservicios">
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                            <div class="flex">
-                                <svg class="h-5 w-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                </svg>
-                                <p class="text-xs text-yellow-800">
-                                    Este servicio tiene subservicios asociados. Solo los servicios sin subservicios pueden tener priorización. Configure la priorización en los subservicios individuales.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <label for="edit_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                        <textarea id="edit_descripcion" name="descripcion" rows="3"
-                                  x-model="editingServicio.descripcion"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hospital-blue focus:border-transparent"></textarea>
-                    </div>
-
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" @click="showEditModal = false"
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                            Cancelar
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-hover transition-colors">
-                            Actualizar Servicio
-                        </button>
+                    <label class="form-campo">Descripción
+                        <textarea class="campo campo--area" rows="2" x-model="datos.descripcion" maxlength="500"></textarea>
+                        <small x-show="errores.descripcion" x-text="errores.descripcion"></small>
+                    </label>
+                    <p class="form-error" x-show="errores.general" x-text="errores.general"></p>
+                    <div class="modal-panel__pie">
+                        <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
+                        <button type="submit" class="btn-primario" :disabled="guardando" x-text="guardando ? 'Guardando…' : (modo === 'crear' ? 'Crear servicio' : 'Guardar cambios')"></button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal Eliminar Servicio -->
-    <div
-        x-data="deleteModalData()"
-        x-cloak
-        @keydown.escape.window="showDeleteModal = false"
-        @delete-servicio.window="showDeleteModal = true; deletingServicio = $event.detail"
-    >
-        <div
-            x-show="showDeleteModal"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-            style="display: none;"
-        >
-            <div
-                @click.away="showDeleteModal = false"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95"
-            >
-                <div class="p-6">
-                    <div class="mb-4">
-                        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 class="mt-3 text-lg font-medium text-center text-gray-900">¿Eliminar este servicio?</h3>
-                        <p class="mt-2 text-sm text-center text-gray-500">
-                            Estás a punto de eliminar el servicio <span class="font-medium" x-text="deletingServicio.nombre"></span>.<br>
-                            Esta acción no se puede deshacer.
-                        </p>
+    <!-- Eliminar: primero se mira qué se perdería -->
+    <div class="envoltorio-modal" x-data="eliminarServicio()" @eliminar-servicio.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+            <div class="modal-panel__caja modal-panel__caja--angosta" role="dialog" aria-modal="true" aria-label="Eliminar servicio">
+                <div class="modal-panel__cabeza">
+                    <h2 x-text="servicio ? servicio.nombre : ''"></h2>
+                    <button type="button" class="accion-icono" aria-label="Cerrar" @click="cerrar()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="form-panel">
+                    <div x-show="cargando" class="impacto-esqueleto" role="status">
+                        <span class="sr-only">Revisando qué depende de este servicio…</span>
+                        <span class="esqueleto" style="width: 92%" aria-hidden="true"></span>
+                        <span class="esqueleto" style="width: 80%" aria-hidden="true"></span>
+                        <span class="esqueleto" style="width: 55%" aria-hidden="true"></span>
                     </div>
-
-                    <div class="mt-6 flex justify-center space-x-4">
-                        <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
-                            Cancelar
-                        </button>
-                        <button @click="confirmDeleteServicio()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer">
-                            Eliminar
-                        </button>
+                    <template x-if="!cargando && impacto">
+                        <div class="form-texto space-y-2">
+                            <template x-if="impacto.hijos > 0">
+                                <p>No se puede eliminar: tiene <b x-text="impacto.hijos"></b> subservicio(s). Elimínalos o muévelos a otra sección primero.</p>
+                            </template>
+                            <template x-if="!impacto.hijos && conHistorial()">
+                                <p>Tiene <b x-text="miles(impacto.turnos || impacto.historial)"></b> turnos registrados. Si lo eliminas, se borran también de Reportes y Gráficos.
+                                   <span x-show="servicio.activo">Desactívalo: deja de salir en el kiosco y conserva su historial.</span>
+                                   <span x-show="!servicio.activo">Ya está inactivo: así conserva su historial.</span></p>
+                            </template>
+                            <template x-if="!impacto.hijos && !conHistorial()">
+                                <p>Se eliminará este servicio. <span x-show="impacto.asesores > 0"><b x-text="impacto.asesores"></b> asesor(es) lo tienen asignado y lo perderán.</span>
+                                   Esta acción no se puede deshacer.</p>
+                            </template>
+                        </div>
+                    </template>
+                    <p class="form-error" x-show="error" x-text="error"></p>
+                    <div class="modal-panel__pie">
+                        <button type="button" class="btn-secundario" @click="cerrar()" x-text="puedeEliminar() || puedeDesactivar() ? 'Cancelar' : 'Cerrar'"></button>
+                        <button type="button" class="btn-primario" x-show="puedeDesactivar()" :disabled="trabajando" @click="desactivar()" x-text="trabajando ? 'Desactivando…' : 'Desactivar'"></button>
+                        <button type="button" class="btn-peligro" x-show="puedeEliminar()" :disabled="trabajando" @click="confirmar()" x-text="trabajando ? 'Eliminando…' : 'Eliminar'"></button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Error -->
-    <div
-        x-data="errorModalData()"
-        x-cloak
-        @keydown.escape.window="showErrorModal = false"
-    >
-        <div
-            x-show="showErrorModal"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-            style="display: none;"
-        >
-            <div
-                @click.away="showErrorModal = false"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95"
-            >
-                <div class="p-6">
-                    <div class="mb-4">
-                        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 class="mt-3 text-lg font-medium text-center text-gray-900" x-text="errorTitle"></h3>
-                        <p class="mt-2 text-sm text-center text-gray-500" x-text="errorMessage"></p>
-                    </div>
 
-                    <div class="mt-6 flex justify-center">
-                        <button @click="showErrorModal = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
-                            Entendido
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <!-- Filtros rápidos, búsqueda y alta en una sola fila -->
+    <div class="barra-vista">
+        <div class="filtros-rapidos" role="group" aria-label="Filtrar servicios">
+            @foreach ([3.25, 4.75, 7, 5.5] as $ancho)
+                <span class="filtro-rapido" data-esqueleto aria-hidden="true"><span class="esqueleto" style="width: {{ $ancho }}rem"></span></span>
+            @endforeach
+            <template x-for="f in filtros" :key="f.clave">
+                <button type="button" class="filtro-rapido" :aria-pressed="(filtro === f.clave).toString()" @click="filtro = f.clave">
+                    <span x-text="f.rotulo"></span> <span class="filtro-rapido__n" x-text="contar(f.clave)"></span>
+                </button>
+            </template>
         </div>
+        <div class="buscador">
+            <svg class="buscador__icono" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z"></path></svg>
+            <input type="search" x-model.debounce.150ms="buscar" class="campo" placeholder="Nombre, código o descripción" aria-label="Buscar servicio">
+        </div>
+        <button type="button" class="btn-primario" @click="$dispatch('abrir-servicio', { modo: 'crear' })">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Nuevo servicio
+        </button>
     </div>
 
-    <script>
-        // Función para el modal de error
-        function errorModalData() {
-            return {
-                showErrorModal: false,
-                errorTitle: '',
-                errorMessage: '',
-                init() {
-                    // Escuchar evento global para mostrar errores
-                    window.addEventListener('show-error', (event) => {
-                        this.errorTitle = event.detail.title;
-                        this.errorMessage = event.detail.message;
-                        this.showErrorModal = true;
-                    });
-                }
-            }
-        }
+    <!-- Catálogo: una tabla, una sección por bloque -->
+    <div class="superficie overflow-x-auto">
+        <table class="tabla-panel tabla-servicios">
+            <thead>
+                <tr>
+                    <th scope="col">Servicio</th>
+                    <th scope="col">Código</th>
+                    <th scope="col">Asesores</th>
+                    <th scope="col">En cola</th>
+                    <th scope="col">TV</th>
+                    <th scope="col">Prioridad</th>
+                    <th scope="col"><span class="sr-only">Acciones</span></th>
+                </tr>
+            </thead>
+            {{-- Mientras arranca Alpine: la forma de las filas (init() las quita) --}}
+            <tbody data-esqueleto aria-hidden="true">
+                @for ($i = 0; $i < min($totalServicios, 14); $i++)
+                    <tr class="fila-esqueleto">
+                        <td style="padding-left: {{ $i % 4 ? '2.5rem' : '1rem' }}"><span class="esqueleto" style="width: {{ [9, 11, 8, 12][$i % 4] }}rem"></span></td>
+                        <td><span class="esqueleto" style="width: 2.25rem"></span></td>
+                        <td><span class="esqueleto" style="width: 1.25rem"></span></td>
+                        <td><span class="esqueleto" style="width: 1.25rem"></span></td>
+                        <td><span class="esqueleto" style="width: 3.25rem"></span></td>
+                        <td><span class="esqueleto" style="width: 1.5rem"></span></td>
+                        <td></td>
+                    </tr>
+                @endfor
+            </tbody>
+            <template x-for="g in visibles()" :key="g.s.id">
+                <tbody class="grupo-servicio">
+                    <tr class="fila-seccion" :class="{ 'fila--inactiva': !g.s.activo, 'fila--contexto': g.contexto }">
+                        <td>
+                            <div class="celda-servicio">
+                                <span class="servicio-nombre" x-text="g.s.nombre"></span>
+                                <span class="servicio-marca" x-show="!g.s.activo">Inactivo</span>
+                                <span class="servicio-sub" x-show="g.s.ubicacion" :title="'El ticket de esta sección indica: ' + g.s.ubicacion">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                                    <span x-text="g.s.ubicacion"></span>
+                                </span>
+                                <span class="servicio-sub" x-show="!g.s.ubicacion && g.s.descripcion" x-text="g.s.descripcion" :title="g.s.descripcion"></span>
+                            </div>
+                        </td>
+                        <td x-html="celdaCodigo(g.s)"></td>
+                        <td x-html="g.s.hijos.length ? vacio() : celdaAsesores(g.s)"></td>
+                        <td x-html="celdaCola(g.s.hijos.length ? g.s.hijos.reduce((n, h) => n + h.en_cola, 0) : g.s.en_cola)"></td>
+                        <td x-html="celdaTv(g.s)"></td>
+                        <td x-html="g.s.hijos.length ? vacio() : celdaPrioridad(g.s)"></td>
+                        <td class="celda-acciones">
+                            <div class="acciones-fila">
+                                <button type="button" class="accion-icono" title="Agregar subservicio" :aria-label="'Agregar subservicio a ' + g.s.nombre"
+                                        x-show="!g.s.padre_id" @click="$dispatch('abrir-servicio', { modo: 'crear', padreId: g.s.id })">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                </button>
+                                <button type="button" class="accion-icono" title="Editar" :aria-label="'Editar ' + g.s.nombre"
+                                        @click="$dispatch('abrir-servicio', { modo: 'editar', servicio: g.s })">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button type="button" class="accion-icono accion-icono--peligro" title="Eliminar" :aria-label="'Eliminar ' + g.s.nombre"
+                                        @click="$dispatch('eliminar-servicio', { servicio: g.s })">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <template x-for="h in g.hijos" :key="h.id">
+                        <tr class="fila-hijo" :class="{ 'fila--inactiva': !h.activo }">
+                            <td>
+                                <div class="celda-servicio">
+                                    <span class="servicio-nombre" x-text="h.nombre"></span>
+                                    <span class="servicio-marca" x-show="!h.activo">Inactivo</span>
+                                    <span class="servicio-sub" x-show="h.descripcion" x-text="h.descripcion" :title="h.descripcion"></span>
+                                </div>
+                            </td>
+                            <td x-html="celdaCodigo(h)"></td>
+                            <td x-html="celdaAsesores(h)"></td>
+                            <td x-html="celdaCola(h.en_cola)"></td>
+                            <td x-html="celdaTv(h)"></td>
+                            <td x-html="celdaPrioridad(h)"></td>
+                            <td class="celda-acciones">
+                                <div class="acciones-fila">
+                                    <button type="button" class="accion-icono" title="Editar" :aria-label="'Editar ' + h.nombre"
+                                            @click="$dispatch('abrir-servicio', { modo: 'editar', servicio: h })">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button type="button" class="accion-icono accion-icono--peligro" title="Eliminar" :aria-label="'Eliminar ' + h.nombre"
+                                            @click="$dispatch('eliminar-servicio', { servicio: h })">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </template>
+        </table>
+        <p class="vacio-servicios" x-show="!visibles().length" x-cloak>
+            <span x-text="secciones.length ? 'Ningún servicio coincide.' : 'Todavía no hay servicios.'"></span>
+            <button type="button" class="enlace-panel" x-show="secciones.length" @click="filtro = 'todos'; buscar = ''">Quitar filtros</button>
+        </p>
+    </div>
 
-        // Función para el modal de eliminación
-        function deleteModalData() {
-            return {
-                showDeleteModal: false,
-                deletingServicio: {
-                    id: null,
-                    nombre: ''
-                },
-                async confirmDeleteServicio() {
-                    if (!this.deletingServicio.id) return;
+</div>
 
-                    try {
-                        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                        const response = await fetch(`/servicios/${this.deletingServicio.id}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': token,
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json'
-                            }
-                        });
+<script>
+document.addEventListener('alpine:init', () => {
+    const SERVICIOS_URL = @json(route('admin.servicios'));
+    const ASIGNACION_URL = @json(route('admin.asignacion-servicios'));
+    const TOKEN = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const CODIGO_VALIDO = /^[A-Z]{1,10}$/;
+    const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const AVISO = 'aviso-servicios';
 
-                        const result = await response.json();
+    // Lo que se ve tras guardar y recargar: se deja escrito antes de recargar.
+    const recargarCon = texto => { try { sessionStorage.setItem(AVISO, texto); } catch (e) {} location.reload(); };
 
-                        if (response.ok && result.success) {
-                            window.location.reload();
-                        } else {
-                            // Mostrar mensaje de error personalizado
-                            if (response.status === 400 && result.message && result.message.includes('subservicios asociados')) {
-                                this.showErrorMessage(
-                                    'No se puede eliminar este servicio',
-                                    'El servicio "' + this.deletingServicio.nombre + '" tiene subservicios asociados. Para eliminarlo, primero debe eliminar todos sus subservicios.'
-                                );
-                            } else {
-                                this.showErrorMessage('Error', result.message || 'Error al eliminar el servicio');
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error al eliminar servicio:', error);
-                        this.showErrorMessage('Error de conexión', 'No se pudo conectar con el servidor. Verifique su conexión a internet.');
-                    } finally {
-                        this.showDeleteModal = false;
-                    }
-                },
-                showErrorMessage(title, message) {
-                    // Disparar evento global para mostrar error
-                    window.dispatchEvent(new CustomEvent('show-error', {
-                        detail: { title, message }
-                    }));
-                }
-            }
-        }
-
-        // Configurar CSRF token para peticiones AJAX
-        document.addEventListener('DOMContentLoaded', function() {
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-            // Configurar headers por defecto para fetch solo para peticiones JSON
-            const originalFetch = window.fetch;
-            window.fetch = function(resource, config = {}) {
-                if (config.method && config.method !== 'GET' && config.headers && config.headers['Content-Type'] === 'application/json') {
-                    config.headers = {
-                        ...config.headers,
-                        'X-CSRF-TOKEN': token,
-                        'Accept': 'application/json'
-                    };
-                }
-                return originalFetch.apply(this, arguments);
-            };
-        });
-
-        // Manejar envío del formulario de crear servicio
-        document.getElementById('createServicioForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const formData = new FormData(this);
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-            // Debug: mostrar los datos que se van a enviar
-            console.log('Datos del formulario:');
-            for (let [key, value] of formData.entries()) {
-                console.log(key, value);
-            }
-
+    Alpine.data('serviciosVista', (secciones, busquedaInicial) => ({
+        secciones,
+        filtro: 'todos',
+        buscar: busquedaInicial || '',
+        aviso: '',
+        filtros: [
+            { clave: 'todos', rotulo: 'Todos' },
+            { clave: 'inactivos', rotulo: 'Inactivos' },
+            { clave: 'ocultos', rotulo: 'Ocultos en el TV' },
+            { clave: 'sin_asesor', rotulo: 'Sin asesor' },
+        ],
+        init() {
+            this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
             try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': token,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Error response:', errorText);
-
-                    try {
-                        const errorJson = JSON.parse(errorText);
-                        if (errorJson.errors) {
-                            // Manejar errores de validación específicos
-                            let errorTitle = 'Error de validación';
-                            let errorMessage = '';
-
-                            for (const [field, messages] of Object.entries(errorJson.errors)) {
-                                if (field === 'codigo' && messages.includes('The codigo has already been taken.')) {
-                                    errorTitle = 'Código duplicado';
-                                    errorMessage = 'Ya existe un servicio con este código. Por favor, utiliza un código diferente.';
-                                } else if (field === 'nombre' && messages.some(msg => msg.includes('has already been taken'))) {
-                                    errorTitle = 'Nombre duplicado';
-                                    errorMessage = 'Ya existe un servicio con este nombre. Por favor, utiliza un nombre diferente.';
-                                } else {
-                                    // Para otros errores de validación
-                                    const fieldNames = {
-                                        'nombre': 'Nombre',
-                                        'codigo': 'Código',
-                                        'nivel': 'Nivel',
-                                        'servicio_padre_id': 'Servicio Padre',
-                                        'estado': 'Estado',
-                                        'orden': 'Orden',
-                                        'descripcion': 'Descripción'
-                                    };
-                                    const fieldName = fieldNames[field] || field;
-                                    errorMessage += `${fieldName}: ${messages.join(', ')}\n`;
-                                }
-                            }
-
-                            if (!errorMessage) {
-                                errorMessage = 'Por favor, revisa los datos ingresados.';
-                            }
-
-                            // Disparar evento para mostrar modal de error
-                            window.dispatchEvent(new CustomEvent('show-error', {
-                                detail: { title: errorTitle, message: errorMessage }
-                            }));
-                        } else {
-                            // Error general
-                            window.dispatchEvent(new CustomEvent('show-error', {
-                                detail: {
-                                    title: 'Error al crear servicio',
-                                    message: errorJson.message || 'Error desconocido'
-                                }
-                            }));
-                        }
-                    } catch (parseError) {
-                        window.dispatchEvent(new CustomEvent('show-error', {
-                            detail: {
-                                title: 'Error de conexión',
-                                message: 'Error al crear el servicio. Código: ' + response.status
-                            }
-                        }));
-                    }
-                    return;
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    window.location.reload();
-                } else {
-                    window.dispatchEvent(new CustomEvent('show-error', {
-                        detail: {
-                            title: 'Error al crear servicio',
-                            message: result.message || 'Error desconocido'
-                        }
-                    }));
-                }
-            } catch (error) {
-                console.error('Error completo:', error);
-                window.dispatchEvent(new CustomEvent('show-error', {
-                    detail: {
-                        title: 'Error de conexión',
-                        message: 'No se pudo conectar con el servidor. Verifique su conexión a internet.'
-                    }
-                }));
+                const texto = sessionStorage.getItem(AVISO);
+                if (texto) { sessionStorage.removeItem(AVISO); this.mostrarAviso(texto); }
+            } catch (e) {}
+        },
+        mostrarAviso(texto) { this.aviso = texto; clearTimeout(this._aviso); this._aviso = setTimeout(() => this.aviso = '', 4000); },
+        // Lo que recibe turnos del kiosco: un subservicio o una sección sin subservicios.
+        esHoja(s) { return !(s.hijos && s.hijos.length); },
+        todos() { return this.secciones.flatMap(s => [s, ...s.hijos]); },
+        pasa(s, clave) {
+            if (clave === 'inactivos') return !s.activo;
+            if (clave === 'ocultos') return s.ocultar_turno;
+            if (clave === 'sin_asesor') return this.esHoja(s) && s.activo && s.asesores === 0;
+            return true;
+        },
+        contar(clave) { return this.todos().filter(s => this.pasa(s, clave)).length; },
+        coincide(s, q) { return !q || [s.nombre, s.codigo, s.descripcion].some(v => normal(v).includes(q)); },
+        // Filtra sin romper el árbol: si solo coinciden subservicios, su sección se muestra atenuada como contexto.
+        visibles() {
+            const q = normal(this.buscar.trim());
+            return this.secciones.map(s => {
+                // Si coincide el nombre o el código de la sección, se ven todos sus subservicios; por la descripción, no.
+                const seccionCoincide = q && [s.nombre, s.codigo].some(v => normal(v).includes(q));
+                const hijos = s.hijos.filter(h => this.pasa(h, this.filtro) && (this.coincide(h, q) || seccionCoincide));
+                const propia = this.pasa(s, this.filtro) && this.coincide(s, q);
+                return (propia || hijos.length) ? { s, hijos, contexto: !propia } : null;
+            }).filter(Boolean);
+        },
+        celdaCodigo(s) {
+            if (!s.codigo) return '<span class="texto-error">Sin código</span>';
+            if (!CODIGO_VALIDO.test(s.codigo)) {
+                return '<span class="codigo-ticket texto-alerta" title="La voz del TV no lee bien este código: usa solo letras">' + esc(s.codigo) + ' ⚠</span>';
             }
-        });
-    </script>
+            return '<span class="codigo-ticket">' + esc(s.codigo) + '</span>';
+        },
+        celdaAsesores(s) {
+            const url = ASIGNACION_URL + '?servicio=' + s.id;
+            if (!s.activo) return '<span class="texto-mudo">' + s.asesores + '</span>';
+            if (s.asesores === 0) return '<a class="sin-asesor" href="' + url + '" title="Ningún asesor tiene asignado este servicio">Nadie · Asignar</a>';
+            return '<a class="enlace-cifra" href="' + url + '" title="Ver quién lo atiende">' + s.asesores + '</a>';
+        },
+        vacio() { return '<span class="texto-mudo">—</span>'; },
+        celdaCola(n) { return n > 0 ? '<b>' + n + '</b>' : '<span class="texto-mudo">0</span>'; },
+        celdaTv(s) {
+            return s.ocultar_turno
+                ? '<span class="texto-alerta" title="No sale en el TV ni se llama solo; se llama por código">Oculto</span>'
+                : '<span class="texto-mudo">Visible</span>';
+        },
+        celdaPrioridad(s) { return s.requiere_priorizacion ? '<span title="El kiosco pregunta Normal o Alta">Normal / Alta</span>' : '<span class="texto-mudo">—</span>'; },
+    }));
+
+    function enviar(url, datos, metodo) {
+        const cuerpo = new FormData();
+        Object.entries(datos).forEach(([k, v]) => cuerpo.append(k, typeof v === 'boolean' ? (v ? '1' : '0') : (v ?? '')));
+        if (metodo) cuerpo.append('_method', metodo);
+        return fetch(url, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+            .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }));
+    }
+    const mensajeDe = (estado, datos, porDefecto) => estado === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.' : (datos.message || porDefecto);
+    const datosDe = s => ({
+        nombre: s.nombre || '', codigo: s.codigo || '', servicio_padre_id: s.padre_id ? String(s.padre_id) : '',
+        orden: s.orden ?? '', activo: !!s.activo, ocultar_turno: !!s.ocultar_turno,
+        requiere_priorizacion: !!s.requiere_priorizacion, descripcion: s.descripcion || '',
+    });
+
+    Alpine.data('formularioServicio', secciones => ({
+        abierto: false, modo: 'crear', id: null, original: {}, guardando: false, errores: {},
+        datos: datosDe({ activo: true }),
+        abrir({ modo, servicio, padreId }) {
+            this.modo = modo; this.errores = {}; this.guardando = false;
+            this.id = servicio ? servicio.id : null;
+            this.original = servicio || {};
+            this.datos = servicio ? datosDe(servicio) : datosDe({ activo: true, padre_id: padreId || null });
+            this.abierto = true;
+            this.$nextTick(() => this.$refs.primero && this.$refs.primero.focus());
+        },
+        cerrar() { if (!this.guardando) this.abierto = false; },
+        titulo() {
+            if (this.modo === 'editar') return 'Editar servicio';
+            const padre = secciones.find(s => String(s.id) === this.datos.servicio_padre_id);
+            return padre ? 'Nuevo subservicio de ' + padre.nombre : 'Nuevo servicio';
+        },
+        tieneHijos() { return !!(this.original.hijos && this.original.hijos.length); },
+        tieneHijosActivos() { return !!(this.original.hijos && this.original.hijos.some(h => h.activo)); },
+        padresPosibles() { return secciones.filter(s => s.id !== this.id && !s.padre_id); },
+        codigoValido() { return CODIGO_VALIDO.test(this.datos.codigo.trim().toUpperCase()); },
+        avisoUbicacion() { return this.modo === 'editar' && this.original.ubicacion && this.datos.nombre.trim() !== this.original.nombre; },
+        guardar() {
+            this.guardando = true; this.errores = {};
+            const url = this.modo === 'crear' ? SERVICIOS_URL : SERVICIOS_URL + '/' + this.id;
+            enviar(url, this.datos, this.modo === 'crear' ? null : 'PUT').then(({ ok, estado, datos }) => {
+                if (ok && datos.success !== false) { recargarCon(this.modo === 'crear' ? 'Servicio creado.' : 'Cambios guardados.'); return; }
+                this.guardando = false;
+                const e = datos.errors || {};
+                this.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+                if (!Object.keys(this.errores).length) this.errores = { general: mensajeDe(estado, datos, 'No se pudo guardar el servicio.') };
+            }).catch(() => { this.guardando = false; this.errores = { general: 'No hay conexión con el servidor. Inténtalo de nuevo.' }; });
+        },
+    }));
+
+    Alpine.data('eliminarServicio', () => ({
+        abierto: false, servicio: null, impacto: null, cargando: false, trabajando: false, error: '',
+        abrir({ servicio }) {
+            this.servicio = servicio; this.impacto = null; this.error = ''; this.trabajando = false; this.cargando = true; this.abierto = true;
+            fetch(SERVICIOS_URL + '/' + servicio.id, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+                .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                .then(d => { this.impacto = d.impacto; })
+                .catch(e => { this.error = e === 419 ? mensajeDe(419, {}) : 'No se pudo revisar el servicio. Inténtalo de nuevo.'; })
+                .finally(() => { this.cargando = false; });
+        },
+        cerrar() { if (!this.trabajando) this.abierto = false; },
+        conHistorial() { return !!this.impacto && (this.impacto.turnos > 0 || this.impacto.historial > 0); },
+        puedeEliminar() { return !!this.impacto && !this.impacto.hijos && !this.conHistorial(); },
+        puedeDesactivar() { return !!this.impacto && !this.impacto.hijos && this.conHistorial() && this.servicio.activo; },
+        miles(n) { return Number(n).toLocaleString('es-CO'); },
+        confirmar() {
+            this.trabajando = true; this.error = '';
+            fetch(SERVICIOS_URL + '/' + this.servicio.id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) { recargarCon('Servicio eliminado.'); return; }
+                    this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo eliminar el servicio.');
+                })
+                .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
+        },
+        desactivar() {
+            this.trabajando = true; this.error = '';
+            enviar(SERVICIOS_URL + '/' + this.servicio.id, { ...datosDe(this.servicio), activo: false }, 'PUT').then(({ ok, estado, datos }) => {
+                if (ok && datos.success !== false) { recargarCon('Servicio desactivado: ya no sale en el kiosco.'); return; }
+                this.trabajando = false;
+                const e = datos.errors ? Object.values(datos.errors)[0] : null;
+                this.error = e ? (Array.isArray(e) ? e[0] : e) : mensajeDe(estado, datos, 'No se pudo desactivar el servicio.');
+            }).catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
+        },
+    }));
+});
+</script>
+
+@push('estilos')
+<style>
+[x-cloak] { display: none !important; }
+/* Los modales van en envoltorios sin caja: space-y-4 no les da margen */
+.envoltorio-modal { display: contents; }
+.servicios-vista { font-variant-numeric: tabular-nums; }
+
+/* Árbol: la sección en negrita; sus subservicios sangrados con una guía fina a la izquierda */
+.tabla-servicios td { height: 2.1875rem; padding-top: .2rem; padding-bottom: .2rem; white-space: nowrap; }
+/* max-width: 0 deja que la primera columna recorte la descripción en vez de ensanchar la tabla */
+.tabla-servicios th:first-child, .tabla-servicios td:first-child { width: 46%; }
+.tabla-servicios td:first-child { max-width: 0; }
+.tabla-servicios .grupo-servicio + .grupo-servicio .fila-seccion > td { border-top-color: #dfe5ee; }
+.celda-servicio { display: flex; align-items: baseline; gap: .6rem; min-width: 0; overflow: hidden; }
+.servicio-nombre { flex: 0 0 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: #111827; white-space: nowrap; }
+.fila-seccion .servicio-nombre { font-weight: 650; color: #0f2547; }
+.servicio-sub { flex: 0 1 auto; min-width: 0; font-size: .75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.servicio-sub:has(svg) { display: inline-flex; align-items: center; gap: .3rem; }
+.servicio-sub svg { flex-shrink: 0; align-self: center; }
+.servicio-marca { font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; white-space: nowrap; }
+.fila-hijo > td:first-child { position: relative; padding-left: 2.5rem; }
+.fila-hijo > td:first-child::before { content: ''; position: absolute; left: 1.4rem; top: 0; bottom: 0; width: 1px; background: #dbe2ec; }
+.fila--inactiva .servicio-nombre, .fila--inactiva .codigo-ticket { color: #6b7280; }
+.fila--contexto > td { background: #fbfcfe; }
+.fila--contexto .servicio-nombre { color: #6b7280; }
+.codigo-ticket { font-weight: 700; letter-spacing: .06em; color: #0f2547; }
+.sin-asesor { display: inline-block; padding: .15rem .45rem; border-radius: .375rem; font-size: .75rem; font-weight: 600;
+              background: #ffe2e2; color: #9f0712; white-space: nowrap; }
+.sin-asesor:hover, .enlace-cifra:hover { text-decoration: underline; }
+.enlace-cifra { color: #064b9e; font-weight: 600; }
+.sin-asesor:focus-visible, .enlace-cifra:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
+.tabla-servicios .celda-acciones { width: 1%; white-space: nowrap; padding-right: .75rem; }
+.acciones-fila { display: flex; justify-content: flex-end; gap: .125rem; opacity: 0; transition: opacity .15s ease; }
+.tabla-servicios tr:hover .acciones-fila, .tabla-servicios tr:focus-within .acciones-fila { opacity: 1; }
+@media (hover: none) { .acciones-fila { opacity: 1; } }
+.fila-esqueleto td { height: 2.1875rem; }
+.vacio-servicios { padding: 2rem; text-align: center; font-size: .875rem; color: #6b7280; display: flex; justify-content: center; gap: .5rem; }
+
+/* Formulario */
+.form-panel__fila--nombre { grid-template-columns: minmax(0, 1fr) 9rem; }
+@media (max-width: 639px) { .form-panel__fila--nombre { grid-template-columns: minmax(0, 1fr); } }
+.form-ayuda--alerta { color: #92400e; }
+.form-casillas { display: flex; flex-direction: column; gap: .55rem; padding: .15rem 0; }
+.form-casilla .form-ayuda { display: block; margin-top: .1rem; }
+.impacto-esqueleto { display: flex; flex-direction: column; gap: .6rem; padding: .25rem 0 .5rem; }
+</style>
+@endpush
 @endsection
