@@ -15,27 +15,31 @@ class CajaController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Módulos en una sola vista: el catálogo de cajas con la ocupación de ahora mismo (asesor, turno en
+     * curso, minutos), con el mismo cálculo del Inicio. Sin paginación: son pocos y caben en pantalla.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $search = $request->get('search');
 
-        $query = Caja::query();
-
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('nombre', 'like', "%{$search}%")
-                  ->orWhere('descripcion', 'like', "%{$search}%")
-                  ->orWhere('ubicacion', 'like', "%{$search}%")
-                  ->orWhere('numero_caja', 'like', "%{$search}%");
-            });
+        try {
+            $modulos = app(\App\Services\TableroService::class)->generar()['modulos'];
+        } catch (\Throwable $e) {
+            report($e);
+            // Si el cálculo en vivo fallara, al menos el catálogo se puede administrar.
+            $modulos = Caja::orderBy('numero_caja')->get()->map(fn (Caja $c) => [
+                'id' => (int) $c->id, 'nombre' => $c->nombre, 'descripcion' => $c->descripcion,
+                'activa' => $c->estado === 'activa', 'numero' => (int) $c->numero_caja, 'ubicacion' => $c->ubicacion,
+                'estado' => $c->estado === 'activa' ? 'cerrado' : 'inhabilitado',
+                'asesor' => null, 'turno' => null, 'atendidos_hoy' => null,
+            ])->all();
         }
 
-        $cajas = $query->orderBy('numero_caja')->paginate(10);
+        // Turnos del historial atendidos en cada módulo: quedarían sin módulo (caja_id = NULL) si se elimina.
+        $turnosPorModulo = \App\Models\Turno::whereNotNull('caja_id')
+            ->selectRaw('caja_id, COUNT(*) AS n')->groupBy('caja_id')->pluck('n', 'caja_id');
 
-        return view('admin.cajas', compact('cajas', 'search', 'user'));
+        return view('admin.cajas', compact('user', 'modulos', 'turnosPorModulo'));
     }
 
     /**
@@ -188,6 +192,17 @@ class CajaController extends Controller
     public function destroy($id)
     {
         $caja = Caja::findOrFail($id);
+
+        // No se elimina un módulo en uso: el asesor perdería su puesto en plena atención.
+        if ($caja->estado === 'activa' && $caja->asesor_activo_id) {
+            $asesor = \App\Models\User::find($caja->asesor_activo_id)?->nombre_completo ?? 'un asesor';
+            $mensaje = "El módulo está en uso por {$asesor}. Elimínalo cuando lo libere.";
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $mensaje], 422);
+            }
+            return redirect()->route('admin.cajas')->with('error', $mensaje);
+        }
+
         $caja->delete();
 
         // Si es una petición AJAX, devolver JSON

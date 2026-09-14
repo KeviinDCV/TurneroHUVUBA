@@ -22,25 +22,25 @@
         <!-- Filtros: se aplican al escribir o al elegir -->
         <div class="filtros">
             <div class="filtro filtro--buscar">
-                <label for="filtro-search" class="filtro__rotulo">Buscar</label>
+                <label for="filtro-search" class="sr-only">Buscar</label>
                 <div class="buscador">
                     <svg class="buscador__icono" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z"></path></svg>
                     <input id="filtro-search" type="search" autocomplete="off" placeholder="Turno (C-093), servicio o asesor" class="campo">
                 </div>
             </div>
             <div class="filtro">
-                <label for="filtro-servicio" class="filtro__rotulo">Servicio</label>
+                <label for="filtro-servicio" class="sr-only">Servicio</label>
                 <select id="filtro-servicio" class="campo">
-                    <option value="">Todos</option>
+                    <option value="">Todos los servicios</option>
                     @foreach ($servicios as $s)
                         <option value="{{ $s->id }}">{{ $s->nombre }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="filtro">
-                <label for="filtro-asesor" class="filtro__rotulo">Asesor</label>
+                <label for="filtro-asesor" class="sr-only">Asesor</label>
                 <select id="filtro-asesor" class="campo">
-                    <option value="">Todos</option>
+                    <option value="">Todos los asesores</option>
                     @foreach ($asesores as $a)
                         <option value="{{ $a->id }}">{{ $a->nombre_completo }}</option>
                     @endforeach
@@ -82,6 +82,7 @@
     };
 
     const url = new URLSearchParams(location.search);
+    let porPagina = 25;     // se ajusta a las filas que caben en la pantalla (filasQueCaben)
     const estadoFiltro = { estado: url.get('estado') || '', servicio: url.get('servicio') || '', asesor: url.get('asesor') || '',
                            search: url.get('search') || '', page: parseInt(url.get('page') || '1', 10) || 1 };
 
@@ -169,6 +170,7 @@
         history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : ''));
         if (pidiendo) pidiendo.abort();
         pidiendo = new AbortController();
+        p.set('per_page', porPagina);
         return fetch(API + '?' + p, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: pidiendo.signal })
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(d => {
@@ -211,8 +213,31 @@
         if (e.target.closest('[data-limpiar]')) limpiar();
     });
 
+    // Cuántas filas caben entre el encabezado de la tabla y el borde de la pantalla, dejando la paginación a la vista.
+    function filasQueCaben() {
+        const tabla = document.querySelector('.tabla-turnos');
+        const fila = tabla.querySelector('tbody tr');
+        const alto = fila && fila.cells.length > 1 ? fila.getBoundingClientRect().height : 41;
+        const inicio = tabla.querySelector('thead').getBoundingClientRect().bottom + window.scrollY;
+        const pie = $('turnos-paginacion').getBoundingClientRect().height || 56;
+        return Math.max(5, Math.min(50, Math.floor((window.innerHeight - inicio - pie - 24) / alto)));
+    }
+    function ajustarPagina() {
+        const n = filasQueCaben();
+        if (n === porPagina) return;
+        const primero = (estadoFiltro.page - 1) * porPagina;          // conserva el primer turno visible
+        porPagina = n;
+        estadoFiltro.page = Math.floor(primero / n) + 1;
+        const filas = $('turnos-tbody').rows;                            // sin salto: se recortan ya
+        while (filas.length > n && filas[filas.length - 1].cells.length > 1) filas[filas.length - 1].remove();
+        actualizar();
+    }
+    let redimension = null;
+    window.addEventListener('resize', () => { clearTimeout(redimension); redimension = setTimeout(ajustarPagina, 250); });
+
     // Primera pintura con los datos de la página; luego, refresco cada 5 s con la pestaña visible.
     pintar(@js($datos));
+    ajustarPagina();
     setInterval(() => { if (!document.hidden) actualizar(); }, 5000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizar(); });
 })();
@@ -226,7 +251,7 @@
 @media (max-width: 1023px) { .estados { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 639px) { .estados { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .estado-tile {
-    display: flex; flex-direction: column; align-items: flex-start; gap: .25rem;
+    display: flex; flex-direction: row; align-items: center; gap: .6rem;
     background: #ffffff; border: 1px solid transparent; border-radius: .75rem; padding: .75rem 1rem;
     box-shadow: 0 1px 2px rgba(16, 24, 40, .06); cursor: pointer; text-align: left;
     transition: box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
@@ -234,7 +259,8 @@
 .estado-tile:hover { border-color: #cdd9ec; box-shadow: 0 6px 18px -10px rgba(16, 24, 40, .18); }
 .estado-tile[aria-pressed="true"] { background: #e6f1fb; border-color: #064b9e; }
 .estado-tile:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
-.estado-tile__n { font-size: 1.5rem; font-weight: 700; line-height: 1.1; color: #0f2547; }
+.estado-tile__n { font-size: 1.375rem; font-weight: 700; line-height: 1; color: #0f2547; min-width: 1.75rem; }
+.estado-tile { padding: .6rem .85rem; }
 .estado-tile__rotulo { display: flex; align-items: center; gap: .4rem; font-size: .75rem; font-weight: 600; color: #4b5563; }
 .estado-punto { width: .5rem; height: .5rem; border-radius: 9999px; flex-shrink: 0; }
 .estado-punto--pendiente { background: #d08700; } .estado-punto--llamado { background: #155dfc; }
@@ -242,7 +268,7 @@
 .estado-punto--cancelado { background: #e7000b; } .estado-punto--todos { background: #072449; }
 
 /* Filtros */
-.filtros { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto; gap: .75rem; align-items: end; padding: 1rem; }
+.filtros { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto; gap: .75rem; align-items: end; padding: .75rem 1rem; }
 @media (max-width: 1023px) { .filtros { grid-template-columns: 1fr 1fr; } .filtro--buscar { grid-column: 1 / -1; } }
 .filtro__rotulo { display: block; font-size: .75rem; font-weight: 600; color: #374151; margin-bottom: .25rem; }
 .campo {
@@ -258,6 +284,7 @@
 .boton-limpiar:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
 
 /* Tabla */
+.tabla-turnos th, .tabla-turnos td { padding-top: .5rem; padding-bottom: .5rem; }
 .tabla-turnos thead tr { background: #f6f8fc; }
 .tabla-turnos th { color: #5f6b80; }
 .codigo { font-weight: 700; color: #111827; letter-spacing: .01em; }
@@ -269,7 +296,7 @@
 .enlace-accion:hover { text-decoration: underline; }
 
 /* Paginación */
-.paginacion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .875rem 1rem; border-top: 1px solid #e5e7eb; }
+.paginacion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem 1rem; border-top: 1px solid #e5e7eb; }
 .pag-resumen { font-size: .875rem; color: #4b5563; }
 .pag-resumen b { color: #111827; font-weight: 600; }
 .pag-botones { display: flex; align-items: center; gap: .25rem; }

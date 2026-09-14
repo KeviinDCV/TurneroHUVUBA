@@ -1,634 +1,360 @@
 @extends('layouts.admin')
 
-@section('title', 'Gestión de Cajas')
+@section('title', 'Módulos')
 
 @section('content')
+{{-- Módulos en una sola vista: catálogo + ocupación de ahora mismo (CajaController::index, con el mismo
+     cálculo del Inicio). La ocupación se refresca cada 15 s desde GET /api/admin/tablero. --}}
+<div class="modulos-vista max-w-7xl mx-auto space-y-4"
+     x-data="modulosVista(@js($modulos), @js($turnosPorModulo))">
+    <h1 class="sr-only">Módulos</h1>
 
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-7xl mx-auto">
-                <div class="flex justify-between items-center mb-6" x-data="{ openModal: false }">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Administración</p>
-                        <h1 class="text-2xl font-bold text-gray-900 mt-1">Gestión de Cajas</h1>
+    @if (session('success'))
+        <div class="aviso aviso--ok" role="status">{{ session('success') }}</div>
+    @endif
+    @if (session('error'))
+        <div class="aviso aviso--error" role="alert">{{ session('error') }}</div>
+    @endif
+
+    <!-- Filtros rápidos, búsqueda y alta en una sola fila -->
+    <div class="mod-barra">
+        <div class="mod-filtros" role="group" aria-label="Filtrar módulos">
+            <template x-for="f in filtros" :key="f.clave">
+                <button type="button" class="mod-filtro" :aria-pressed="(filtro === f.clave).toString()" @click="filtro = f.clave">
+                    <span x-text="f.rotulo"></span> <span class="mod-filtro__n" x-text="contar(f.clave)"></span>
+                </button>
+            </template>
+        </div>
+        <div class="buscador">
+            <svg class="buscador__icono" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z"></path></svg>
+            <input type="search" x-model.debounce.150ms="buscar" class="campo" placeholder="Número, nombre, ubicación o asesor" aria-label="Buscar módulo">
+        </div>
+        <button type="button" class="btn-primario" @click="$dispatch('abrir-modulo', { modo: 'crear' })">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Nuevo módulo
+        </button>
+    </div>
+
+    <!-- Fichas -->
+    <div class="mod-grid">
+        <template x-for="m in visibles()" :key="m.id">
+            <article class="mod-tile" :class="!m.activa && 'mod-tile--inactivo'">
+                <div class="mod-cabeza">
+                    <span class="mod-num" x-text="m.numero"></span>
+                    <div class="min-w-0">
+                        <p class="mod-nombre" x-text="m.nombre"></p>
+                        <p class="mod-sub" x-text="m.ubicacion || m.descripcion || '—'" :title="[m.ubicacion, m.descripcion].filter(Boolean).join(' · ')"></p>
                     </div>
-                    <button @click="openModal = true" class="inline-flex items-center gap-2 bg-hospital-blue text-white px-4 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Nueva Caja
+                    <div class="mod-acciones">
+                        <button type="button" class="mod-accion" :aria-label="'Editar módulo ' + m.numero" title="Editar"
+                                @click="$dispatch('abrir-modulo', { modo: 'editar', modulo: m })">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </button>
+                        <button type="button" class="mod-accion mod-accion--peligro" :aria-label="'Eliminar módulo ' + m.numero" title="Eliminar"
+                                @click="$dispatch('eliminar-modulo', { modulo: m, turnos: historial[m.id] || 0 })">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="mod-uso" :class="'mod-uso--' + m.estado" :title="uso(m).texto + (m.asesor ? ': ' + m.asesor.nombre : '')">
+                    <span class="mod-punto" aria-hidden="true"></span>
+                    <span class="mod-uso__quien" x-text="m.asesor ? m.asesor.corto : uso(m).texto"></span>
+                    <span class="mod-uso__detalle" x-show="m.asesor">
+                        <template x-if="m.turno"><span><b x-text="m.turno.codigo"></b><span class="mod-uso__min" x-text="m.turno.minutos !== null ? ' · ' + m.turno.minutos + ' min' : ''"></span></span></template>
+                        <template x-if="!m.turno"><span x-text="uso(m).texto"></span></template>
+                    </span>
+                </div>
+            </article>
+        </template>
+    </div>
+    <p class="mod-vacio" x-show="!visibles().length" x-cloak>Ningún módulo coincide con la búsqueda.</p>
+
+    <!-- Crear / editar -->
+    <div x-data="formularioModulo()" @abrir-modulo.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="mod-modal" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+            <div class="mod-modal__caja" role="dialog" aria-modal="true" :aria-label="modo === 'crear' ? 'Nuevo módulo' : 'Editar módulo'">
+                <div class="mod-modal__cabeza">
+                    <h2 x-text="modo === 'crear' ? 'Nuevo módulo' : 'Editar módulo ' + datos.numero_caja"></h2>
+                    <button type="button" class="mod-accion" @click="cerrar()" aria-label="Cerrar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
-
-                    <!-- Modal para crear caja -->
-                    <div
-                        x-show="openModal"
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100"
-                        x-transition:leave-end="opacity-0"
-                        class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-                        style="display: none;"
-                    >
-                        <div
-                            @click.away="openModal = false"
-                            class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 transform scale-95"
-                            x-transition:enter-end="opacity-100 transform scale-100"
-                            x-transition:leave="transition ease-in duration-200"
-                            x-transition:leave-start="opacity-100 transform scale-100"
-                            x-transition:leave-end="opacity-0 transform scale-95"
-                        >
-                            <div class="p-6">
-                                <div class="flex items-center justify-between mb-6">
-                                    <h2 class="text-xl font-bold text-gray-800">Crear Nueva Caja</h2>
-                                    <button @click="openModal = false" class="text-gray-500 hover:text-gray-700 cursor-pointer">
-                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                @if ($errors->any())
-                                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                                    <div class="font-bold">Por favor corrige los siguientes errores:</div>
-                                    <ul class="list-disc ml-5">
-                                        @foreach ($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                                @endif
-
-                                <form action="{{ route('admin.cajas.store') }}" method="POST">
-                                    @csrf
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <!-- Nombre -->
-                                        <div>
-                                            <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Caja</label>
-                                            <input
-                                                type="text"
-                                                id="nombre"
-                                                name="nombre"
-                                                value="{{ old('nombre') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                placeholder="Ej: Caja Principal"
-                                                required
-                                            >
-                                        </div>
-
-                                        <!-- Número de Caja -->
-                                        <div>
-                                            <label for="numero_caja" class="block text-sm font-medium text-gray-700 mb-1">Número de Caja</label>
-                                            <input
-                                                type="number"
-                                                id="numero_caja"
-                                                name="numero_caja"
-                                                value="{{ old('numero_caja') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                placeholder="1"
-                                                min="1"
-                                                required
-                                            >
-                                        </div>
-
-                                        <!-- Ubicación -->
-                                        <div>
-                                            <label for="ubicacion" class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-                                            <input
-                                                type="text"
-                                                id="ubicacion"
-                                                name="ubicacion"
-                                                value="{{ old('ubicacion') }}"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                placeholder="Ej: Primer piso - Área de facturación"
-                                            >
-                                        </div>
-
-                                        <!-- Estado -->
-                                        <div>
-                                            <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                                            <select
-                                                id="estado"
-                                                name="estado"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                required
-                                            >
-                                                <option value="activa" {{ old('estado') === 'activa' ? 'selected' : '' }}>Activa</option>
-                                                <option value="inactiva" {{ old('estado') === 'inactiva' ? 'selected' : '' }}>Inactiva</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Descripción -->
-                                        <div class="md:col-span-2">
-                                            <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                                            <textarea
-                                                id="descripcion"
-                                                name="descripcion"
-                                                rows="3"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                                                placeholder="Descripción opcional de la caja..."
-                                            >{{ old('descripcion') }}</textarea>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-8 flex justify-end space-x-3">
-                                        <button type="button" @click="openModal = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
-                                            Cancelar
-                                        </button>
-                                        <button type="submit" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                                            Guardar Caja
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
-                @if (session('success'))
-                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6">
-                    {{ session('success') }}
-                </div>
-                @endif
-
-                <!-- Aplicación Alpine.js para búsqueda en tiempo real y modal -->
-                <div x-data="{
-                    search: '{{ $search ?? '' }}',
-                    cajas: {{ json_encode($cajas->items()) }},
-                    allCajas: {{ json_encode($cajas->items()) }},
-
-                    init() {
-                        this.$watch('search', value => {
-                            if (value === '') {
-                                this.cajas = this.allCajas;
-                                return;
-                            }
-
-                            value = value.toLowerCase();
-                            this.cajas = this.allCajas.filter(caja => {
-                                return caja.nombre.toLowerCase().includes(value) ||
-                                       caja.descripcion?.toLowerCase().includes(value) ||
-                                       caja.ubicacion?.toLowerCase().includes(value) ||
-                                       caja.numero_caja.toString().includes(value) ||
-                                       caja.estado.toLowerCase().includes(value);
-                            });
-                        });
-
-                        // Abrir modal automáticamente si hay errores de validación
-                        @if($errors->any())
-                            this.$nextTick(() => {
-                                this.$dispatch('open-modal');
-                            });
-                        @endif
-                    }
-                }">
-                    <!-- Buscador -->
-                    <div class="mb-6">
-                        <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden shadow-sm search-container">
-                            <div class="px-3 py-2 bg-gray-50">
-                                <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                            <input
-                                type="text"
-                                x-model="search"
-                                placeholder="Buscar por nombre, número, ubicación, estado o descripción..."
-                                class="w-full px-4 py-2 focus:outline-none focus:border-hospital-blue"
-                            >
-                            <template x-if="search">
-                                <button @click="search = ''" class="px-3 py-2 text-gray-500 hover:text-gray-700">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </template>
-                        </div>
+                <form @submit.prevent="guardar()" class="mod-form">
+                    <p class="aviso aviso--error" x-show="errores.general" x-text="errores.general"></p>
+                    <div class="mod-form__fila">
+                        <label class="mod-campo mod-campo--num">
+                            <span>Número *</span>
+                            <input type="number" min="1" required x-model="datos.numero_caja" class="campo" x-ref="primero">
+                            <small x-show="errores.numero_caja" x-text="errores.numero_caja"></small>
+                        </label>
+                        <label class="mod-campo">
+                            <span>Nombre *</span>
+                            <input type="text" required maxlength="255" x-model="datos.nombre" class="campo" placeholder="Ej.: Caja 3">
+                            <small x-show="errores.nombre" x-text="errores.nombre"></small>
+                        </label>
                     </div>
-
-                    <!-- Tabla de Cajas -->
-                    <div class="overflow-x-auto flex justify-center">
-                        <table class="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                            <thead>
-                                <tr class="bg-[#f6f8fc] text-gray-500 border-b border-gray-200">
-                                    <th class="py-3 px-4 text-left font-semibold">NÚMERO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">NOMBRE</th>
-                                    <th class="py-3 px-4 text-left font-semibold">UBICACIÓN</th>
-                                    <th class="py-3 px-4 text-left font-semibold">ESTADO</th>
-                                    <th class="py-3 px-4 text-left font-semibold">DESCRIPCIÓN</th>
-                                    <th class="py-3 px-4 text-center font-semibold">OPCIONES</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
-                                <template x-if="cajas.length === 0">
-                                    <tr>
-                                        <td colspan="6" class="py-4 text-center text-gray-500">
-                                            No se encontraron cajas.
-                                        </td>
-                                    </tr>
-                                </template>
-                                <template x-for="(caja, index) in cajas" :key="index">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="py-3 px-4 whitespace-nowrap font-medium" x-text="caja.numero_caja"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap" x-text="caja.nombre"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap" x-text="caja.ubicacion || '-'"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap">
-                                            <span
-                                                class="px-2 py-1 rounded text-sm"
-                                                :class="caja.estado === 'activa' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                                                x-text="caja.estado === 'activa' ? 'Activa' : 'Inactiva'">
-                                            </span>
-                                        </td>
-                                        <td class="py-3 px-4 max-w-xs truncate" x-text="caja.descripcion || '-'"></td>
-                                        <td class="py-3 px-4 whitespace-nowrap">
-                                            <div class="flex justify-center space-x-2">
-                                                <button class="p-1 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                                        title="Editar"
-                                                        @click="$store.modals.editCaja.openModal(caja.id)">
-                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                                    </svg>
-                                                </button>
-                                                <button class="p-1 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
-                                                        title="Eliminar"
-                                                        @click="$store.modals.deleteCaja.openModal(caja.id, caja.nombre)">
-                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                    <div class="mod-form__fila">
+                        <label class="mod-campo">
+                            <span>Ubicación</span>
+                            <input type="text" maxlength="255" x-model="datos.ubicacion" class="campo" placeholder="Ej.: Primer piso">
+                            <small x-show="errores.ubicacion" x-text="errores.ubicacion"></small>
+                        </label>
+                        <label class="mod-campo mod-campo--estado">
+                            <span>Estado *</span>
+                            <select x-model="datos.estado" class="campo">
+                                <option value="activa">Activo</option>
+                                <option value="inactiva">Inactivo</option>
+                            </select>
+                        </label>
                     </div>
-
-                    <!-- Paginación -->
-                    <div class="mt-4">
-                        <form id="searchForm" action="{{ route('admin.cajas') }}" method="GET" class="hidden">
-                            <input type="text" name="search" :value="search">
-                        </form>
-                        {{ $cajas->withQueryString()->links() }}
+                    <label class="mod-campo">
+                        <span>Descripción</span>
+                        <textarea rows="2" x-model="datos.descripcion" class="campo campo--area" placeholder="Opcional"></textarea>
+                        <small x-show="errores.descripcion" x-text="errores.descripcion"></small>
+                    </label>
+                    <div class="mod-modal__pie">
+                        <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
+                        <button type="submit" class="btn-primario" :disabled="guardando" x-text="guardando ? 'Guardando…' : (modo === 'crear' ? 'Crear módulo' : 'Guardar cambios')"></button>
                     </div>
-                </div>
+                </form>
             </div>
+        </div>
+    </div>
 
-    <!-- Modal para Editar Caja -->
-    <div
-        x-data="editCajaModal()"
-        x-cloak
-        @keydown.escape.window="isOpen = false"
-    >
-        <div
-            x-show="isOpen"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-            style="display: none;"
-        >
-            <div
-                @click.away="isOpen = false"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95"
-            >
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-xl font-bold text-gray-800">Editar Caja</h2>
-                        <button @click="isOpen = false" class="text-gray-500 hover:text-gray-700 cursor-pointer">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Indicador de Carga -->
-                    <div x-show="loading" class="flex justify-center items-center py-4">
-                        <svg class="animate-spin h-8 w-8 text-hospital-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-
-                    <!-- Errores de Validación -->
-                    <div x-show="Object.keys(errors).length > 0" class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                        <div class="font-bold">Por favor corrige los siguientes errores:</div>
-                        <ul class="list-disc ml-5">
-                            <template x-for="(messages, field) in errors" :key="field">
-                                <template x-for="(message, i) in messages" :key="i">
-                                    <li x-text="message"></li>
-                                </template>
-                            </template>
-                        </ul>
-                    </div>
-
-                    <!-- Formulario -->
-                    <div x-show="!loading" class="mt-4">
-                        <form @submit.prevent="submitForm">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Nombre -->
-                                <div>
-                                    <label for="edit_nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Caja</label>
-                                    <input
-                                        type="text"
-                                        id="edit_nombre"
-                                        x-model="cajaData.nombre"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                        required
-                                    >
-                                </div>
-
-                                <!-- Número de Caja -->
-                                <div>
-                                    <label for="edit_numero_caja" class="block text-sm font-medium text-gray-700 mb-1">Número de Caja</label>
-                                    <input
-                                        type="number"
-                                        id="edit_numero_caja"
-                                        x-model="cajaData.numero_caja"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                        min="1"
-                                        required
-                                    >
-                                </div>
-
-                                <!-- Ubicación -->
-                                <div>
-                                    <label for="edit_ubicacion" class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-                                    <input
-                                        type="text"
-                                        id="edit_ubicacion"
-                                        x-model="cajaData.ubicacion"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                    >
-                                </div>
-
-                                <!-- Estado -->
-                                <div>
-                                    <label for="edit_estado" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                                    <select
-                                        id="edit_estado"
-                                        x-model="cajaData.estado"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                        required
-                                    >
-                                        <option value="activa">Activa</option>
-                                        <option value="inactiva">Inactiva</option>
-                                    </select>
-                                </div>
-
-                                <!-- Descripción -->
-                                <div class="md:col-span-2">
-                                    <label for="edit_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                                    <textarea
-                                        id="edit_descripcion"
-                                        x-model="cajaData.descripcion"
-                                        rows="3"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            <div class="mt-8 flex justify-end space-x-3">
-                                <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer">
-                                    Cancelar
-                                </button>
-                                <button type="submit" :disabled="loading" class="bg-hospital-blue text-white px-6 py-2 rounded-lg hover:bg-hospital-blue-hover transition-colors cursor-pointer disabled:opacity-50">
-                                    <span x-show="!loading">Guardar Cambios</span>
-                                    <span x-show="loading">Guardando...</span>
-                                </button>
-                            </div>
-                        </form>
+    <!-- Eliminar -->
+    <div x-data="eliminarModulo()" @eliminar-modulo.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="mod-modal" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+            <div class="mod-modal__caja mod-modal__caja--angosta" role="alertdialog" aria-modal="true" aria-label="Eliminar módulo">
+                <div class="mod-modal__cabeza">
+                    <h2 x-text="'Eliminar el módulo ' + (modulo && modulo.numero)"></h2>
+                </div>
+                <div class="mod-form">
+                    <p class="aviso aviso--error" x-show="enUso" x-text="'Está en uso por ' + (modulo && modulo.asesor ? modulo.asesor.nombre : 'un asesor') + '. Elimínalo cuando lo libere.'"></p>
+                    <p class="mod-texto" x-show="!enUso">
+                        <span x-show="turnos > 0">Los <b x-text="turnos.toLocaleString('es-CO')"></b> turnos atendidos en este módulo quedarán sin módulo en el historial y en los reportes. </span>
+                        Si solo quieres dejar de usarlo, edítalo y ponlo como <b>Inactivo</b>: conserva la historia.
+                    </p>
+                    <p class="aviso aviso--error" x-show="error" x-text="error"></p>
+                    <div class="mod-modal__pie">
+                        <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
+                        <button type="button" class="btn-peligro" x-show="!enUso" :disabled="eliminando" @click="confirmar()" x-text="eliminando ? 'Eliminando…' : 'Eliminar'"></button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Modal para Eliminar Caja -->
-    <div
-        x-data="deleteCajaModal()"
-        x-cloak
-        @keydown.escape.window="isOpen = false"
-    >
-        <div
-            x-show="isOpen"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-            style="display: none;"
-        >
-            <div
-                @click.away="isOpen = false"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-md"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95"
-            >
-                <div class="p-6">
-                    <div class="mb-4">
-                        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 class="mt-3 text-lg font-medium text-center text-gray-900">¿Eliminar esta caja?</h3>
-                        <p class="mt-2 text-sm text-center text-gray-500">
-                            Estás a punto de eliminar la caja <span class="font-medium" x-text="cajaNombre"></span>.<br>
-                            Esta acción no se puede deshacer.
-                        </p>
-                    </div>
+<script>
+document.addEventListener('alpine:init', () => {
+    const TABLERO_URL = @json(route('api.admin.tablero'));
+    const CAJAS_URL = @json(route('admin.cajas'));
+    const TOKEN = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const USO = {
+        atendiendo: ['Atendiendo', 'bg-yellow-100 text-yellow-800'],
+        libre: ['Libre', 'bg-green-100 text-green-800'],
+        descanso: ['En descanso', 'bg-blue-100 text-blue-800'],
+        canal: ['Canal no presencial', 'bg-orange-100 text-orange-800'],
+        cerrado: ['Sin asesor', 'bg-gray-100 text-gray-700'],
+        inhabilitado: ['Inactivo', 'bg-gray-100 text-gray-700'],
+    };
+    const EN_USO = ['atendiendo', 'libre', 'descanso', 'canal'];
 
-                    <div class="mt-6 flex justify-center space-x-4">
-                        <button @click="isOpen = false" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer">
-                            Cancelar
-                        </button>
-                        <button @click="deleteCaja()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer">
-                            Eliminar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    Alpine.data('modulosVista', (inicial, historial) => ({
+        modulos: inicial,
+        historial: historial || {},
+        filtro: 'todos',
+        buscar: '',
+        filtros: [
+            { clave: 'todos', rotulo: 'Todos' },
+            { clave: 'uso', rotulo: 'En uso' },
+            { clave: 'sin', rotulo: 'Sin asesor' },
+            { clave: 'inactivos', rotulo: 'Inactivos' },
+        ],
+        init() {
+            // Solo la ocupación cambia sola; el catálogo cambia al guardar (y la página se recarga).
+            setInterval(() => { if (!document.hidden) this.refrescar(); }, 15000);
+        },
+        pasa(m, clave) {
+            if (clave === 'uso') return EN_USO.includes(m.estado);
+            if (clave === 'sin') return m.estado === 'cerrado';
+            if (clave === 'inactivos') return !m.activa;
+            return true;
+        },
+        contar(clave) { return this.modulos.filter(m => this.pasa(m, clave)).length; },
+        visibles() {
+            const q = this.buscar.trim().toLowerCase();
+            return this.modulos.filter(m => this.pasa(m, this.filtro) && (!q || [m.numero, m.nombre, m.ubicacion, m.descripcion, m.asesor && m.asesor.nombre]
+                .some(v => String(v ?? '').toLowerCase().includes(q))));
+        },
+        uso(m) { const [texto, clase] = USO[m.estado] || [m.estado, 'bg-gray-100 text-gray-700']; return { texto, clase }; },
+        refrescar() {
+            fetch(TABLERO_URL, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+                .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                .then(d => {
+                    const vivos = Object.fromEntries(d.modulos.map(x => [x.id, x]));
+                    this.modulos = this.modulos.map(m => vivos[m.id]
+                        ? { ...m, estado: vivos[m.id].estado, asesor: vivos[m.id].asesor, turno: vivos[m.id].turno, atendidos_hoy: vivos[m.id].atendidos_hoy }
+                        : m);
+                })
+                .catch(e => console.warn('No se pudo actualizar la ocupación de los módulos:', e));
+        },
+    }));
 
-    <!-- Scripts de Alpine.js -->
-    <script>
-        // Store global para los modales
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('modals', {
-                editCaja: {
-                    openModal(cajaId) {
-                        // Buscar la caja en los datos
-                        const cajaData = @json($cajas->items());
-                        const caja = cajaData.find(c => c.id === cajaId);
+    function enviar(url, datos, metodo) {
+        const cuerpo = new FormData();
+        Object.entries(datos).forEach(([k, v]) => cuerpo.append(k, v ?? ''));
+        if (metodo) cuerpo.append('_method', metodo);
+        return fetch(url, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+            .then(async r => ({ ok: r.ok, datos: await r.json().catch(() => ({})) }));
+    }
 
-                        if (caja) {
-                            // Disparar evento para abrir modal de edición
-                            window.dispatchEvent(new CustomEvent('open-edit-caja-modal', {
-                                detail: { caja }
-                            }));
-                        }
-                    }
-                },
-                deleteCaja: {
-                    openModal(cajaId, cajaNombre) {
-                        // Disparar evento para abrir modal de eliminación
-                        window.dispatchEvent(new CustomEvent('open-delete-caja-modal', {
-                            detail: { cajaId, cajaNombre }
-                        }));
-                    }
-                }
-            });
-        });
+    Alpine.data('formularioModulo', () => ({
+        abierto: false, modo: 'crear', id: null, guardando: false, errores: {},
+        datos: { numero_caja: '', nombre: '', ubicacion: '', estado: 'activa', descripcion: '' },
+        abrir({ modo, modulo }) {
+            this.modo = modo; this.errores = {}; this.guardando = false;
+            this.id = modulo ? modulo.id : null;
+            this.datos = modulo
+                ? { numero_caja: modulo.numero, nombre: modulo.nombre || '', ubicacion: modulo.ubicacion || '', estado: modulo.activa ? 'activa' : 'inactiva', descripcion: modulo.descripcion || '' }
+                : { numero_caja: '', nombre: '', ubicacion: '', estado: 'activa', descripcion: '' };
+            this.abierto = true;
+            this.$nextTick(() => this.$refs.primero && this.$refs.primero.focus());
+        },
+        cerrar() { if (!this.guardando) this.abierto = false; },
+        guardar() {
+            this.guardando = true; this.errores = {};
+            const url = this.modo === 'crear' ? CAJAS_URL : CAJAS_URL + '/' + this.id;
+            enviar(url, this.datos, this.modo === 'crear' ? null : 'PUT').then(({ ok, datos }) => {
+                if (ok && datos.success !== false) { location.reload(); return; }
+                this.guardando = false;
+                const e = datos.errors || {};
+                this.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+                if (!Object.keys(this.errores).length) this.errores = { general: datos.message || 'No se pudo guardar el módulo.' };
+            }).catch(() => { this.guardando = false; this.errores = { general: 'Error de conexión. Inténtalo de nuevo.' }; });
+        },
+    }));
 
-        // Componente para el modal de edición
-        function editCajaModal() {
-            return {
-                isOpen: false,
-                loading: false,
-                errors: {},
-                cajaId: null,
-                cajaData: {
-                    nombre: '',
-                    numero_caja: '',
-                    ubicacion: '',
-                    estado: 'activa',
-                    descripcion: ''
-                },
+    Alpine.data('eliminarModulo', () => ({
+        abierto: false, modulo: null, turnos: 0, eliminando: false, error: '',
+        get enUso() { return !!(this.modulo && this.modulo.activa && EN_USO.includes(this.modulo.estado)); },
+        abrir({ modulo, turnos }) { this.modulo = modulo; this.turnos = turnos; this.error = ''; this.eliminando = false; this.abierto = true; },
+        cerrar() { if (!this.eliminando) this.abierto = false; },
+        confirmar() {
+            this.eliminando = true; this.error = '';
+            fetch(CAJAS_URL + '/' + this.modulo.id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+                .then(async r => ({ ok: r.ok, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, datos }) => {
+                    if (ok && datos.success !== false) { location.reload(); return; }
+                    this.eliminando = false; this.error = datos.message || 'No se pudo eliminar el módulo.';
+                })
+                .catch(() => { this.eliminando = false; this.error = 'Error de conexión. Inténtalo de nuevo.'; });
+        },
+    }));
+});
+</script>
 
-                init() {
-                    // Escuchar evento para abrir modal
-                    window.addEventListener('open-edit-caja-modal', (event) => {
-                        const { caja } = event.detail;
-                        this.cajaId = caja.id;
-                        this.cajaData = { ...caja };
-                        this.errors = {};
-                        this.isOpen = true;
-                    });
-                },
+<style>
+[x-cloak] { display: none !important; }
+.modulos-vista { font-variant-numeric: tabular-nums; }
 
-                submitForm() {
-                    // Limpiar errores previos
-                    this.errors = {};
-                    this.loading = true;
+/* Barra: filtros, búsqueda y alta en una fila */
+.mod-barra { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.mod-filtros { display: flex; gap: .375rem; flex-wrap: wrap; }
+.mod-filtro {
+    display: inline-flex; align-items: center; gap: .4rem; height: 2.5rem; padding: 0 .9rem; border-radius: .5rem;
+    background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, .06); font-size: .875rem; font-weight: 600; color: #374151; cursor: pointer;
+}
+.mod-filtro:hover { color: #064b9e; }
+.mod-filtro[aria-pressed="true"] { background: #064b9e; color: #ffffff; }
+.mod-filtro__n { font-weight: 500; opacity: .75; }
+.mod-filtro:focus-visible, .mod-accion:focus-visible, .btn-primario:focus-visible, .btn-secundario:focus-visible, .btn-peligro:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
+.buscador { position: relative; flex: 1 1 16rem; max-width: 22rem; margin-left: auto; }
+.buscador__icono { position: absolute; left: .75rem; top: 50%; width: 1rem; height: 1rem; transform: translateY(-50%); color: #6b7280; pointer-events: none; }
+.campo {
+    width: 100%; height: 2.5rem; padding: 0 .75rem; font-size: .875rem; color: #111827; background: #ffffff;
+    border: 1px solid #d1d5db; border-radius: .5rem;
+}
+.buscador .campo { padding-left: 2.25rem; }
+.campo:focus { outline: none; border-color: #064b9e; box-shadow: 0 0 0 3px rgba(6, 75, 158, .18); }
+.campo--area { height: auto; padding: .5rem .75rem; resize: vertical; }
+.btn-primario, .btn-secundario, .btn-peligro {
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem; height: 2.5rem; padding: 0 1rem;
+    border-radius: .5rem; font-size: .875rem; font-weight: 600; cursor: pointer; transition: background-color .15s ease;
+}
+.btn-primario { background: #064b9e; color: #ffffff; }
+.btn-primario:hover { background: #053d7a; }
+.btn-secundario { background: #eef1f6; color: #374151; }
+.btn-secundario:hover { background: #e2e8f2; }
+.btn-peligro { background: #b7191c; color: #ffffff; }
+.btn-peligro:hover { background: #9a1518; }
+.btn-primario:disabled, .btn-peligro:disabled { opacity: .6; cursor: default; }
 
-                    // Crear FormData
-                    const formData = new FormData();
-                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+/* Fichas: 20 módulos a la vista sin scroll en 1366 x 768 */
+.mod-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
+@media (max-width: 1279px) { .mod-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1023px) { .mod-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .mod-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .mod-grid { grid-template-columns: 1fr; } }
+.mod-tile {
+    display: flex; flex-direction: column; gap: .55rem; background: #ffffff; border: 1px solid transparent;
+    border-radius: .75rem; padding: .7rem .8rem; box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.mod-tile:hover { border-color: #cdd9ec; box-shadow: 0 6px 18px -10px rgba(16, 24, 40, .18); }
+.mod-tile--inactivo { background: #f6f8fc; box-shadow: none; }
+.mod-tile--inactivo .mod-num, .mod-tile--inactivo .mod-nombre { color: #6b7280; }
+.mod-cabeza { display: flex; align-items: flex-start; gap: .6rem; min-width: 0; }
+.mod-num { font-size: 1.6rem; font-weight: 700; line-height: 1.05; color: #0f2547; min-width: 2rem; letter-spacing: -.02em; }
+.mod-nombre { font-size: .875rem; font-weight: 600; color: #111827; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-sub { font-size: .75rem; color: #6b7280; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-tile { position: relative; }
+.mod-acciones { position: absolute; top: .45rem; right: .45rem; display: flex; gap: .125rem; background: #ffffff; border-radius: .5rem; }
+.mod-accion { width: 1.75rem; height: 1.75rem; border-radius: .375rem; display: grid; place-items: center; color: #9ca3af; cursor: pointer; }
+.mod-accion:hover { background: #eef1f6; color: #064b9e; }
+.mod-accion--peligro:hover { background: #fdecec; color: #b7191c; }
+.mod-uso { display: flex; align-items: center; gap: .45rem; min-height: 1.6rem; padding-top: .5rem; border-top: 1px solid #eef1f6; font-size: .8125rem; min-width: 0; }
+.mod-punto { width: .5rem; height: .5rem; border-radius: 9999px; flex-shrink: 0; background: #9ca3af; }
+.mod-uso__quien { color: #111827; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mod-uso__detalle { margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+.mod-uso__detalle b { font-weight: 600; color: #111827; }
+.mod-uso__min { color: #6b7280; }
+/* Estado de ocupación: el punto y la palabra llevan el color; mismos tonos que los estados de Turnos */
+.mod-uso--atendiendo .mod-punto { background: #d08700; }
+.mod-uso--libre .mod-punto { background: #00a63e; } .mod-uso--libre .mod-uso__detalle { color: #008236; font-weight: 600; }
+.mod-uso--descanso .mod-punto { background: #155dfc; } .mod-uso--descanso .mod-uso__detalle { color: #1447e6; font-weight: 600; }
+.mod-uso--canal .mod-punto { background: #f54900; } .mod-uso--canal .mod-uso__detalle { color: #ca3500; font-weight: 600; }
+.mod-uso--cerrado .mod-uso__quien, .mod-uso--inhabilitado .mod-uso__quien { color: #6b7280; font-weight: 400; }
+.mod-uso--inhabilitado .mod-punto { background: #d1d5db; }
+/* Acciones discretas: aparecen con el mouse o el teclado; en pantallas táctiles, siempre */
+.mod-acciones { opacity: 0; transition: opacity .15s ease; }
+.mod-tile:hover .mod-acciones, .mod-tile:focus-within .mod-acciones { opacity: 1; }
+@media (hover: none) { .mod-acciones { opacity: 1; } }
+.mod-vacio { padding: 2rem; text-align: center; font-size: .875rem; color: #6b7280; }
 
-                    // Añadir los campos al FormData
-                    formData.append('nombre', this.cajaData.nombre);
-                    formData.append('numero_caja', this.cajaData.numero_caja);
-                    formData.append('ubicacion', this.cajaData.ubicacion || '');
-                    formData.append('estado', this.cajaData.estado);
-                    formData.append('descripcion', this.cajaData.descripcion || '');
-                    formData.append('_method', 'PUT');
+.aviso { padding: .6rem .8rem; border-radius: .5rem; font-size: .875rem; }
+.aviso--ok { background: #e4faec; color: #005d38; }
+.aviso--error { background: #ffefed; color: #901e1c; }
 
-                    // Enviar la petición
-                    fetch(`/cajas/${this.cajaId}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': token,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: formData
-                    })
-                    .then(response => {
-                        this.loading = false;
-                        if (!response.ok) {
-                            return response.json().then(err => {
-                                throw err;
-                            });
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            this.isOpen = false;
-                            window.location.reload();
-                        } else {
-                            console.error('Error en la respuesta:', data);
-                        }
-                    })
-                    .catch(error => {
-                        this.loading = false;
-                        console.error('Error completo:', error);
-                        if (error.errors) {
-                            this.errors = error.errors;
-                        } else if (error.message) {
-                            this.errors = { general: [error.message] };
-                        } else {
-                            this.errors = { general: ['Error al actualizar la caja'] };
-                        }
-                    });
-                }
-            }
-        }
+/* Modales */
+.mod-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;
+             background: rgba(15, 23, 42, .35); backdrop-filter: blur(2px); }
+.mod-modal__caja { width: 100%; max-width: 34rem; background: #ffffff; border-radius: .875rem; box-shadow: 0 24px 48px -12px rgba(16, 24, 40, .28); }
+.mod-modal__caja--angosta { max-width: 28rem; }
+.mod-modal__cabeza { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .25rem; }
+.mod-modal__cabeza h2 { font-size: 1.05rem; font-weight: 700; color: #0f2547; }
+.mod-form { display: flex; flex-direction: column; gap: .8rem; padding: .75rem 1.25rem 1.25rem; }
+.mod-form__fila { display: grid; grid-template-columns: 7rem 1fr; gap: .75rem; }
+.mod-form__fila:nth-of-type(2) { grid-template-columns: 1fr 9rem; }
+.mod-campo { display: flex; flex-direction: column; gap: .3rem; font-size: .75rem; font-weight: 600; color: #374151; }
+.mod-campo small { color: #b7191c; font-weight: 500; }
+.mod-texto { font-size: .875rem; line-height: 1.5; color: #374151; }
+.mod-modal__pie { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .25rem; }
 
-        // Componente para el modal de eliminación
-        function deleteCajaModal() {
-            return {
-                isOpen: false,
-                cajaId: null,
-                cajaNombre: '',
-
-                init() {
-                    // Escuchar evento para abrir modal
-                    window.addEventListener('open-delete-caja-modal', (event) => {
-                        const { cajaId, cajaNombre } = event.detail;
-                        this.cajaId = cajaId;
-                        this.cajaNombre = cajaNombre;
-                        this.isOpen = true;
-                    });
-                },
-
-                deleteCaja() {
-                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-                    fetch(`/cajas/${this.cajaId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'X-CSRF-TOKEN': token,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            return response.json();
-                        } else {
-                            throw new Error('Error al eliminar caja');
-                        }
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            window.location.reload();
-                        } else {
-                            alert(data.message || 'Error al eliminar caja');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error al eliminar caja');
-                    });
-                }
-            }
-        }
-    </script>
+@media (min-width: 768px) and (max-height: 719px) {
+    .mod-tile { padding: .55rem .7rem; gap: .4rem; }
+    .mod-uso { padding-top: .4rem; }
+    .mod-grid { gap: .6rem; }
+}
+</style>
 @endsection

@@ -1010,7 +1010,7 @@ class AdminController extends Controller
         $servicio = (int) $request->input('servicio') ?: null;
         $asesor = (int) $request->input('asesor') ?: null;
         $search = trim((string) $request->input('search', ''));
-        $porPagina = min(100, max(10, (int) $request->input('per_page', 25)));
+        $porPagina = min(100, max(5, (int) $request->input('per_page', 25)));
 
         $delDia = fn () => Turno::query()
             ->where('created_at', '>=', $desde)->where('created_at', '<', $hasta)

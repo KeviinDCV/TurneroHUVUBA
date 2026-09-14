@@ -63,15 +63,16 @@
                         </div>
                     </div>
 
+                    <div class="inicio-cuerpo">
                     <!-- Turnos en cola por servicio: es lo primero que se mira -->
                     <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
                         <div class="panel-cabeza flex justify-between items-center mb-4">
-                            <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos en cola por servicio</h2>
+                            <h2 class="dashboard-title text-lg font-semibold text-gray-800">Cola por servicio</h2>
                         </div>
                         <table class="dashboard-table tabla-cifras w-full divide-y divide-gray-200">
                             <thead>
                                 <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">En cola</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Prioritarios</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Espera más larga</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesores que lo cubren</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Atendidos hoy</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">En cola</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Espera máx.</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Cubren</th>
                                 </tr>
                             </thead>
                             <tbody id="turnos-cola-container" class="divide-y divide-gray-200 bg-white"></tbody>
@@ -86,11 +87,13 @@
                         <table class="dashboard-table tabla-cifras w-full divide-y divide-gray-200">
                             <thead>
                                 <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesor</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Módulo</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Estado</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Turno en curso</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Atendidos hoy</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Mód.</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesor</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Estado</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Turno</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Atend.</th>
                                 </tr>
                             </thead>
                             <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white"></tbody>
                         </table>
+                    </div>
+
                     </div>
 
                     <!-- Herramientas del sistema: al final y en estilo secundario; el rojo vive solo en la confirmación -->
@@ -783,30 +786,28 @@ function pintarCola(t) {
     const cuerpo = document.getElementById('turnos-cola-container');
     if (!cuerpo) return;
     if (!t.servicios.length) {
-        cuerpo.innerHTML = '<tr><td colspan="6" class="py-8 px-4 text-center text-sm text-gray-500">Hoy no hay turnos en cola ni atendidos.</td></tr>';
+        cuerpo.innerHTML = '<tr><td colspan="4" class="py-8 px-4 text-center text-sm text-gray-500">Hoy no hay turnos en cola ni atendidos.</td></tr>';
         return;
     }
     const td = 'py-3 px-4 whitespace-nowrap text-sm';
     cuerpo.innerHTML = t.servicios.map(s => {
-        const enCola = s.en_cola > 0
+        const enCola = (s.en_cola > 0
             ? '<span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">' + escHtml(s.en_cola) + '</span>'
-            : '<span class="text-gray-500">0</span>';
+            : '<span class="text-gray-500">0</span>')
+            + (s.prioritarios > 0 ? ' <span class="prio-mini" title="Prioritarios en espera">' + escHtml(s.prioritarios) + ' prior.</span>' : '');
         const espera = s.espera_max_min === null || s.espera_max_min === undefined
             ? '<span class="text-gray-500">—</span>'
             : (s.alerta
                 ? '<span class="cifra-alerta" title="' + escHtml(s.alerta_motivo) + '">' + escHtml(s.espera_max_min) + ' min</span>'
                 : escHtml(s.espera_max_min) + ' min');
         const cubren = s.sin_cobertura
-            ? '<span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-800">Ninguno</span>'
-              + ' <a href="' + ASIGNACION_URL + '" class="enlace-accion text-sm ml-2">Asignar</a>'
+            ? '<a href="' + ASIGNACION_URL + '" class="sin-cobertura" title="Ningún asesor conectado puede atender este servicio">Nadie · Asignar</a>'
             : escHtml(s.cubren);
         return '<tr class="' + (s.sin_cobertura ? 'fila-sin-cobertura' : 'hover:bg-gray-50') + '">'
-            + '<td class="py-3 px-4 whitespace-nowrap"><span class="text-sm font-medium text-gray-900">' + escHtml(s.nombre) + '</span></td>'
+            + '<td class="py-3 px-4"><span class="celda-nombre text-sm font-medium text-gray-900" title="' + escHtml(s.nombre) + '">' + escHtml(s.nombre) + '</span></td>'
             + '<td class="py-3 px-4 whitespace-nowrap">' + enCola + '</td>'
-            + '<td class="' + td + ' ' + (s.prioritarios > 0 ? 'text-gray-900' : 'text-gray-500') + '">' + escHtml(s.prioritarios) + '</td>'
             + '<td class="' + td + ' text-gray-900">' + espera + '</td>'
             + '<td class="' + td + ' text-gray-900">' + cubren + '</td>'
-            + '<td class="' + td + ' text-gray-900">' + escHtml(s.atendidos_hoy) + '</td>'
             + '</tr>';
     }).join('');
 }
@@ -838,9 +839,8 @@ function pintarAsesores(t) {
                 + (a.canal.minutos !== null ? ' <span class="text-gray-500">· ' + escHtml(a.canal.minutos) + ' min</span>' : '');
         }
         return '<tr class="hover:bg-blue-50/70 cursor-pointer transition-colors" data-asesor-id="' + escHtml(a.id) + '" data-asesor-nombre="' + escHtml(a.nombre) + '" title="Ver estadísticas de ' + escHtml(a.nombre) + '">'
-            + '<td class="py-3 px-4 whitespace-nowrap"><button type="button" class="asesor-nombre text-sm font-medium text-gray-900 flex items-center">'
-            + escHtml(a.nombre) + '<svg class="w-4 h-4 ml-2 text-hospital-blue opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></button></td>'
-            + '<td class="' + td + '">' + (a.modulo !== null ? escHtml(a.modulo) : '<span class="text-gray-500">—</span>') + '</td>'
+            + '<td class="' + td + ' font-semibold">' + (a.modulo !== null ? escHtml(a.modulo) : '<span class="text-gray-500">—</span>') + '</td>'
+            + '<td class="py-3 px-4"><button type="button" class="asesor-nombre celda-nombre text-sm font-medium text-gray-900">' + escHtml(a.nombre) + '</button></td>'
             + '<td class="py-3 px-4 whitespace-nowrap"><span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium ' + colores + '">' + texto + '</span></td>'
             + '<td class="' + td + '">' + enCurso + '</td>'
             + '<td class="' + td + '">' + escHtml(a.atendidos_hoy) + '</td>'
@@ -1401,6 +1401,31 @@ input[type="checkbox"]:focus-visible {
     .dashboard-table td { padding-top: .5rem; padding-bottom: .5rem; }
     .panel-cabeza { margin-bottom: .75rem; }
 }
+
+/* ===== Una sola vista (2026-09-14): cola y asesores lado a lado, todo más compacto ===== */
+.inicio-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 1279px) { .inicio-cuerpo { grid-template-columns: minmax(0, 1fr); } }
+.inicio-cuerpo .dashboard-table th,
+.inicio-cuerpo .dashboard-table td { padding: .5rem .45rem; }
+.inicio-cuerpo .dashboard-table th:first-child,
+.inicio-cuerpo .dashboard-table td:first-child { padding-left: .75rem; }
+#turnos-cola-container .celda-nombre { max-width: 10.5rem; }
+#usuarios-activos-container .celda-nombre { max-width: 8.75rem; }
+.inicio-cuerpo .dashboard-table td { font-size: .8125rem; }
+.inicio-cuerpo .panel-cabeza { margin-bottom: .75rem; }
+.inicio-cuerpo .dashboard-title { font-size: 1rem; }
+.inicio-cuerpo .dashboard-badge.rounded-full { padding: .125rem .6rem; font-size: .8125rem; }
+.metric-card { padding: .85rem 1rem; }
+.metric-card .metric-value { font-size: 1.75rem; line-height: 2rem; margin-top: .35rem; }
+.metric-card .metric-icon { width: 2.25rem; height: 2.25rem; }
+.dashboard-container > :not(:last-child) { margin-block-end: 1rem; }   /* en vez del space-y-5 (1.25rem) */
+.celda-nombre { display: block; max-width: 13rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inicio-cuerpo td .celda-nombre { max-width: 12rem; }
+.prio-mini { margin-left: .35rem; font-size: .75rem; font-weight: 600; color: var(--color-red-700, #c10007); white-space: nowrap; }
+.sin-cobertura { display: inline-block; padding: .2rem .5rem; border-radius: .375rem; font-size: .75rem; font-weight: 600;
+                 background: var(--color-red-100, #ffe2e2); color: var(--color-red-800, #9f0712); white-space: nowrap; }
+.sin-cobertura:hover { text-decoration: underline; }
+.sin-cobertura:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
 </style>
 
 @endsection

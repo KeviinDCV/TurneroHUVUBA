@@ -262,6 +262,10 @@ class TableroService
 
             $ubicacion = trim((string) $caja->ubicacion);
             $modulos[] = [
+                'id' => (int) $caja->id,
+                'nombre' => $caja->nombre,
+                'descripcion' => $caja->descripcion,
+                'activa' => $activa,
                 'numero' => (int) $caja->numero_caja,
                 'ubicacion' => $ubicacion === '' ? null : $ubicacion,
                 'estado' => $estado,

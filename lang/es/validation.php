@@ -166,6 +166,9 @@ return [
         'password' => [
             'confirmed' => 'La confirmación de la contraseña no coincide.',
         ],
+        'numero_caja' => [
+            'unique' => 'Ya existe un módulo con ese número.',
+        ],
     ],
 
     /*
@@ -182,6 +185,9 @@ return [
         'rol' => 'rol',
         'password' => 'contraseña',
         'password_confirmation' => 'confirmación de contraseña',
+        'numero_caja' => 'número',
+        'ubicacion' => 'ubicación',
+        'descripcion' => 'descripción',
     ],
 
 ];
