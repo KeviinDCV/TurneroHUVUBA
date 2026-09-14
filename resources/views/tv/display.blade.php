@@ -9,7 +9,7 @@
     <!-- Fonts - Optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -1093,140 +1093,190 @@
             font-size: clamp(1.2rem, 2.5vw, 2.5rem);
             letter-spacing: 0.04em;
         }
+
+        /* ===================================================================
+           REDISEÑO TV 2026-09 — mismo esqueleto y mismas medidas (cabecera, 4/6 contenido,
+           2/6 turnos, --ticker-height); cambia solo lo de adentro. Los tamaños de la columna
+           de turnos salen de su propio alto y ancho (unidades cqw/cqh), así se adaptan a
+           cualquier resolución igual que hoy.
+           =================================================================== */
+        :root {
+            --tv-azul: #064b9e;
+            --tv-azul-hondo: #053d82;
+            --tv-marino: #072449;
+            --tv-linea: #d6e0ed;
+            --tv-mudo: #5b6f8e;
+            --tv-tenue: #8193b0;
+        }
+
+        /* Cabecera: logo y unidad a la izquierda, hora grande a la derecha */
+        .tv-cabecera { background: #fff; box-shadow: inset 0 -1px 0 var(--tv-linea); } /* sombra, no borde: no suma altura */
+        .tv-marca { display: flex; align-items: center; min-width: 0; }
+        .responsive-header img.tv-logo { flex: none; height: min(calc(var(--header-height) * .7), 121px) !important; max-height: none !important; width: auto; max-width: none; filter: contrast(1.15); }
+        .tv-separador { flex: none; width: 1px; height: calc(var(--header-height) * .46); margin: 0 clamp(.9rem, 1.7vw, 2.2rem); background: var(--tv-linea); }
+        .tv-unidad { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+        .tv-unidad h1 { color: var(--tv-azul); letter-spacing: -.01em; white-space: nowrap; }
+        .tv-unidad-nombre { font-size: .95rem; line-height: 1.1; margin-bottom: .35rem; color: var(--tv-mudo); white-space: nowrap; }
+        .tv-fecha { color: var(--tv-marino); white-space: nowrap; }
+        .tv-reloj { display: flex; align-items: center; justify-content: flex-end; }
+        .tv-hora { font-size: calc(var(--header-height) * .55); font-weight: 700; line-height: 1; letter-spacing: -.02em; color: var(--tv-marino); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+        /* Contenido institucional: recuadro oscuro. Cada pieza lo llena (recortando los bordes) o, si es muy
+           distinta al recuadro, se ve completa sobre su propia imagen difuminada. */
+        #multimedia-container { background: var(--tv-marino); border: 0; border-radius: .9rem; box-shadow: 0 1px 3px rgba(7, 36, 73, .1); }
+        #multimedia-relleno { position: absolute; inset: 0; background-position: center; background-size: cover; opacity: .34; pointer-events: none; }
+        #multimedia-content { position: relative; z-index: 1; }
+        #multimedia-content .pieza-tv { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
+        #multimedia-content .pieza-tv.pieza-llena { object-fit: cover; }
+        #multimedia-avance { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: max(3px, .45vh); background: rgba(255, 255, 255, .14); opacity: 0; transition: opacity .4s; pointer-events: none; }
+        #multimedia-avance.activo { opacity: 1; }
+        #multimedia-avance i { display: block; height: 100%; background: rgba(255, 255, 255, .6); transform-origin: 0 50%; transform: scaleX(0); }
+        @keyframes tv-avance { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .tv-sin-medios-capa { position: absolute; inset: 0; }
+        .tv-sin-medios { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vh; padding: 4%; background: #f5f8fc; text-align: center; }
+        .tv-sin-medios img { width: min(32%, 40vh); height: auto; margin-bottom: 1vh; }
+        .tv-sin-medios p { font-size: clamp(1rem, 1.7vw, 2.2rem); font-weight: 600; color: var(--tv-azul); }
+        .tv-sin-medios small { font-size: clamp(.8rem, 1.05vw, 1.35rem); color: var(--tv-mudo); }
+
+        /* Turnos: el último llamado en grande y los anteriores en lista */
+        .tv-llamados { flex: 1 1 auto; min-height: 0; height: 100%; display: flex; flex-direction: column; container-type: size; }
+        .tv-actual { flex: none; position: relative; overflow: hidden; border-radius: .9rem; color: #fff; background: linear-gradient(150deg, var(--tv-azul) 0%, var(--tv-azul-hondo) 100%); box-shadow: 0 2px 6px rgba(7, 36, 73, .12); }
+        .tv-actual-rotulo { padding: 3.2cqh 6cqw 0; font-size: min(3.1cqw, 2.3cqh); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .74); }
+        .tv-actual-codigo { padding: .4cqh 6cqw 0; font-size: calc(min(26cqw, 18.5cqh) * var(--escala, 1)); font-weight: 800; line-height: 1; letter-spacing: -.025em; white-space: nowrap; overflow: hidden; }
+        .tv-actual-servicio { min-height: calc(min(4.1cqw, 3cqh) * 1.3 + 3.8cqh); padding: 1.2cqh 6cqw 2.6cqh; font-size: min(4.1cqw, 3cqh); font-weight: 500; line-height: 1.3; color: rgba(255, 255, 255, .84); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tv-actual-destino { display: flex; align-items: baseline; gap: 3.4cqw; padding: 2.4cqh 6cqw 2.8cqh; background: #fff; color: var(--tv-azul); white-space: nowrap; overflow: hidden; }
+        .tv-actual-destino span { flex: none; font-size: min(4.1cqw, 3cqh); font-weight: 600; color: var(--tv-mudo); }
+        .tv-actual-destino b { flex: none; font-size: calc(min(13cqw, 9.4cqh) * var(--escala, 1)); font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+        .tv-actual.vacio .tv-actual-codigo { opacity: .45; }
+        .tv-actual.vacio .tv-actual-destino b { color: #b8c5d8; }
+        .tv-actual.entra { animation: tv-entra .7s cubic-bezier(.2, .8, .2, 1); }
+        @keyframes tv-entra { from { transform: translateY(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+        .tv-anteriores { flex: 1 1 auto; min-height: 0; margin-top: 2.4cqh; display: flex; flex-direction: column; overflow: hidden; border-radius: .9rem; background: #fff; border: 1px solid var(--tv-linea); }
+        .tv-anteriores-titulo { flex: none; padding: 2.2cqh 5.4cqw 1.2cqh; font-size: min(2.9cqw, 2.1cqh); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--tv-mudo); }
+        .tv-anteriores-filas { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .tv-fila { flex: 1 1 0; min-height: 0; display: flex; align-items: center; gap: 3cqw; padding: 0 5.4cqw; border-top: 1px solid #e6edf5; overflow: hidden; white-space: nowrap; }
+        .tv-fila-codigo { flex: none; font-size: calc(min(11cqw, 7.4cqh) * var(--escala, 1)); font-weight: 800; line-height: 1; letter-spacing: -.015em; color: var(--tv-marino); }
+        .tv-fila-lugar { flex: none; margin-left: auto; display: flex; align-items: baseline; gap: 2.4cqw; }
+        .tv-fila-lugar b { font-size: calc(min(7.6cqw, 5.3cqh) * var(--escala, 1)); font-weight: 700; line-height: 1; color: var(--tv-azul); }
+        .tv-fila-estado { font-size: min(2.7cqw, 1.9cqh); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--tv-tenue); }
+        .tv-fila.es-atendido .tv-fila-codigo, .tv-fila.es-atendido .tv-fila-lugar b { color: var(--tv-tenue); }
+        .tv-fila.vacia .tv-fila-codigo { color: #c5d1e2; }
+        /* Pantallas 4:3 o verticales: la columna de turnos pasa abajo con alto automático; darle alto propio */
+        @media (max-aspect-ratio: 4/3) { .tv-llamados { height: 40vh; } }
+
+        /* Cinta de avisos: rótulo fijo y el mensaje repetido sin hueco */
+        .ticker-container.tv-cinta { align-items: stretch; background: var(--tv-azul); box-shadow: none; border-top-color: var(--tv-azul-hondo); }
+        .tv-cinta-etiqueta { flex: none; display: flex; align-items: center; padding: 0 clamp(1rem, 1.7vw, 2.6rem); background: var(--tv-marino); color: #fff; font-size: calc(var(--ticker-height) * .25); font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+        .tv-cinta-pista { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; display: flex; align-items: center; }
+        .tv-cinta-pista::before, .tv-cinta-pista::after { content: ''; position: absolute; top: 0; bottom: 0; z-index: 1; width: 3vw; pointer-events: none; }
+        .tv-cinta-pista::before { left: 0; background: linear-gradient(90deg, var(--tv-azul), rgba(6, 75, 158, 0)); }
+        .tv-cinta-pista::after { right: 0; background: linear-gradient(270deg, var(--tv-azul), rgba(6, 75, 158, 0)); }
+        .tv-cinta .ticker-text { font-size: calc(var(--ticker-height) * .4) !important; font-weight: 500; letter-spacing: 0; text-shadow: none; }
+        .tv-cinta-vuelta { display: inline-flex; align-items: center; }
+        .tv-cinta-punto { flex: none; display: inline-block; width: calc(var(--ticker-height) * .11); height: calc(var(--ticker-height) * .11); margin: 0 calc(var(--ticker-height) * .55); border-radius: 50%; background: #7fb0ec; }
+
+        /* Llamado de turno: cubre todo bajo la cabecera durante 8 s (el JS pone el "top") */
+        #turnoNotificationModal .tv-llamado-fondo { position: absolute; inset: 0; background: radial-gradient(70vw 70vh at 18% 12%, rgba(255, 255, 255, .09), transparent 60%), linear-gradient(140deg, var(--tv-azul) 0%, var(--tv-azul-hondo) 100%); }
+        #turnoNotificationModal .tv-llamado { position: relative; z-index: 1; height: 100%; display: flex; align-items: center; justify-content: center; padding: 3vh 4vw 5vh; }
+        .tv-llamado-contenido { display: flex; flex-direction: column; align-items: center; max-width: 100%; color: #fff; opacity: 0; transform: scale(.9); transition: opacity .3s ease, transform .3s ease; }
+        .tv-llamado-rotulo { font-size: 3.4vh; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: rgba(255, 255, 255, .74); }
+        .tv-llamado-codigo { max-width: 92vw; margin-top: .6vh; font-size: calc(min(30vh, 17vw) * var(--escala, 1)); font-weight: 800; line-height: .95; letter-spacing: -.03em; white-space: nowrap; overflow: hidden; }
+        .tv-llamado-destino { max-width: 92vw; margin-top: 4.4vh; display: flex; align-items: baseline; gap: 2.2vw; padding: 2.4vh 3.4vw 2.8vh; border-radius: 1.6rem; background: #fff; color: var(--tv-azul); white-space: nowrap; overflow: hidden; }
+        .tv-llamado-destino span { flex: none; font-size: 4.2vh; font-weight: 600; color: var(--tv-mudo); }
+        .tv-llamado-destino b { flex: none; font-size: calc(min(12.6vh, 8vw) * var(--escala, 1)); font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+        .tv-llamado-servicio { max-width: 90vw; min-height: 1.3em; margin-top: 3.2vh; font-size: 3.2vh; font-weight: 500; line-height: 1.3; color: rgba(255, 255, 255, .84); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #turnoNotificationModal .tv-llamado-tiempo { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; height: .75vh; background: rgba(255, 255, 255, .14); }
+        #turnoNotificationModal .tv-llamado-tiempo i { display: block; height: 100%; background: rgba(255, 255, 255, .5); transform-origin: 0 50%; animation: tv-llamado-tiempo 8s linear forwards; }
+        @keyframes tv-llamado-tiempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
     </style>
 </head>
 <body class="w-full h-screen bg-white overflow-hidden {{ $tvConfig->ticker_enabled ? 'ticker-enabled' : '' }}">
     <div class="w-full h-full bg-white tv-root">
-        <!-- Header Section -->
-        <div class="grid grid-cols-6 responsive-header responsive-container">
-            <!-- Left Header - Apoyo Diagnostico y Hora -->
-            <div class="bg-hospital-blue-light p-4 flex flex-col justify-center items-end col-span-2" style="overflow: visible !important; padding-right: 2rem;">
-                <h1 class="text-5xl font-bold text-hospital-blue leading-tight" style="text-align: right;">UBA</h1>
-                <p class="text-hospital-blue" style="font-size: 0.95rem; opacity: 0.72; line-height: 1.1; text-align: right; margin-bottom: 0.35rem;">Unidad Básica de Atención</p>
-                <!-- Hora de Colombia (UTC-5) -->
-                <p class="text-2xl text-hospital-blue font-semibold" id="current-time" style="white-space: nowrap; overflow: visible; text-align: right;">{{ \Carbon\Carbon::now('America/Bogota')->format('M d - H:i') }}</p>
-            </div>
-
-            <!-- Center Header - Hospital Info con Logo -->
-            <div class="bg-hospital-blue-light p-4 pl-32 pr-2 flex items-center space-x-4 justify-end col-span-2">
-                <!-- Logo del Hospital -->
-                <div class="flex-shrink-0">
-                    <img src="{{ asset('images/logoacreditacion.png') }}" alt="Logo Hospital Universitario del Valle" class="h-24 w-auto max-w-none responsive-header" style="mix-blend-mode: multiply; filter: contrast(1.2);">
-                </div>
-
-                <!-- Información del Hospital -->
-                <div class="flex-shrink-0">
-                    <h2 class="text-xl font-bold text-hospital-blue leading-tight">HOSPITAL UNIVERSITARIO</h2>
-                    <h3 class="text-xl font-bold text-hospital-blue leading-tight">DEL VALLE</h3>
-                    <p class="text-sm text-hospital-blue italic">"Evaristo García" E.S.E</p>
+        <!-- Cabecera: logo y unidad a la izquierda, hora a la derecha. El bloque de la unidad conserva sus líneas
+             (sigla, nombre, fecha) para que la cabecera mida lo mismo que antes. -->
+        @php
+            $ahoraTv = \Carbon\Carbon::now('America/Bogota');
+            $fechaTv = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][$ahoraTv->dayOfWeek] . ' ' . $ahoraTv->day . ' de '
+                . ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][$ahoraTv->month - 1];
+        @endphp
+        <div class="grid grid-cols-6 responsive-header responsive-container tv-cabecera">
+            <div class="p-4 col-span-2 tv-marca">
+                <img src="{{ asset('images/logoacreditacion.png') }}" alt="Hospital Universitario del Valle, acreditado en salud" class="tv-logo">
+                <span class="tv-separador" aria-hidden="true"></span>
+                <div class="tv-unidad">
+                    <h1 class="text-5xl font-bold text-hospital-blue leading-tight">UBA</h1>
+                    <p class="tv-unidad-nombre">Unidad Básica de Atención</p>
+                    <p class="text-2xl font-semibold tv-fecha" id="current-date">{{ $fechaTv }}</p>
                 </div>
             </div>
-
-            <!-- Right Header - Turno y Módulo -->
-            <div class="gradient-hospital flex col-span-2">
-                <div class="flex-1 bg-hospital-blue flex items-center justify-center">
-                    <h1 class="text-4xl font-bold text-white">TURNO</h1>
-                </div>
-                <div class="flex-1 gradient-hospital-light flex items-center justify-center">
-                    <h1 class="text-4xl font-bold text-white">MÓDULO</h1>
-                </div>
+            <div class="col-span-2" aria-hidden="true"></div>
+            <div class="p-4 col-span-2 tv-reloj">
+                <p class="tv-hora" id="current-time">{{ $ahoraTv->format('H:i') }}</p>
             </div>
         </div>
 
         <!-- Main Content -->
         <div class="grid grid-cols-6 responsive-main responsive-container">
-            <!-- Left Side - Multimedia Content -->
+            <!-- Contenido institucional -->
             <div class="bg-hospital-blue-light p-3 flex flex-col col-span-4 responsive-multimedia-section responsive-container">
-                <!-- Espacio para videos/fotos - Ahora ocupa todo el espacio disponible -->
-                <div class="flex-1 bg-white rounded-lg enhanced-border enhanced-shadow flex items-center justify-center relative overflow-hidden" id="multimedia-container">
-                    <!-- Contenido multimedia dinámico -->
+                <div class="flex-1 flex items-center justify-center relative overflow-hidden" id="multimedia-container">
+                    <div id="multimedia-relleno" aria-hidden="true"></div>
                     <div id="multimedia-content" class="w-full h-full flex items-center justify-center">
-                        <!-- Placeholder content con mejor diseño -->
-                        <div id="multimedia-placeholder" class="text-center text-gray-400 z-10">
-                            <div class="mm-brand-tile">HUV</div>
-                            <p class="text-2xl font-semibold text-hospital-blue mb-2 multimedia-placeholder-title">Hospital Universitario del Valle</p>
-                            <p class="text-lg text-gray-500 multimedia-placeholder-subtitle">Contenido institucional</p>
-                        </div>
-
-                        <!-- Decorative background pattern -->
-                        <div class="absolute inset-0 opacity-5">
-                            <div class="w-full h-full" style="background-image: repeating-linear-gradient(45deg, #064b9e 0px, #064b9e 10px, transparent 10px, transparent 20px);"></div>
+                        <div id="multimedia-placeholder" class="tv-sin-medios">
+                            <img src="{{ asset('images/logo.png') }}" alt="">
+                            <p>Hospital Universitario del Valle</p>
+                            <small>“Evaristo García” E.S.E.</small>
                         </div>
                     </div>
+                    <div id="multimedia-avance" aria-hidden="true"><i></i></div>
                 </div>
             </div>
 
-            <!-- Right Side - Patient Queue -->
+            <!-- Turnos: el último llamado en grande y los 4 anteriores -->
             <div class="bg-hospital-blue-light p-2 col-span-2 responsive-queue-section responsive-container">
-                <!-- Patient Numbers - Alineados con TURNO y MÓDULO del header -->
-                <div class="space-y-3 overflow-hidden" id="patient-queue">
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
-                        <div class="turno-container" style="width: 100%;">
-                            <div class="turno-numero font-bold">----</div>
-                            <div class="turno-caja font-semibold">CAJA -</div>
+                <div class="tv-llamados" id="tv-llamados">
+                    <section class="tv-actual vacio" id="tv-actual" aria-live="polite">
+                        <div class="tv-actual-rotulo" id="tv-actual-rotulo">Turno</div>
+                        <div class="tv-actual-codigo" id="tv-actual-codigo">– – –</div>
+                        <div class="tv-actual-servicio" id="tv-actual-servicio"></div>
+                        <div class="tv-actual-destino"><span>Diríjase a</span><b id="tv-actual-destino">—</b></div>
+                    </section>
+                    <section class="tv-anteriores">
+                        <div class="tv-anteriores-titulo">Llamados anteriores</div>
+                        <div class="tv-anteriores-filas" id="tv-anteriores">
+                            @for ($i = 0; $i < 4; $i++)
+                                <div class="tv-fila vacia"><span class="tv-fila-codigo">—</span><span class="tv-fila-lugar"><b></b></span></div>
+                            @endfor
                         </div>
-                    </div>
-
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
-                        <div class="turno-container" style="width: 100%;">
-                            <div class="turno-numero font-bold">----</div>
-                            <div class="turno-caja font-semibold">CAJA -</div>
-                        </div>
-                    </div>
-
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
-                        <div class="turno-container" style="width: 100%;">
-                            <div class="turno-numero font-bold">----</div>
-                            <div class="turno-caja font-semibold">CAJA -</div>
-                        </div>
-                    </div>
-
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
-                        <div class="turno-container" style="width: 100%;">
-                            <div class="turno-numero font-bold">----</div>
-                            <div class="turno-caja font-semibold">CAJA -</div>
-                        </div>
-                    </div>
-
-                    <div class="gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full">
-                        <div class="turno-container" style="width: 100%;">
-                            <div class="turno-numero font-bold">----</div>
-                            <div class="turno-caja font-semibold">CAJA -</div>
-                        </div>
-                    </div>
+                    </section>
                 </div>
             </div>
         </div>
 
         <!-- Mensaje Ticker - En la parte inferior de la página -->
-        <div class="ticker-container responsive-ticker flex items-center border-t-2 border-hospital-blue" style="display: {{ $tvConfig->ticker_enabled ? 'flex' : 'none' }};">
-            <div class="ticker-content">
-                <span class="ticker-text">
-                    {{ $tvConfig->ticker_message }}
-                </span>
+        <div class="ticker-container responsive-ticker flex items-center border-t-2 border-hospital-blue tv-cinta" style="display: {{ $tvConfig->ticker_enabled ? 'flex' : 'none' }};">
+            <div class="tv-cinta-etiqueta">Avisos</div>
+            <div class="tv-cinta-pista">
+                <div class="ticker-content">
+                    <span class="ticker-text">{{ $tvConfig->ticker_message }}</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Notificación de Nuevo Turno -->
+    <!-- Llamado de turno: cubre todo bajo la cabecera durante 8 s (mismos id que antes: los usa la cola de modales) -->
     <div id="turnoNotificationModal" class="fixed inset-0 hidden" style="z-index: 9999;">
-        <!-- Overlay con fondo blanco -->
-        <div class="absolute inset-0 bg-white bg-opacity-95"></div>
-        
-        <!-- Contenido del Modal -->
-        <div class="relative flex items-center justify-center h-full p-8" style="z-index: 10000;">
-            <div class="hospital-building text-white rounded-lg enhanced-shadow p-20 max-w-6xl w-full mx-auto opacity-0 transform scale-90 transition-all duration-300" id="modalContent">
-                <!-- Información del Turno - Solo turno y caja -->
-                <div class="text-center">
-                    <div class="mb-10">
-                        <div class="font-bold tracking-wider mb-4" style="font-size: clamp(6rem, 12vw, 14rem);" id="modalTurnoNumero">A001</div>
-                    </div>
-                    <div class="border-t-2 border-white border-opacity-30 pt-10">
-                        <div class="font-bold" style="font-size: clamp(4rem, 8vw, 10rem);" id="modalTurnoCaja">CAJA 1</div>
-                    </div>
-                </div>
+        <div class="tv-llamado-fondo"></div>
+        <div class="tv-llamado">
+            <div class="tv-llamado-contenido" id="modalContent">
+                <div class="tv-llamado-rotulo">Turno</div>
+                <div class="tv-llamado-codigo" id="modalTurnoNumero">A001</div>
+                <div class="tv-llamado-destino"><span>Diríjase a</span><b id="modalTurnoCaja">Caja 1</b></div>
+                <div class="tv-llamado-servicio" id="modalTurnoServicio"></div>
             </div>
         </div>
+        <div class="tv-llamado-tiempo" aria-hidden="true"><i></i></div>
     </div>
 
     <script>
@@ -1236,6 +1286,177 @@
         // Poner DEBUG = true para depurar en sitio. =====
         const DEBUG = false;
         if (!DEBUG) { console.log = function () {}; console.info = function () {}; }
+
+        // ===================================================================
+        // REDISEÑO TV 2026-09 — piezas de la vista (reloj, turnos, llamado, contenido, cinta).
+        // No toca la voz, el sondeo ni la cola de llamados.
+        // ===================================================================
+        const DIAS_TV = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const MESES_TV = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        // Una pieza (imagen o video) llena el recuadro si para eso se recorta a lo sumo este tanto de ella;
+        // si es muy distinta (afiches verticales, cuadrados), se ve completa sobre su propia imagen difuminada.
+        const RECORTE_MAXIMO = 0.2;
+        const LOGO_HUV_TV = @json(asset('images/logo.png'));
+        const PLANTILLA_SIN_MEDIOS = '<div id="multimedia-placeholder" class="tv-sin-medios"><img src="' + LOGO_HUV_TV + '" alt="">'
+            + '<p>Hospital Universitario del Valle</p><small>“Evaristo García” E.S.E.</small></div>';
+        let ultimoTurnoActualId = null;
+        let cintaAnimacion = null;
+        let cintaVelocidad = Number(@json($tvConfig->ticker_speed)) || 30;
+        let temporizadorTv = null;
+
+        function pintarReloj(fecha, horas, minutos) {
+            const hora = document.getElementById('current-time');
+            if (hora) hora.textContent = horas + ':' + minutos;
+            const dia = document.getElementById('current-date');
+            if (dia) dia.textContent = DIAS_TV[fecha.getDay()] + ' ' + fecha.getDate() + ' de ' + MESES_TV[fecha.getMonth()];
+        }
+
+        // Lo mismo que dice la voz ("diríjase a caja número N")
+        function destinoTurno(turno) {
+            if (turno && turno.numero_caja) return 'Caja ' + turno.numero_caja;
+            return (turno && turno.caja) ? turno.caja : '—';
+        }
+
+        // Achica la letra (variable --escala) hasta que el texto quepa en su caja; si ya cabe, no cambia nada.
+        function encajar(el, caja) {
+            if (!el) return;
+            const limite = caja || el;
+            let escala = 1;
+            el.style.setProperty('--escala', '1');
+            while (limite.scrollWidth > limite.clientWidth + 1 && escala > 0.55) {
+                escala -= 0.05;
+                el.style.setProperty('--escala', escala.toFixed(2));
+            }
+        }
+
+        function ajustarLlamados() {
+            encajar(document.getElementById('tv-actual-codigo'));
+            encajar(document.querySelector('.tv-actual-destino'));
+            document.querySelectorAll('#tv-anteriores .tv-fila').forEach(fila => encajar(fila));
+        }
+
+        function prepararLlamado(modal, turno) {
+            const servicio = document.getElementById('modalTurnoServicio');
+            if (servicio) servicio.textContent = turno.servicio || '';
+            // Cubre todo bajo la cabecera: el logo y la hora siguen a la vista.
+            const cabecera = document.querySelector('.tv-cabecera');
+            modal.style.top = cabecera ? Math.round(cabecera.getBoundingClientRect().bottom) + 'px' : '0px';
+        }
+
+        function encajarLlamado() {
+            encajar(document.getElementById('modalTurnoNumero'));
+            encajar(document.querySelector('.tv-llamado-destino'));
+        }
+
+        // ── Contenido institucional: todas las piezas ocupan el recuadro ──
+        function prepararPieza(el, evento) {
+            el.classList.add('pieza-tv');
+            el.addEventListener(evento, () => ajustarPieza(el), { once: true });
+        }
+
+        function ajustarPieza(el) {
+            const caja = document.getElementById('multimedia-container');
+            const ancho = el.naturalWidth || el.videoWidth;
+            const alto = el.naturalHeight || el.videoHeight;
+            if (!caja || !ancho || !alto || !caja.clientWidth || !caja.clientHeight) return;
+            const proporcionPieza = ancho / alto;
+            const proporcionCaja = caja.clientWidth / caja.clientHeight;
+            const recorte = 1 - Math.min(proporcionPieza / proporcionCaja, proporcionCaja / proporcionPieza);
+            const llenar = recorte <= RECORTE_MAXIMO;
+            el.classList.toggle('pieza-llena', llenar);
+            pintarRelleno(llenar ? null : el);
+        }
+
+        // Fondo difuminado barato: la pieza reducida a 48×27 px, difuminada ahí y ampliada por CSS (una vez por pieza).
+        function pintarRelleno(el) {
+            const fondo = document.getElementById('multimedia-relleno');
+            if (!fondo) return;
+            if (!el) { fondo.style.backgroundImage = ''; return; }
+            try {
+                const lienzo = document.createElement('canvas');
+                lienzo.width = 48;
+                lienzo.height = 27;
+                const ctx = lienzo.getContext('2d');
+                ctx.filter = 'blur(4px)';   // se difumina una sola vez aquí, no con un filtro CSS que se repinte
+                ctx.drawImage(el, -8, -8, 64, 43);
+                fondo.style.backgroundImage = 'url(' + lienzo.toDataURL('image/png') + ')';
+            } catch (e) {
+                fondo.style.backgroundImage = '';
+            }
+        }
+
+        // Barra fina con el tiempo que lleva la pieza en pantalla
+        function iniciarAvance(segundos) {
+            const barra = document.getElementById('multimedia-avance');
+            const relleno = barra && barra.firstElementChild;
+            if (!relleno) return;
+            relleno.style.animation = 'none';
+            if (!(segundos > 0)) { barra.classList.remove('activo'); return; }
+            void relleno.offsetWidth;
+            relleno.style.animation = 'tv-avance ' + segundos + 's linear forwards';
+            barra.classList.add('activo');
+        }
+
+        // ── Cinta: el mensaje se repite sin hueco y pasa a la misma velocidad que antes
+        //    (antes recorría ancho + largo del texto en el 85 % de ticker_speed) ──
+        function pintarCinta() {
+            const pista = document.querySelector('.tv-cinta-pista');
+            const contenido = pista && pista.querySelector('.ticker-content');
+            if (!contenido || typeof contenido.animate !== 'function') return;
+            const fuente = contenido.querySelector('.ticker-text');
+            const mensaje = fuente ? fuente.textContent.trim() : '';
+            if (cintaAnimacion) { cintaAnimacion.cancel(); cintaAnimacion = null; }
+            const ancho = pista.clientWidth;
+            if (!ancho || !mensaje) return;
+            contenido.style.animation = 'none';
+            contenido.style.paddingLeft = '0';
+            contenido.textContent = '';
+            const vuelta = document.createElement('span');
+            vuelta.className = 'tv-cinta-vuelta';
+            const texto = document.createElement('span');
+            texto.className = 'ticker-text';
+            texto.textContent = mensaje;
+            const punto = document.createElement('span');
+            punto.className = 'tv-cinta-punto';
+            vuelta.append(texto, punto);
+            contenido.appendChild(vuelta);
+            const largo = texto.getBoundingClientRect().width;
+            const paso = vuelta.getBoundingClientRect().width;
+            if (!paso) return;
+            for (let i = Math.ceil(ancho / paso); i > 0; i--) {
+                const copia = vuelta.cloneNode(true);
+                copia.setAttribute('aria-hidden', 'true');
+                contenido.appendChild(copia);
+            }
+            const pxPorSegundo = (ancho + largo) / (0.85 * cintaVelocidad);
+            cintaAnimacion = contenido.animate(
+                [{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-paso) + 'px)' }],
+                { duration: Math.max(paso / pxPorSegundo, 1) * 1000, iterations: Infinity, easing: 'linear' }
+            );
+        }
+
+        function repintarTv() {
+            pintarCinta();
+            ajustarLlamados();
+            const pieza = document.querySelector('#multimedia-content .pieza-tv');
+            if (pieza) ajustarPieza(pieza);
+        }
+
+        function repintarTvLuego() {
+            clearTimeout(temporizadorTv);
+            temporizadorTv = setTimeout(repintarTv, 300);
+        }
+
+        // La letra se reajusta en el acto (es barato) y lo demás (cinta, pieza) cuando termina el cambio de tamaño
+        window.addEventListener('resize', function () { ajustarLlamados(); repintarTvLuego(); });
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(repintarTv);
+                if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', repintarTvLuego);
+            } else {
+                repintarTv();
+            }
+        });
 
         // ===== SISTEMA DE MODAL DE NOTIFICACIÓN CON COLA =====
         let modalVisible = false;
@@ -1292,7 +1513,8 @@
             
             // Actualizar información del turno
             turnoNumero.textContent = turno.codigo_completo;
-            turnoCaja.textContent = `CAJA ${turno.numero_caja}`;
+            turnoCaja.textContent = destinoTurno(turno);
+            prepararLlamado(modal, turno);
             
             // Mostrar modal
             modalVisible = true;
@@ -1300,6 +1522,7 @@
             
             // Animar entrada - usar requestAnimationFrame para mejor compatibilidad
             requestAnimationFrame(() => {
+                encajarLlamado();
                 modalContent.style.opacity = '1';
                 modalContent.style.transform = 'scale(1)';
             });
@@ -1781,7 +2004,7 @@
             const hours = colombiaTime.getHours().toString().padStart(2, '0');
             const minutes = colombiaTime.getMinutes().toString().padStart(2, '0');
 
-            document.getElementById('current-time').textContent = `${weekday} ${day} ${month} · ${hours}:${minutes}`;
+            pintarReloj(colombiaTime, hours, minutes);
             
             // Verificar si es medianoche (12:00 AM) para limpiar turnos del día anterior
             const fechaActual = colombiaTime.toDateString();
@@ -2075,126 +2298,57 @@
         // Variable para evitar ajustes innecesarios
         let ultimoContenidoTurnos = '';
 
-        // Renderizar los turnos en el contenedor
+        // Renderizar los turnos: el más reciente en grande ("Turno … Diríjase a Caja N") y los 4 anteriores en lista.
+        // Si nada cambió no se toca el DOM (el sondeo corre cada pocos segundos y casi siempre trae lo mismo).
         function renderTurnos(turnosList) {
-            const container = document.getElementById('patient-queue');
-
-            // Hash del contenido (incluye 'estado' para que el badge ATENDIDO se repinte
-            // cuando un turno pasa de llamado a atendido).
-            const contenidoActual = turnosList.slice(0, 5).map(t => `${t.codigo_completo}-${t.numero_caja}-${t.estado}`).join('|');
-            // PERF: si nada cambió, el DOM ya está correcto -> 0 reconstrucción/reflow.
-            // (Antes se hacía innerHTML='' + recrear las 5 filas en CADA poll de 3s, ~28.800 veces/día.)
+            const lista = (turnosList || []).slice(0, 5);
+            const contenidoActual = lista.length
+                ? lista.map(t => `${t.id}-${t.codigo_completo}-${t.numero_caja}-${t.estado}-${t.servicio || ''}`).join('|')
+                : 'sin-turnos';
             if (contenidoActual === ultimoContenidoTurnos) return;
             ultimoContenidoTurnos = contenidoActual;
-            const contenidoCambio = true; // llegamos aquí => hubo cambio real
 
-            // Conservar el contenedor pero limpiar su contenido
-            container.innerHTML = '';
+            const actual = document.getElementById('tv-actual');
+            const filas = document.getElementById('tv-anteriores');
+            if (!actual || !filas) return;
 
-            // Limitar a máximo 5 turnos para evitar desbordamiento visual
-            // Los turnos vienen ordenados por fecha_llamado DESC (más recientes primero)
-            // Esto implementa un comportamiento FIFO: nuevo turno entra al principio, el más antiguo sale
-            const turnosLimitados = turnosList.slice(0, 5);
+            const primero = lista[0];
+            actual.classList.toggle('vacio', !primero);
+            document.getElementById('tv-actual-rotulo').textContent = primero && primero.estado === 'atendido' ? 'Último llamado' : 'Turno';
+            document.getElementById('tv-actual-codigo').textContent = primero ? primero.codigo_completo : '– – –';
+            document.getElementById('tv-actual-servicio').textContent = primero ? (primero.servicio || '') : 'Aún no se han llamado turnos hoy';
+            document.getElementById('tv-actual-destino').textContent = primero ? destinoTurno(primero) : '—';
+            if (primero && ultimoTurnoActualId !== null && primero.id !== ultimoTurnoActualId && primero.estado !== 'atendido') {
+                actual.classList.remove('entra');
+                void actual.offsetWidth;
+                actual.classList.add('entra');
+            }
+            ultimoTurnoActualId = primero ? primero.id : null;
 
-            // No hay turnos, mostramos placeholders
-            if (turnosLimitados.length === 0) {
-                for (let i = 0; i < 5; i++) {
-                    const placeholderElement = document.createElement('div');
-                    placeholderElement.className = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
-
-                    placeholderElement.innerHTML = `
-                    <div class="turno-container">
-                        <div class="turno-numero font-bold">----</div>
-                        <div class="turno-caja font-semibold">CAJA -</div>
-                    </div>
-                `;
-
-                    container.appendChild(placeholderElement);
+            filas.textContent = '';
+            for (let i = 1; i <= 4; i++) {
+                const turno = lista[i];
+                const fila = document.createElement('div');
+                fila.className = 'tv-fila' + (!turno ? ' vacia' : (turno.estado === 'atendido' ? ' es-atendido' : ''));
+                const codigo = document.createElement('span');
+                codigo.className = 'tv-fila-codigo';
+                codigo.textContent = turno ? turno.codigo_completo : '—';
+                const lugar = document.createElement('span');
+                lugar.className = 'tv-fila-lugar';
+                if (turno && turno.estado === 'atendido') {
+                    const estado = document.createElement('span');
+                    estado.className = 'tv-fila-estado';
+                    estado.textContent = 'Atendido';
+                    lugar.appendChild(estado);
                 }
-                return;
+                const destino = document.createElement('b');
+                destino.textContent = turno ? destinoTurno(turno) : '';
+                lugar.appendChild(destino);
+                fila.append(codigo, lugar);
+                filas.appendChild(fila);
             }
-
-            // Mostrar turnos existentes (máximo 5)
-            for (let i = 0; i < turnosLimitados.length; i++) {
-                const turno = turnosLimitados[i];
-
-                // Crear elemento del turno
-                const turnoElement = document.createElement('div');
-
-                // Determinar estilo según el estado
-                const esAtendido = turno.estado === 'atendido';
-                const yaAnimado = sessionStorage.getItem('turno_animado_' + turno.id);
-
-                // Estado: "atendido" (ya terminó) se atenúa; sin badge = en atención ahora
-                let clases = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg flex items-center h-full';
-                if (esAtendido) clases += ' is-atendido';
-
-                // Animación solo para turnos nuevos llamados
-                if (i === 0 && !yaAnimado && !esAtendido) {
-                    clases += ' new-turn';
-                    sessionStorage.setItem('turno_animado_' + turno.id, 'true');
-                    
-                    // NOTA: El modal ahora se muestra después de completar el audio del turno
-                    // Ver función playVoiceMessage para la implementación
-                }
-
-                turnoElement.className = clases;
-
-                // CAJA a la derecha. Si está atendido, el tag "ATENDIDO" va ENCIMA de la CAJA
-                // (no a su lado) para que el número del turno NUNCA pierda espacio ni se recorte.
-                const cajaTexto = `<div class="turno-caja font-semibold">CAJA ${turno.numero_caja || ''}</div>`;
-                const cajaBlock = esAtendido
-                    ? `<div class="caja-cell"><div class="badge-atendido">ATENDIDO</div>${cajaTexto}</div>`
-                    : cajaTexto;
-
-                turnoElement.innerHTML = `
-                    <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center;">
-                        <div class="turno-container" style="width: 100%;">
-                            <div class="turno-numero font-bold">${turno.codigo_completo}</div>
-                            ${cajaBlock}
-                        </div>
-                    </div>
-                `;
-
-                container.appendChild(turnoElement);
-            }
-
-
-
-            // Si hay menos de 5 turnos, rellenar con placeholders
-            for (let i = turnosLimitados.length; i < 5; i++) {
-                const placeholderElement = document.createElement('div');
-                placeholderElement.className = 'gradient-hospital text-white pl-3 pt-3 pb-3 pr-0 enhanced-shadow rounded-lg opacity-50 flex items-center h-full';
-
-                placeholderElement.innerHTML = `
-                    <div class="relative">
-                        <div class="turno-container">
-                            <div class="turno-numero font-bold">----</div>
-                            <div class="turno-caja font-semibold">CAJA -</div>
-                        </div>
-                    </div>
-                `;
-
-                container.appendChild(placeholderElement);
-            }
-
-
-
-            // Ajustar tamaño de fuente solo si el contenido cambió
-            if (contenidoCambio) {
-                // Usar requestAnimationFrame para mejor rendimiento
-                requestAnimationFrame(() => {
-                    const turnoElements = container.querySelectorAll('div:not(.opacity-50)');
-                    turnoElements.forEach(turnoElement => {
-                        ajustarTamanoFuenteFila(turnoElement);
-                    });
-
-
-                });
-            }
+            ajustarLlamados();   // directo (no en requestAnimationFrame): la letra queda ajustada antes de pintar
         }
-
-
 
         // Función para reproducir el mensaje de voz usando archivos pre-generados (DINÁMICO)
         function playVoiceMessage(turno, onComplete = null) {
@@ -2477,17 +2631,10 @@
 
             // Crear placeholder con transición
             const placeholderDiv = document.createElement('div');
-            placeholderDiv.className = 'media-transition media-loading';
-            placeholderDiv.innerHTML = `
-                <div id="multimedia-placeholder" class="text-center text-gray-400 z-10">
-                    <div class="mm-brand-tile">HUV</div>
-                    <p class="text-2xl font-semibold text-hospital-blue mb-2">Hospital Universitario del Valle</p>
-                    <p class="text-lg text-gray-500">Contenido institucional</p>
-                </div>
-                <div class="absolute inset-0 opacity-5">
-                    <div class="w-full h-full" style="background-image: repeating-linear-gradient(45deg, #064b9e 0px, #064b9e 10px, transparent 10px, transparent 20px);"></div>
-                </div>
-            `;
+            placeholderDiv.className = 'media-transition media-loading tv-sin-medios-capa';
+            placeholderDiv.innerHTML = PLANTILLA_SIN_MEDIOS;
+            pintarRelleno(null);
+            iniciarAvance(0);
 
             container.appendChild(placeholderDiv);
 
@@ -2600,12 +2747,14 @@
             if (media.tipo === 'imagen') {
                 const img = document.createElement('img');
                 img.className = 'max-w-full max-h-full object-contain';
+                prepararPieza(img, 'load');
                 img.alt = media.nombre || '';
                 img.onload = () => {
                     if (gen !== videoGen) return;
                     clearTimeout(loadTimer); loadTimer = null;
                     swap(img);
                     const dur = (media.duracion && media.duracion > 0) ? media.duracion : 10;
+                    iniciarAvance(dur);
                     mediaTimer = setTimeout(() => avanzarUnaVez(), dur * 1000);
                 };
                 img.onerror = () => avanzarUnaVez('error de imagen');
@@ -2614,6 +2763,7 @@
             } else if (media.tipo === 'video') {
                 const video = document.createElement('video');
                 video.className = 'max-w-full max-h-full object-contain';
+                prepararPieza(video, 'canplay');
                 video.muted = true;
                 video.loop = false;
                 video.playsInline = true;
@@ -2636,6 +2786,7 @@
                         : (media.duracion && media.duracion > 0 ? media.duracion : 60);
                     limpiarVideoWatchdog();
                     videoWatchdogTimer = setTimeout(() => avanzarUnaVez('timeout de seguridad'), (dur + 10) * 1000);
+                    iniciarAvance(dur);
                 };
                 video.onplaying = cancelarStall;
                 video.onstalled = stall;
@@ -2697,6 +2848,11 @@
 
         // Función específica para reiniciar el ticker
         function restartTicker(speed) {
+            cintaVelocidad = Number(speed) || cintaVelocidad;
+            if (typeof Element.prototype.animate === 'function' && document.querySelector('.tv-cinta-pista')) {
+                requestAnimationFrame(pintarCinta);
+                return;
+            }
             const tickerContent = document.querySelector('.ticker-content');
 
             if (tickerContent) {
@@ -3210,7 +3366,7 @@
 
             // Actualizar la hora inmediatamente y cada minuto
             updateTime();
-            setInterval(updateTime, 60000);
+            setInterval(updateTime, 15000); // la hora se ve en grande: que no se atrase casi un minuto
 
             initializeTicker();
 
