@@ -1,322 +1,111 @@
 @extends('layouts.admin')
 
-@section('title', 'Dashboard')
+@section('title', 'Inicio')
 @section('content')
 @php
-    $usuariosActivosTotal = $usuariosActivos->count();
-    $usuariosDisponibles = $usuariosActivos->where('status', 'DISPONIBLE')->count();
-    $usuariosOcupados = $usuariosActivos->where('status', 'OCUPADO')->count();
-    $turnosAtendidosTotal = $turnosPorServicio->sum('terminados');
-    $asesoresConAtencion = $turnosPorAsesor->count();
-    $turnosEnColaTotal = $turnosEnCola->sum('en_cola');
-    $serviciosConCola = $turnosEnCola->where('en_cola', '>', 0)->count();
+    // Todo sale de App\Services\TableroService (el mismo cálculo que refresca GET /api/admin/tablero).
+    $r = $tablero['resumen'];
+    $esperaMax = $r['espera_max'];
 @endphp
 
                 <div class="dashboard-container max-w-7xl mx-auto space-y-5">
-                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 md:p-5">
-                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                            <div>
-                                <p class="text-xs font-semibold uppercase tracking-wide text-hospital-blue">Operación de hoy</p>
-                                <h1 class="dashboard-title text-xl md:text-2xl font-bold text-gray-900 mt-1">Dashboard administrativo</h1>
-                                <p class="text-sm text-gray-500 mt-1">{{ now()->format('d/m/Y') }} · Estado general del turnero</p>
-                            </div>
-                            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-                            <button
-                                onclick="showCleanSessionsOptions()"
-                                class="dashboard-button bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 w-full sm:w-auto"
-                                id="cleanSessionsBtn">
-                                <svg class="w-4 h-4 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                </svg>
-                                Limpiar Sesiones
-                            </button>
-                            <button
-                                onclick="showEmergencyTurnosOptions()"
-                                class="dashboard-button bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 w-full sm:w-auto"
-                                id="emergencyTurnosBtn">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                </svg>
-                                Emergencia Turnos
-                            </button>
-                            </div>
-                        </div>
-                    </div>
+                    <h1 class="sr-only">Inicio</h1>
 
+                    <!-- Cifras del momento -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                         <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Usuarios activos</p>
-                                    <div id="metric-usuarios-activos" class="metric-value text-3xl font-bold mt-2">{{ number_format($usuariosActivosTotal) }}</div>
-                                    <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
-                                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#22c55e;"></span>
-                                        <span><span id="metric-usuarios-disponibles">{{ number_format($usuariosDisponibles) }}</span> disponibles · <span id="metric-usuarios-ocupados">{{ number_format($usuariosOcupados) }}</span> ocupados</span>
-                                    </p>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">En espera</p>
+                                    <div id="metric-en-espera" class="metric-value text-3xl font-bold mt-2">{{ $r['en_espera'] }}</div>
                                 </div>
                                 <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"></path></svg>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
                                 </div>
                             </div>
+                            <p id="metric-en-espera-detalle" class="text-xs text-gray-500 mt-1.5"><span class="font-semibold text-gray-700">{{ $r['prioritarios'] }}</span> prioritarios · <span class="font-semibold text-gray-700">{{ $r['aplazados'] }}</span> aplazados</p>
                         </div>
-
                         <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Atendidos hoy</p>
-                                    <div id="metric-turnos-atendidos" class="metric-value text-3xl font-bold mt-2">{{ number_format($turnosAtendidosTotal) }}</div>
-                                    <p class="text-xs text-gray-500 mt-1.5">Turnos terminados por servicio</p>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Espera más larga</p>
+                                    <div id="metric-espera-max" class="metric-value text-3xl font-bold mt-2 {{ ($esperaMax['supera_umbral'] ?? false) ? 'is-alerta' : '' }}">@if($esperaMax){{ $esperaMax['minutos'] }}<span class="metric-unit">min</span>@else — @endif</div>
                                 </div>
                                 <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 </div>
                             </div>
+                            <p id="metric-espera-detalle" class="text-xs text-gray-500 mt-1.5">@if($esperaMax)<span class="font-semibold text-gray-700">{{ $esperaMax['turno'] }}</span>{{ $esperaMax['prioritario'] ? ' prioritario' : '' }} · {{ $esperaMax['servicio'] }}@else Nadie en espera @endif</p>
                         </div>
-
                         <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Asesores con atención</p>
-                                    <div id="metric-asesores-atencion" class="metric-value text-3xl font-bold mt-2">{{ number_format($asesoresConAtencion) }}</div>
-                                    <p class="text-xs text-gray-500 mt-1.5">Con turnos terminados hoy</p>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Atendidos hoy</p>
+                                    <div id="metric-atendidos" class="metric-value text-3xl font-bold mt-2">{{ $r['atendidos_hoy'] }}</div>
                                 </div>
                                 <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm6 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 </div>
                             </div>
+                            <p id="metric-atendidos-detalle" class="text-xs text-gray-500 mt-1.5"><span class="font-semibold text-gray-700">{{ $r['transferidos_hoy'] }}</span> transferidos</p>
                         </div>
-
                         <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Turnos en cola</p>
-                                    <div id="metric-turnos-cola" class="metric-value text-3xl font-bold mt-2">{{ number_format($turnosEnColaTotal) }}</div>
-                                    <p class="text-xs text-gray-500 mt-1.5"><span id="metric-servicios-cola">{{ number_format($serviciosConCola) }}</span> servicios con espera</p>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Asesores conectados</p>
+                                    <div id="metric-asesores" class="metric-value text-3xl font-bold mt-2">{{ $r['asesores']['conectados'] }}</div>
                                 </div>
                                 <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                 </div>
                             </div>
+                            <p id="metric-asesores-detalle" class="text-xs text-gray-500 mt-1.5"><span class="font-semibold text-gray-700">{{ $r['asesores']['atendiendo'] }}</span> atendiendo · <span class="font-semibold text-gray-700">{{ $r['asesores']['libres'] }}</span> {{ $r['asesores']['libres'] === 1 ? 'libre' : 'libres' }} · <span class="font-semibold text-gray-700">{{ $r['asesores']['descanso'] }}</span> en descanso</p>
                         </div>
                     </div>
 
-                    <!-- Usuarios Activos -->
+                    <!-- Turnos en cola por servicio: es lo primero que se mira -->
                     <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <h2 class="dashboard-title text-lg font-semibold text-gray-800">Usuarios Activos</h2>
-                                <p id="last-update-time" class="text-xs text-gray-500 mt-1">Cargando...</p>
-                            </div>
+                        <div class="panel-cabeza flex justify-between items-center mb-4">
+                            <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos en cola por servicio</h2>
                         </div>
-
-                        <table class="dashboard-table w-full divide-y divide-gray-200" id="usuarios-activos-table">
+                        <table class="dashboard-table tabla-cifras w-full divide-y divide-gray-200">
                             <thead>
                                 <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Usuario</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Rol</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Disponibilidad</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Estado</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Actividad</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">En cola</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Prioritarios</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Espera más larga</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesores que lo cubren</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Atendidos hoy</th>
                                 </tr>
                             </thead>
-                            <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white">
-                                @if($usuariosActivos->count() > 0)
-                                    @foreach($usuariosActivos as $usuario)
-                                        <tr class="hover:bg-blue-50/70 cursor-pointer transition-colors" 
-                                            onclick="abrirModalEstadisticas({{ $usuario['id'] }}, '{{ addslashes($usuario['name']) }}')"
-                                            title="Clic para ver estadísticas de {{ $usuario['name'] }}">
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <div class="flex flex-col">
-                                                    <span class="text-sm font-medium text-gray-900 flex items-center">
-                                                        {{ $usuario['name'] }}
-                                                        <svg class="w-4 h-4 ml-2 text-hospital-blue opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                                        </svg>
-                                                    </span>
-                                                    <span class="text-xs text-gray-500">Sesión activa: {{ $usuario['tiempo_sesion'] }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                    <span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium {{ $usuario['rol'] === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
-                                                    {{ $usuario['rol'] }}
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap text-sm text-gray-900">
-                                                {{ $usuario['availability'] }}
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium
-                                                    @if($usuario['status'] === 'DISPONIBLE') bg-green-100 text-green-800
-                                                    @elseif($usuario['status'] === 'OCUPADO') bg-yellow-100 text-yellow-800
-                                                    @elseif($usuario['status'] === 'EN DESCANSO') bg-blue-100 text-blue-800
-                                                    @else bg-red-100 text-red-800
-                                                    @endif">
-                                                    {{ $usuario['status'] }}
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-sm text-gray-900">
-                                                @if($usuario['en_canal_no_presencial'])
-                                                    <div class="flex flex-col">
-                                                        <span class="text-xs font-medium text-orange-600">Canal no presencial:</span>
-                                                        <span class="text-xs text-gray-700">{{ $usuario['actividad_canal'] }}</span>
-                                                    </div>
-                                                @else
-                                                    <span class="text-gray-400">—</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @else
-                                    <tr>
-                                        <td colspan="5" class="py-12 text-center text-gray-500">
-                                            <div class="flex flex-col items-center">
-                                                <i class="dashboard-icon fas fa-users text-4xl mb-4 text-gray-300"></i>
-                                                <p class="text-lg font-medium">No hay usuarios activos en este momento</p>
-                                                <p class="text-sm">Los usuarios aparecerán aquí cuando inicien sesión</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endif
-                            </tbody>
+                            <tbody id="turnos-cola-container" class="divide-y divide-gray-200 bg-white"></tbody>
                         </table>
                     </div>
 
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <!-- Turnos por Servicio -->
-                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos Atendidos por Servicio (Hoy)</h2>
-                                <p id="last-update-turnos" class="text-xs text-gray-500 mt-1">Cargando...</p>
-                            </div>
+                    <!-- Asesores conectados (sin administradores) -->
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
+                        <div class="panel-cabeza flex justify-between items-center mb-4">
+                            <h2 class="dashboard-title text-lg font-semibold text-gray-800">Asesores conectados</h2>
                         </div>
-
-                        <table class="dashboard-table w-full divide-y divide-gray-200" id="turnos-servicio-table">
+                        <table class="dashboard-table tabla-cifras w-full divide-y divide-gray-200">
                             <thead>
                                 <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Terminados</th>
+                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesor</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Módulo</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Estado</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Turno en curso</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Atendidos hoy</th>
                                 </tr>
                             </thead>
-                            <tbody id="turnos-servicio-container" class="divide-y divide-gray-200 bg-white">
-                                @if($turnosPorServicio->count() > 0)
-                                    @foreach($turnosPorServicio as $turno)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="text-sm font-medium text-gray-900">{{ $turno['servicio'] }}</span>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                                    {{ $turno['terminados'] }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @else
-                                    <tr>
-                                        <td colspan="2" class="py-12 text-center text-gray-500">
-                                            <div class="flex flex-col items-center">
-                                                <i class="dashboard-icon fas fa-chart-bar text-4xl mb-4 text-gray-300"></i>
-                                                <p class="text-lg font-medium">No hay turnos atendidos hoy</p>
-                                                <p class="text-sm">Los turnos aparecerán aquí cuando sean atendidos</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endif
-                            </tbody>
+                            <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white"></tbody>
                         </table>
                     </div>
 
-                    <!-- Turnos por Asesor -->
-                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos Atendidos por Asesor (Hoy)</h2>
-                                <p id="last-update-asesores" class="text-xs text-gray-500 mt-1">Cargando...</p>
-                            </div>
-                        </div>
-
-                        <table class="dashboard-table w-full divide-y divide-gray-200" id="turnos-asesor-table">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesor</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Terminados</th>
-                                </tr>
-                            </thead>
-                            <tbody id="turnos-asesor-container" class="divide-y divide-gray-200 bg-white">
-                                @if($turnosPorAsesor->count() > 0)
-                                    @foreach($turnosPorAsesor as $turno)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="text-sm font-medium text-gray-900">{{ $turno['asesor'] }}</span>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                                    {{ $turno['terminados'] }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @else
-                                    <tr>
-                                        <td colspan="2" class="py-12 text-center text-gray-500">
-                                            <div class="flex flex-col items-center">
-                                                <i class="dashboard-icon fas fa-user-tie text-4xl mb-4 text-gray-300"></i>
-                                                <p class="text-lg font-medium">No hay turnos atendidos por asesores hoy</p>
-                                                <p class="text-sm">Los turnos aparecerán aquí cuando sean atendidos por asesores</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Turnos en Cola por Servicio -->
-                    <div class="dashboard-section bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <h2 class="dashboard-title text-lg font-semibold text-gray-800">Turnos en Cola por Servicio (Hoy)</h2>
-                                <p id="last-update-cola" class="text-xs text-gray-500 mt-1">Cargando...</p>
-                            </div>
-                        </div>
-
-                        <table class="dashboard-table w-full divide-y divide-gray-200" id="turnos-cola-table">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th>
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">En cola</th>
-                                </tr>
-                            </thead>
-                            <tbody id="turnos-cola-container" class="divide-y divide-gray-200 bg-white">
-                                @if($turnosEnCola->count() > 0)
-                                    @foreach($turnosEnCola as $turno)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="text-sm font-medium text-gray-900">{{ $turno['servicio'] }}</span>
-                                            </td>
-                                            <td class="py-3 px-4 whitespace-nowrap">
-                                                <span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                                                    {{ $turno['en_cola'] }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @else
-                                    <tr>
-                                        <td colspan="2" class="py-12 text-center text-gray-500">
-                                            <div class="flex flex-col items-center">
-                                                <i class="dashboard-icon fas fa-clock text-4xl mb-4 text-gray-300"></i>
-                                                <p class="text-lg font-medium">No hay turnos en cola</p>
-                                                <p class="text-sm">Los turnos pendientes aparecerán aquí</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
-
+                    <!-- Herramientas del sistema: al final y en estilo secundario; el rojo vive solo en la confirmación -->
+                    <div class="herramientas flex flex-wrap items-center gap-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Herramientas del sistema</p>
+                        <button type="button" onclick="showCleanSessionsOptions()" id="cleanSessionsBtn"
+                            class="herramienta-btn text-gray-700 text-sm font-medium px-3 py-2 rounded-lg flex items-center gap-2">
+                            <svg class="w-4 h-4 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Limpiar sesiones
+                        </button>
+                        <button type="button" onclick="showEmergencyTurnosOptions()" id="emergencyTurnosBtn"
+                            class="herramienta-btn text-gray-700 text-sm font-medium px-3 py-2 rounded-lg flex items-center gap-2">
+                            <svg class="w-4 h-4 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+                            Emergencia de turnos
+                        </button>
                     </div>
                 </div>
 
@@ -942,278 +731,156 @@ function showResult(data) {
     modal.classList.remove('hidden');
 }
 
-// Variables para controlar la actualización automática
-let autoUpdateInterval;
-let lastUpdateTime = new Date();
+// ===== Inicio: cifras, cola por servicio y asesores conectados =====
+// Un solo origen de datos: App\Services\TableroService. La primera pintura usa los datos que ya trae
+// la página y cada 15 s se piden de nuevo a /api/admin/tablero (en pausa con la pestaña oculta).
+const TABLERO_URL = @json(route('api.admin.tablero'));
+const ASIGNACION_URL = @json(route('admin.asignacion-servicios'));
+let autoUpdateInterval = null;
 
-// Función para actualizar usuarios activos
-function actualizarUsuariosActivos() {
-    const container = document.getElementById('usuarios-activos-container');
-    const lastUpdateElement = document.getElementById('last-update-time');
+function escHtml(t) {
+    return String(t ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+function cifra(n) { return '<span class="font-semibold text-gray-700">' + escHtml(n) + '</span>'; }
+function ponerTexto(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function ponerHtml(id, v) { const el = document.getElementById(id); if (el) el.innerHTML = v; }
 
-    fetch('{{ route('api.admin.usuarios-activos') }}')
-        .then(response => response.json())
-        .then(usuarios => {
-            let html = '';
+function pintarCifras(t) {
+    const r = t.resumen;
+    ponerTexto('metric-en-espera', r.en_espera);
+    ponerHtml('metric-en-espera-detalle', cifra(r.prioritarios) + ' prioritarios · ' + cifra(r.aplazados) + ' aplazados');
 
-            if (usuarios.length > 0) {
-                usuarios.forEach(usuario => {
-                    let statusClass = '';
-                    if (usuario.status === 'DISPONIBLE') {
-                        statusClass = 'bg-green-100 text-green-800';
-                    } else if (usuario.status === 'OCUPADO') {
-                        statusClass = 'bg-yellow-100 text-yellow-800';
-                    } else if (usuario.status === 'EN DESCANSO') {
-                        statusClass = 'bg-blue-100 text-blue-800';
-                    } else {
-                        statusClass = 'bg-red-100 text-red-800';
-                    }
+    const em = r.espera_max;
+    const esperaEl = document.getElementById('metric-espera-max');
+    if (esperaEl) {
+        if (em) {
+            esperaEl.innerHTML = escHtml(em.minutos) + '<span class="metric-unit">min</span>';
+            esperaEl.classList.toggle('is-alerta', !!em.supera_umbral);
+            esperaEl.title = em.supera_umbral
+                ? 'Pasó el límite de ' + (em.prioritario ? t.umbrales.prioritario : t.umbrales.espera) + ' min'
+                : '';
+            ponerHtml('metric-espera-detalle', cifra(em.turno) + (em.prioritario ? ' prioritario' : '') + ' · ' + escHtml(em.servicio));
+        } else {
+            esperaEl.textContent = '—';
+            esperaEl.classList.remove('is-alerta');
+            esperaEl.title = '';
+            ponerHtml('metric-espera-detalle', 'Nadie en espera');
+        }
+    }
 
-                    let rolClass = usuario.rol === 'Administrador' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+    ponerTexto('metric-atendidos', r.atendidos_hoy);
+    ponerHtml('metric-atendidos-detalle', cifra(r.transferidos_hoy) + ' transferidos');
 
-                    // Generar contenido de la columna actividad
-                    let actividadHtml = '';
-                    if (usuario.en_canal_no_presencial && usuario.actividad_canal) {
-                        actividadHtml = `
-                            <div class="flex flex-col">
-                                <span class="text-xs font-medium text-orange-600">Canal no presencial:</span>
-                                <span class="text-xs text-gray-700">${usuario.actividad_canal}</span>
-                            </div>
-                        `;
-                    } else {
-                        actividadHtml = '<span class="text-gray-400">—</span>';
-                    }
-
-                    // Escapar nombre para evitar problemas con comillas
-                    const nombreEscapado = usuario.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                    
-                    html += `
-                        <tr class="hover:bg-blue-50 cursor-pointer transition-colors" 
-                            onclick="abrirModalEstadisticas(${usuario.id}, '${nombreEscapado}')"
-                            title="Clic para ver estadísticas de ${usuario.name}">
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <div class="flex flex-col">
-                                    <span class="text-sm font-medium text-gray-900 flex items-center">
-                                        ${usuario.name}
-                                        <svg class="w-4 h-4 ml-2 text-hospital-blue opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                        </svg>
-                                    </span>
-                                    <span class="text-xs text-gray-500">Sesión activa: ${usuario.tiempo_sesion}</span>
-                                </div>
-                            </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="dashboard-badge px-2 py-1 rounded text-sm ${rolClass}">
-                                    ${usuario.rol}
-                                </span>
-                            </td>
-                            <td class="py-3 px-4 whitespace-nowrap text-sm text-gray-900">
-                                ${usuario.availability}
-                            </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="dashboard-badge px-2 py-1 rounded text-sm ${statusClass}">
-                                    ${usuario.status}
-                                </span>
-                            </td>
-                            <td class="py-3 px-4 text-sm text-gray-900">
-                                ${actividadHtml}
-                            </td>
-                        </tr>
-                    `;
-                });
-            } else {
-                html = `
-                    <tr>
-                        <td colspan="5" class="py-12 text-center text-gray-500">
-                            <div class="flex flex-col items-center">
-                                <i class="dashboard-icon fas fa-users text-4xl mb-4 text-gray-300"></i>
-                                <p class="text-lg font-medium">No hay usuarios activos en este momento</p>
-                                <p class="text-sm">Los usuarios aparecerán aquí cuando inicien sesión</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            container.innerHTML = html;
-
-            // Actualizar timestamp de última actualización
-            lastUpdateTime = new Date();
-            if (lastUpdateElement) {
-                lastUpdateElement.textContent = `Última actualización: ${lastUpdateTime.toLocaleTimeString()}`;
-            }
-        })
-        .catch(error => {
-            console.error('Error al actualizar usuarios:', error);
-            // No mostrar errores en actualizaciones automáticas para no ser intrusivo
-        });
+    const a = r.asesores;
+    ponerTexto('metric-asesores', a.conectados);
+    const partes = [cifra(a.atendiendo) + ' atendiendo', cifra(a.libres) + (a.libres === 1 ? ' libre' : ' libres'), cifra(a.descanso) + ' en descanso'];
+    if (a.canal) partes.push(cifra(a.canal) + ' en canal');
+    if (a.sin_modulo) partes.push(cifra(a.sin_modulo) + ' sin módulo');
+    ponerHtml('metric-asesores-detalle', partes.join(' · '));
 }
 
-// Función para actualizar turnos por servicio
-function actualizarTurnosPorServicio() {
-    const container = document.getElementById('turnos-servicio-container');
-    const lastUpdateElement = document.getElementById('last-update-turnos');
-
-    fetch('{{ route('api.admin.turnos-por-servicio') }}')
-        .then(response => response.json())
-        .then(turnos => {
-            let html = '';
-
-            if (turnos.length > 0) {
-                turnos.forEach(turno => {
-                    html += `
-                        <tr class="hover:bg-gray-50">
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="text-sm font-medium text-gray-900">${turno.servicio}</span>
-                            </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                    ${turno.terminados}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } else {
-                html = `
-                    <tr>
-                        <td colspan="2" class="py-12 text-center text-gray-500">
-                            <div class="flex flex-col items-center">
-                                <i class="dashboard-icon fas fa-chart-bar text-4xl mb-4 text-gray-300"></i>
-                                <p class="text-lg font-medium">No hay turnos atendidos hoy</p>
-                                <p class="text-sm">Los turnos aparecerán aquí cuando sean atendidos</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            container.innerHTML = html;
-
-            // Actualizar timestamp de última actualización
-            if (lastUpdateElement) {
-                lastUpdateElement.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
-            }
-        })
-        .catch(error => {
-            console.error('Error al actualizar turnos por servicio:', error);
-            // No mostrar errores en actualizaciones automáticas para no ser intrusivo
-        });
+function pintarCola(t) {
+    const cuerpo = document.getElementById('turnos-cola-container');
+    if (!cuerpo) return;
+    if (!t.servicios.length) {
+        cuerpo.innerHTML = '<tr><td colspan="6" class="py-8 px-4 text-center text-sm text-gray-500">Hoy no hay turnos en cola ni atendidos.</td></tr>';
+        return;
+    }
+    const td = 'py-3 px-4 whitespace-nowrap text-sm';
+    cuerpo.innerHTML = t.servicios.map(s => {
+        const enCola = s.en_cola > 0
+            ? '<span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">' + escHtml(s.en_cola) + '</span>'
+            : '<span class="text-gray-500">0</span>';
+        const espera = s.espera_max_min === null || s.espera_max_min === undefined
+            ? '<span class="text-gray-500">—</span>'
+            : (s.alerta
+                ? '<span class="cifra-alerta" title="' + escHtml(s.alerta_motivo) + '">' + escHtml(s.espera_max_min) + ' min</span>'
+                : escHtml(s.espera_max_min) + ' min');
+        const cubren = s.sin_cobertura
+            ? '<span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-800">Ninguno</span>'
+              + ' <a href="' + ASIGNACION_URL + '" class="enlace-accion text-sm ml-2">Asignar</a>'
+            : escHtml(s.cubren);
+        return '<tr class="' + (s.sin_cobertura ? 'fila-sin-cobertura' : 'hover:bg-gray-50') + '">'
+            + '<td class="py-3 px-4 whitespace-nowrap"><span class="text-sm font-medium text-gray-900">' + escHtml(s.nombre) + '</span></td>'
+            + '<td class="py-3 px-4 whitespace-nowrap">' + enCola + '</td>'
+            + '<td class="' + td + ' ' + (s.prioritarios > 0 ? 'text-gray-900' : 'text-gray-500') + '">' + escHtml(s.prioritarios) + '</td>'
+            + '<td class="' + td + ' text-gray-900">' + espera + '</td>'
+            + '<td class="' + td + ' text-gray-900">' + cubren + '</td>'
+            + '<td class="' + td + ' text-gray-900">' + escHtml(s.atendidos_hoy) + '</td>'
+            + '</tr>';
+    }).join('');
 }
 
-// Función para actualizar turnos por asesor
-function actualizarTurnosPorAsesor() {
-    const container = document.getElementById('turnos-asesor-container');
-    const lastUpdateElement = document.getElementById('last-update-asesores');
+const ESTADOS_ASESOR = {
+    atendiendo: ['Atendiendo', 'bg-yellow-100 text-yellow-800'],
+    libre: ['Libre', 'bg-green-100 text-green-800'],
+    descanso: ['En descanso', 'bg-blue-100 text-blue-800'],
+    canal: ['Canal no presencial', 'bg-orange-100 text-orange-800'],
+    sin_modulo: ['Sin módulo', 'bg-gray-100 text-gray-700'],
+};
 
-    fetch('{{ route('api.admin.turnos-por-asesor') }}')
-        .then(response => response.json())
-        .then(turnos => {
-            let html = '';
-
-            if (turnos.length > 0) {
-                turnos.forEach(turno => {
-                    html += `
-                        <tr class="hover:bg-gray-50">
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="text-sm font-medium text-gray-900">${turno.asesor}</span>
-                            </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                    ${turno.terminados}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } else {
-                html = `
-                    <tr>
-                        <td colspan="2" class="py-12 text-center text-gray-500">
-                            <div class="flex flex-col items-center">
-                                <i class="dashboard-icon fas fa-user-tie text-4xl mb-4 text-gray-300"></i>
-                                <p class="text-lg font-medium">No hay turnos atendidos por asesores hoy</p>
-                                <p class="text-sm">Los turnos aparecerán aquí cuando sean atendidos por asesores</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            container.innerHTML = html;
-
-            // Actualizar timestamp de última actualización
-            if (lastUpdateElement) {
-                lastUpdateElement.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
-            }
-        })
-        .catch(error => {
-            console.error('Error al actualizar turnos por asesor:', error);
-            // No mostrar errores en actualizaciones automáticas para no ser intrusivo
-        });
+function pintarAsesores(t) {
+    const cuerpo = document.getElementById('usuarios-activos-container');
+    if (!cuerpo) return;
+    if (!t.asesores.length) {
+        cuerpo.innerHTML = '<tr><td colspan="5" class="py-8 px-4 text-center text-sm text-gray-500">No hay asesores conectados.</td></tr>';
+        return;
+    }
+    const td = 'py-3 px-4 whitespace-nowrap text-sm text-gray-900';
+    cuerpo.innerHTML = t.asesores.map(a => {
+        const [texto, colores] = ESTADOS_ASESOR[a.estado] || [a.estado, 'bg-gray-100 text-gray-700'];
+        let enCurso = '<span class="text-gray-500">—</span>';
+        if (a.turno) {
+            enCurso = '<span class="font-semibold">' + escHtml(a.turno.codigo) + '</span>'
+                + (a.turno.minutos !== null ? ' <span class="text-gray-500">· ' + escHtml(a.turno.minutos) + ' min</span>' : '');
+        } else if (a.canal) {
+            enCurso = escHtml(a.canal.actividad || 'Canal no presencial')
+                + (a.canal.minutos !== null ? ' <span class="text-gray-500">· ' + escHtml(a.canal.minutos) + ' min</span>' : '');
+        }
+        return '<tr class="hover:bg-blue-50/70 cursor-pointer transition-colors" data-asesor-id="' + escHtml(a.id) + '" data-asesor-nombre="' + escHtml(a.nombre) + '" title="Ver estadísticas de ' + escHtml(a.nombre) + '">'
+            + '<td class="py-3 px-4 whitespace-nowrap"><button type="button" class="asesor-nombre text-sm font-medium text-gray-900 flex items-center">'
+            + escHtml(a.nombre) + '<svg class="w-4 h-4 ml-2 text-hospital-blue opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></button></td>'
+            + '<td class="' + td + '">' + (a.modulo !== null ? escHtml(a.modulo) : '<span class="text-gray-500">—</span>') + '</td>'
+            + '<td class="py-3 px-4 whitespace-nowrap"><span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium ' + colores + '">' + texto + '</span></td>'
+            + '<td class="' + td + '">' + enCurso + '</td>'
+            + '<td class="' + td + '">' + escHtml(a.atendidos_hoy) + '</td>'
+            + '</tr>';
+    }).join('');
 }
 
-// Función para actualizar turnos en cola por servicio
-function actualizarTurnosEnCola() {
-    const container = document.getElementById('turnos-cola-container');
-    const lastUpdateElement = document.getElementById('last-update-cola');
+// Clic en la fila o en el nombre: estadísticas del asesor. Delegado y con data-*, sin interpolar el
+// nombre dentro de JavaScript en línea (un apóstrofo en el nombre ya no rompe nada).
+document.getElementById('usuarios-activos-container')?.addEventListener('click', e => {
+    const fila = e.target.closest('tr[data-asesor-id]');
+    if (fila) abrirModalEstadisticas(parseInt(fila.dataset.asesorId, 10), fila.dataset.asesorNombre);
+});
 
-    fetch('{{ route('api.admin.turnos-en-cola') }}')
-        .then(response => response.json())
-        .then(turnos => {
-            let html = '';
-
-            if (turnos.length > 0) {
-                turnos.forEach(turno => {
-                    html += `
-                        <tr class="hover:bg-gray-50">
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="text-sm font-medium text-gray-900">${turno.servicio}</span>
-                            </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                                    ${turno.en_cola}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } else {
-                html = `
-                    <tr>
-                        <td colspan="2" class="py-12 text-center text-gray-500">
-                            <div class="flex flex-col items-center">
-                                <i class="dashboard-icon fas fa-clock text-4xl mb-4 text-gray-300"></i>
-                                <p class="text-lg font-medium">No hay turnos en cola</p>
-                                <p class="text-sm">Los turnos pendientes aparecerán aquí</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            container.innerHTML = html;
-
-            // Actualizar timestamp de última actualización
-            if (lastUpdateElement) {
-                lastUpdateElement.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
-            }
-        })
-        .catch(error => {
-            console.error('Error al actualizar turnos en cola:', error);
-            // No mostrar errores en actualizaciones automáticas para no ser intrusivo
-        });
+function pintarTablero(t) {
+    pintarCifras(t);
+    pintarCola(t);
+    pintarAsesores(t);
 }
 
-// Función para iniciar la actualización automática
+function actualizarTablero() {
+    return fetch(TABLERO_URL, { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(pintarTablero)
+        .catch(err => console.warn('No se pudo actualizar el Inicio:', err));
+}
+
+// Los modales (limpiar sesiones, emergencia) siguen llamando a estos nombres después de actuar.
+const actualizarUsuariosActivos = actualizarTablero;
+const actualizarTurnosPorServicio = actualizarTablero;
+const actualizarTurnosPorAsesor = actualizarTablero;
+const actualizarTurnosEnCola = actualizarTablero;
+
 function startAutoUpdate() {
-    autoUpdateInterval = setInterval(() => {
-        actualizarUsuariosActivos();
-        actualizarTurnosPorServicio();
-        actualizarTurnosPorAsesor();
-        actualizarTurnosEnCola();
-    }, 15000); // Actualizar cada 15 segundos
+    if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+    autoUpdateInterval = setInterval(() => { if (!document.hidden) actualizarTablero(); }, 15000);
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarTablero(); });
+
+pintarTablero(@js($tablero));
 
 // Variables para el modal de emergencia de turnos
 let selectedTurnosOption = null;
@@ -1389,12 +1056,6 @@ function confirmEmergencyTurnos() {
 
 // Iniciar actualización automática
 startAutoUpdate();
-
-// Actualización inicial
-actualizarUsuariosActivos();
-actualizarTurnosPorServicio();
-actualizarTurnosPorAsesor();
-actualizarTurnosEnCola();
 
 // ===== MODAL DE ESTADÍSTICAS DE USUARIO (Alpine.js) =====
 function abrirModalEstadisticas(userId, nombreUsuario) {
@@ -1664,77 +1325,9 @@ function estadisticasUsuarioModal() {
     }
 }
 
-// === Actualización en vivo de las tarjetas de métricas (autocontenido) ===
-// Lee las tablas que el resto del JS ya refresca cada 15s y recalcula las métricas.
-(function(){
-    function setM(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
-    function num(t){ var n = parseInt((t || '').replace(/[^0-9-]/g, ''), 10); return isNaN(n) ? 0 : n; }
-    function actualizarMetricasDashboard(){
-        try {
-            var total = 0, disp = 0, ocup = 0;
-            document.querySelectorAll('#usuarios-activos-container > tr').forEach(function(tr){
-                var tds = tr.querySelectorAll('td');
-                if (tds.length >= 4) {
-                    total++;
-                    var t = tr.textContent;
-                    if (t.indexOf('DISPONIBLE') > -1) disp++;
-                    else if (t.indexOf('OCUPADO') > -1) ocup++;
-                }
-            });
-            setM('metric-usuarios-activos', total);
-            setM('metric-usuarios-disponibles', disp);
-            setM('metric-usuarios-ocupados', ocup);
-
-            var atendidos = 0;
-            document.querySelectorAll('#turnos-servicio-container > tr').forEach(function(tr){
-                var tds = tr.querySelectorAll('td');
-                if (tds.length >= 2) atendidos += num(tds[1].textContent);
-            });
-            setM('metric-turnos-atendidos', atendidos);
-
-            var asesores = 0;
-            document.querySelectorAll('#turnos-asesor-container > tr').forEach(function(tr){
-                if (tr.querySelectorAll('td').length >= 2) asesores++;
-            });
-            setM('metric-asesores-atencion', asesores);
-
-            var colaSum = 0, colaServ = 0;
-            document.querySelectorAll('#turnos-cola-container > tr').forEach(function(tr){
-                var tds = tr.querySelectorAll('td');
-                if (tds.length >= 2) { var v = num(tds[1].textContent); colaSum += v; if (v > 0) colaServ++; }
-            });
-            setM('metric-turnos-cola', colaSum);
-            setM('metric-servicios-cola', colaServ);
-        } catch (e) {}
-    }
-    if (document.readyState !== 'loading') actualizarMetricasDashboard();
-    else document.addEventListener('DOMContentLoaded', actualizarMetricasDashboard);
-    setInterval(actualizarMetricasDashboard, 5000);
-})();
 </script>
 
 <style>
-/* UX: tarjetas de listas del dashboard con ALTURA TOPE + scroll vertical interno (no estiran
-   la página), nombres largos que ENVUELVEN (no scroll horizontal) y encabezado de columna
-   pegado al hacer scroll. Cubre también las filas que re-renderiza el JS (selecciona por id). */
-.dashboard-section {
-    max-height: 26rem;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-#turnos-servicio-table td:first-child,
-#turnos-asesor-table td:first-child,
-#turnos-cola-table td:first-child {
-    white-space: normal;
-    word-break: break-word;
-}
-.dashboard-section thead th {
-    position: sticky;
-    top: 0;
-    background: #f6f8fc;
-    z-index: 1;
-}
-
 /* A11y (WCAG 2.4.7): quitar el outline SOLO para foco de mouse/touch (no feo al hacer
    click), pero CONSERVAR un indicador claro para foco de teclado vía :focus-visible. */
 button:focus:not(:focus-visible),
@@ -1766,15 +1359,7 @@ input[type="checkbox"]:focus-visible {
     outline-offset: 2px;
 }
 
-/* Mantener accesibilidad con un sutil efecto hover en lugar del outline */
-button:hover,
-.btn:hover,
-[role="button"]:hover {
-    transform: translateY(-1px);
-    transition: transform 0.1s ease;
-}
-
-/* ===== Refresco visual del dashboard ===== */
+/* ===== Refresco visual del dashboard (se conserva tal cual) ===== */
 /* Chips de ícono de las métricas: azul institucional (todas iguales) */
 .metric-icon { background: #e6f1fb; color: #064b9e; }
 .metric-value { color: #0f2547; }
@@ -1783,6 +1368,39 @@ button:hover,
 /* Encabezado de tablas: tinte sobrio en lugar de gris plano */
 .dashboard-table thead tr { background: #f6f8fc; }
 .dashboard-table th { color: #5f6b80; }
+
+/* ===== EVOLUCIÓN 2026-09 ===== */
+/* Cifra en rojo SOLO cuando pasa el límite (prioritario > 15 min). */
+.metric-value.is-alerta { color: var(--color-red-700, #c10007); }
+.metric-unit { font-size: 1rem; font-weight: 600; margin-left: .25rem; }
+
+/* Números alineados por columna (los dígitos no "bailan" al refrescar cada 5 s). */
+.tabla-cifras td { font-variant-numeric: tabular-nums; }
+
+/* Servicio que nadie puede atender (0 asesores lo cubren): la fila se tiñe. */
+.fila-sin-cobertura { background: var(--color-red-50, #fef2f2); }
+.cifra-alerta { color: var(--color-red-700, #c10007); font-weight: 600; }
+.enlace-accion { color: #064b9e; font-weight: 500; }
+.enlace-accion:hover { text-decoration: underline; }
+.enlace-accion:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; border-radius: 4px; }
+
+/* Nombre del asesor: botón (se llega con teclado) que se ve igual que el texto de antes. */
+.asesor-nombre { cursor: pointer; text-align: left; border-radius: 4px; }
+
+/* Herramientas del sistema: botón blanco sobre el fondo gris (mismo material que
+   las tarjetas). El gris #eef1f6 de los secundarios desaparecería sobre gray-100. */
+.herramientas { padding-top: .25rem; }
+.herramienta-btn { background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, .08); transition: background-color .15s ease; }
+.herramienta-btn:hover { background: #f6f8fc; color: #111827; }
+
+/* Densidad por altura (reemplaza las reglas .dashboard-* con !important que había
+   en layouts/admin.blade.php: solo las usaba esta vista). */
+@media (min-width: 768px) and (max-height: 799px) {
+    .dashboard-container > :not(:last-child) { margin-block-end: 1rem; }
+    .dashboard-table th,
+    .dashboard-table td { padding-top: .5rem; padding-bottom: .5rem; }
+    .panel-cabeza { margin-bottom: .75rem; }
+}
 </style>
 
 @endsection

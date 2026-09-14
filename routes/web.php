@@ -140,6 +140,9 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     // API para obtener turnos en cola por servicio
     Route::get('/api/admin/turnos-en-cola', [AdminController::class, 'getTurnosEnCola'])->name('api.admin.turnos-en-cola');
 
+    // Refresco del Inicio: cifras, cola por servicio y asesores conectados en una sola respuesta
+    Route::get('/api/admin/tablero', [AdminController::class, 'tablero'])->name('api.admin.tablero');
+
     // API para obtener estadísticas detalladas de un usuario específico
     Route::get('/api/admin/usuario/{userId}/estadisticas', [AdminController::class, 'getEstadisticasUsuario'])->name('api.admin.usuario-estadisticas');
 

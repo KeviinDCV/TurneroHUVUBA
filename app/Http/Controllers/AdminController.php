@@ -27,19 +27,17 @@ class AdminController extends Controller
     {
         $user = Auth::user();
 
-        // Obtener usuarios activos reales
-        $usuariosActivos = $this->getUsuariosActivosData();
+        // Todo lo que pinta el Inicio (cifras, cola por servicio, asesores conectados), con las mismas
+        // definiciones que su refresco (GET /api/admin/tablero). Si el cálculo fallara, el Inicio se muestra
+        // en cero en vez de dar error 500: es la página a la que llegan todos al iniciar sesión.
+        try {
+            $tablero = app(\App\Services\TableroService::class)->generar();
+        } catch (\Throwable $e) {
+            report($e);
+            $tablero = \App\Services\TableroService::vacio();
+        }
 
-        // Obtener estadísticas de turnos por servicio
-        $turnosPorServicio = $this->getTurnosPorServicioData();
-
-        // Obtener estadísticas de turnos por asesor
-        $turnosPorAsesor = $this->getTurnosPorAsesorData();
-
-        // Obtener turnos en cola por servicio
-        $turnosEnCola = $this->getTurnosEnColaData();
-
-        return view('admin.dashboard', compact('user', 'usuariosActivos', 'turnosPorServicio', 'turnosPorAsesor', 'turnosEnCola'));
+        return view('admin.dashboard', compact('user', 'tablero'));
     }
 
     /**
@@ -1115,5 +1113,24 @@ class AdminController extends Controller
             'turnos' => $turnos,
             'estadisticas' => $estadisticas,
         ]);
+    }
+
+    /**
+     * Refresco del Inicio: cifras, cola por servicio y asesores conectados en una sola respuesta.
+     * Los cálculos viven en App\Services\TableroService.
+     */
+    public function tablero(\App\Services\TableroService $tablero)
+    {
+        try {
+            $datos = $tablero->generar();
+        } catch (\Throwable $e) {
+            report($e);
+            // El Inicio conserva lo último que pintó y lo vuelve a intentar en el siguiente refresco.
+            return response()->json(['error' => 'No se pudo calcular el tablero'], 500);
+        }
+
+        return response()
+            ->json($datos, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            ->header('Cache-Control', 'no-store');
     }
 }
