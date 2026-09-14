@@ -678,7 +678,21 @@
 
         .sidebar-firma-titulo { color: #e4ebf5; font-size: 11px; font-weight: 600; line-height: 1.35; }
         .sidebar-firma-sub { color: #8ea8d0; font-size: 11px; line-height: 1.35; }
+
+        /* 5. Esqueletos de carga: la forma del contenido en gris, con un pulso lento, mientras llega del servidor. */
+        .esqueleto {
+            display: block; height: .75rem; max-width: 100%; border-radius: .25rem; background: #e6ebf2;
+            animation: esqueleto-pulso 1.6s ease-in-out infinite;
+        }
+        .esqueleto--etiqueta { height: 1.25rem; border-radius: .375rem; }
+        .esqueleto--bloque { height: 4.25rem; border-radius: .5rem; }
+        .esqueleto--bloque-bajo { height: 3.75rem; border-radius: .5rem; }
+        @keyframes esqueleto-pulso { 50% { opacity: .45; } }
+        @media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
     </style>
+    {{-- Estilos propios de cada vista (@push('estilos')): aquí, después de los del layout, para que se apliquen
+         desde el primer pintado. Al final del cuerpo, las transiciones de borde se veían como bordes negros al cargar. --}}
+    @stack('estilos')
 </head>
 <body class="min-h-screen bg-gray-100"
       x-data="{ sidebarOpen: false, sidebarCollapsed: window.innerWidth >= 768 && localStorage.getItem('huvSidebarCollapsed') === '1' }"

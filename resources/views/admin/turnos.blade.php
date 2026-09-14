@@ -83,6 +83,7 @@
 
     const url = new URLSearchParams(location.search);
     let porPagina = 25;     // se ajusta a las filas que caben en la pantalla (filasQueCaben)
+    let altoFila = 41;      // alto medido de una fila: los esqueletos usan el mismo y la tabla no salta
     const estadoFiltro = { estado: url.get('estado') || '', servicio: url.get('servicio') || '', asesor: url.get('asesor') || '',
                            search: url.get('search') || '', page: parseInt(url.get('page') || '1', 10) || 1 };
 
@@ -139,7 +140,19 @@
 
     function hayFiltros() { return estadoFiltro.estado || estadoFiltro.servicio || estadoFiltro.asesor || estadoFiltro.search; }
 
+    // Forma de las filas mientras llega la página pedida: mismas columnas y mismo alto que las reales.
+    function esqueletos() {
+        const anchos = i => ['3rem', ['9rem', '7rem', '10.5rem', '8rem', '6.5rem'][i % 5], '4.5rem',
+                             ['6rem', '4rem', '7rem', '5rem'][i % 4], '2.5rem', '3rem', '3.5rem'];
+        $('turnos-tbody').innerHTML = Array.from({ length: porPagina }, (_, i) =>
+            '<tr class="fila-esqueleto" aria-hidden="true" style="height:' + altoFila + 'px">'
+            + anchos(i).map((w, j) => '<td class="px-4"><span class="esqueleto' + (j === 2 ? ' esqueleto--etiqueta' : '') + '" style="width:' + w + '"></span></td>').join('')
+            + '</tr>').join('');
+        document.querySelector('.tabla-turnos').setAttribute('aria-busy', 'true');
+    }
+
     function pintar(d) {
+        document.querySelector('.tabla-turnos').removeAttribute('aria-busy');
         Object.entries(d.conteos).forEach(([k, n]) => {
             const el = document.querySelector('[data-conteo="' + k + '"]');
             if (el) el.textContent = n;
@@ -155,6 +168,7 @@
                 + (hayFiltros() ? ' <button type="button" class="enlace-accion" data-limpiar>Quitar filtros</button>' : '') + '</td></tr>';
         }
         $('turnos-paginacion').innerHTML = paginas(d.meta);
+        ultimaMeta = d.meta;
         $('filtro-limpiar').hidden = !hayFiltros();
     }
 
@@ -164,24 +178,36 @@
         return p;
     }
 
-    let pidiendo = null;
-    function actualizar() {
+    let pidiendo = null, esperaEsqueleto = null, ultimaMeta = null;
+    function actualizar(opciones = {}) {
         const p = consulta();
         history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : ''));
         if (pidiendo) pidiendo.abort();
         pidiendo = new AbortController();
+        // Al paginar o filtrar, si el servidor tarda, la tabla muestra la forma de las filas y no datos que ya no aplican.
+        clearTimeout(esperaEsqueleto);
+        if (opciones.esqueleto) esperaEsqueleto = setTimeout(esqueletos, 150);
         p.set('per_page', porPagina);
         return fetch(API + '?' + p, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: pidiendo.signal })
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(d => {
                 // Si la página quedó fuera de rango (p. ej. tras filtrar), se vuelve a la última que existe.
-                if (d.meta.total && estadoFiltro.page > d.meta.ultima) { estadoFiltro.page = d.meta.ultima; return actualizar(); }
+                if (d.meta.total && estadoFiltro.page > d.meta.ultima) { estadoFiltro.page = d.meta.ultima; return actualizar(opciones); }
+                clearTimeout(esperaEsqueleto);
                 pintar(d);
             })
-            .catch(e => { if (e.name !== 'AbortError') console.warn('No se pudo actualizar Turnos:', e); });
+            .catch(e => {
+                if (e.name === 'AbortError') return;
+                clearTimeout(esperaEsqueleto);
+                console.warn('No se pudo actualizar Turnos:', e);
+                if ($('turnos-tbody').querySelector('.fila-esqueleto')) {
+                    document.querySelector('.tabla-turnos').removeAttribute('aria-busy');
+                    $('turnos-tbody').innerHTML = '<tr><td colspan="7" class="py-8 px-4 text-center text-sm text-gray-500">No se pudo cargar la lista. Se reintentará en unos segundos.</td></tr>';
+                }
+            });
     }
 
-    function cambiar(k, v) { estadoFiltro[k] = v; estadoFiltro.page = 1; actualizar(); }
+    function cambiar(k, v) { estadoFiltro[k] = v; estadoFiltro.page = 1; actualizar({ esqueleto: true }); }
 
     // Controles
     $('filtro-search').value = estadoFiltro.search;
@@ -204,12 +230,19 @@
     function limpiar() {
         Object.assign(estadoFiltro, { estado: '', servicio: '', asesor: '', search: '', page: 1 });
         $('filtro-search').value = ''; $('filtro-servicio').value = ''; $('filtro-asesor').value = '';
-        actualizar();
+        actualizar({ esqueleto: true });
     }
     $('filtro-limpiar').addEventListener('click', limpiar);
     document.querySelector('.turnos-vista').addEventListener('click', e => {
         const pag = e.target.closest('[data-pagina]');
-        if (pag && !pag.disabled) { estadoFiltro.page = parseInt(pag.dataset.pagina, 10); actualizar(); }
+        if (pag && !pag.disabled) {
+            estadoFiltro.page = parseInt(pag.dataset.pagina, 10);
+            if (ultimaMeta) {   // la página pedida queda marcada ya, sin esperar al servidor
+                const desde = (estadoFiltro.page - 1) * porPagina + 1;
+                $('turnos-paginacion').innerHTML = paginas({ ...ultimaMeta, pagina: estadoFiltro.page, desde, hasta: Math.min(ultimaMeta.total, desde + porPagina - 1) });
+            }
+            actualizar({ esqueleto: true });
+        }
         if (e.target.closest('[data-limpiar]')) limpiar();
     });
 
@@ -218,6 +251,7 @@
         const tabla = document.querySelector('.tabla-turnos');
         const fila = tabla.querySelector('tbody tr');
         const alto = fila && fila.cells.length > 1 ? fila.getBoundingClientRect().height : 41;
+        altoFila = alto;
         const inicio = tabla.querySelector('thead').getBoundingClientRect().bottom + window.scrollY;
         const pie = $('turnos-paginacion').getBoundingClientRect().height || 56;
         return Math.max(5, Math.min(50, Math.floor((window.innerHeight - inicio - pie - 24) / alto)));
@@ -237,12 +271,15 @@
 
     // Primera pintura con los datos de la página; luego, refresco cada 5 s con la pestaña visible.
     pintar(@js($datos));
-    ajustarPagina();
+    // Se mide con la página ya armada y, al final, con las fuentes cargadas.
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ajustarPagina); else ajustarPagina();
+    window.addEventListener('load', ajustarPagina);
     setInterval(() => { if (!document.hidden) actualizar(); }, 5000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizar(); });
 })();
 </script>
 
+@push('estilos')
 <style>
 .turnos-vista { font-variant-numeric: tabular-nums; }
 
@@ -285,6 +322,7 @@
 
 /* Tabla */
 .tabla-turnos th, .tabla-turnos td { padding-top: .5rem; padding-bottom: .5rem; }
+.tabla-turnos .fila-esqueleto td { padding-top: 0; padding-bottom: 0; }
 .tabla-turnos thead tr { background: #f6f8fc; }
 .tabla-turnos th { color: #5f6b80; }
 .codigo { font-weight: 700; color: #111827; letter-spacing: .01em; }
@@ -313,4 +351,5 @@
     .estado-tile { padding: .6rem .9rem; }
 }
 </style>
+@endpush
 @endsection

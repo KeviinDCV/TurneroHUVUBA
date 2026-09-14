@@ -19,6 +19,10 @@
     <!-- Filtros rápidos, búsqueda y alta en una sola fila -->
     <div class="mod-barra">
         <div class="mod-filtros" role="group" aria-label="Filtrar módulos">
+            {{-- Mientras arranca Alpine: la forma de los filtros (init() los quita) --}}
+            @foreach ([3.25, 4.25, 5.5, 5] as $ancho)
+                <span class="mod-filtro" data-esqueleto aria-hidden="true"><span class="esqueleto" style="width: {{ $ancho }}rem"></span></span>
+            @endforeach
             <template x-for="f in filtros" :key="f.clave">
                 <button type="button" class="mod-filtro" :aria-pressed="(filtro === f.clave).toString()" @click="filtro = f.clave">
                     <span x-text="f.rotulo"></span> <span class="mod-filtro__n" x-text="contar(f.clave)"></span>
@@ -37,6 +41,19 @@
 
     <!-- Fichas -->
     <div class="mod-grid">
+        {{-- Mientras arranca Alpine: una ficha con la forma de cada módulo, para que nada salte (init() las quita) --}}
+        @foreach ($modulos as $m)
+            <div class="mod-tile" data-esqueleto aria-hidden="true">
+                <div class="mod-cabeza">
+                    <span class="esqueleto mod-esq-num"></span>
+                    <div class="mod-esq-lineas">
+                        <span class="esqueleto" style="width: {{ [70, 55, 80, 62][$loop->index % 4] }}%"></span>
+                        <span class="esqueleto" style="width: {{ [45, 60, 38, 50][$loop->index % 4] }}%"></span>
+                    </div>
+                </div>
+                <div class="mod-uso"><span class="esqueleto" style="width: {{ [58, 40, 66, 48][$loop->index % 4] }}%"></span></div>
+            </div>
+        @endforeach
         <template x-for="m in visibles()" :key="m.id">
             <article class="mod-tile" :class="!m.activa && 'mod-tile--inactivo'">
                 <div class="mod-cabeza">
@@ -172,6 +189,7 @@ document.addEventListener('alpine:init', () => {
             { clave: 'inactivos', rotulo: 'Inactivos' },
         ],
         init() {
+            this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
             // Solo la ocupación cambia sola; el catálogo cambia al guardar (y la página se recarga).
             setInterval(() => { if (!document.hidden) this.refrescar(); }, 15000);
         },
@@ -254,6 +272,7 @@ document.addEventListener('alpine:init', () => {
 });
 </script>
 
+@push('estilos')
 <style>
 [x-cloak] { display: none !important; }
 .modulos-vista { font-variant-numeric: tabular-nums; }
@@ -331,6 +350,10 @@ document.addEventListener('alpine:init', () => {
 .mod-tile:hover .mod-acciones, .mod-tile:focus-within .mod-acciones { opacity: 1; }
 @media (hover: none) { .mod-acciones { opacity: 1; } }
 .mod-vacio { padding: 2rem; text-align: center; font-size: .875rem; color: #6b7280; }
+/* Esqueletos (antes de que arranque Alpine): mismas medidas que las fichas reales */
+.mod-tile[data-esqueleto] .mod-cabeza { min-height: 2.125rem; align-items: center; }
+.mod-esq-num { width: 1.9rem; height: 1.6rem; border-radius: .375rem; flex-shrink: 0; }
+.mod-esq-lineas { display: flex; flex-direction: column; gap: .5rem; flex: 1; min-width: 0; }
 
 .aviso { padding: .6rem .8rem; border-radius: .5rem; font-size: .875rem; }
 .aviso--ok { background: #e4faec; color: #005d38; }
@@ -357,4 +380,5 @@ document.addEventListener('alpine:init', () => {
     .mod-grid { gap: .6rem; }
 }
 </style>
+@endpush
 @endsection

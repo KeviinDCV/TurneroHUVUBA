@@ -185,7 +185,10 @@
 
                             <div class="max-h-40 overflow-y-auto border rounded-md">
                                 <div id="usersListContent" class="divide-y divide-gray-200">
-                                    <!-- Los usuarios se cargarán aquí dinámicamente -->
+                                    <!-- Los usuarios se cargan aquí; mientras tanto, la forma de la lista -->
+                                    @foreach ([[45, 30], [38, 26], [52, 34]] as [$a, $b])
+                                        <div class="usuario-esqueleto" aria-hidden="true"><span class="esqueleto" style="width: {{ $a }}%"></span><span class="esqueleto" style="width: {{ $b }}%"></span></div>
+                                    @endforeach
                                 </div>
                             </div>
                         </div>
@@ -384,12 +387,20 @@
                     <button @click="setFechaRapida('mes')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Último Mes</button>
                 </div>
 
-                <!-- Indicador de Carga -->
-                <div x-show="loading" class="flex justify-center items-center py-8">
-                    <svg class="animate-spin h-8 w-8 text-hospital-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                <!-- Mientras cargan: la forma del resumen, los tiempos y la tabla de turnos -->
+                <div x-show="loading" class="est-esqueleto" role="status">
+                    <span class="sr-only">Cargando estadísticas…</span>
+                    <div class="est-esqueleto__fila est-esqueleto__fila--4" aria-hidden="true">
+                        <span class="esqueleto esqueleto--bloque"></span><span class="esqueleto esqueleto--bloque"></span>
+                        <span class="esqueleto esqueleto--bloque"></span><span class="esqueleto esqueleto--bloque"></span>
+                    </div>
+                    <div class="est-esqueleto__fila est-esqueleto__fila--3" aria-hidden="true">
+                        <span class="esqueleto esqueleto--bloque-bajo"></span><span class="esqueleto esqueleto--bloque-bajo"></span><span class="esqueleto esqueleto--bloque-bajo"></span>
+                    </div>
+                    <span class="esqueleto" style="width: 10rem" aria-hidden="true"></span>
+                    <div class="est-esqueleto__tabla" aria-hidden="true">
+                        <span class="esqueleto"></span><span class="esqueleto"></span><span class="esqueleto"></span><span class="esqueleto"></span>
+                    </div>
                 </div>
 
                 <!-- Contenido de Estadísticas -->
@@ -1327,6 +1338,7 @@ function estadisticasUsuarioModal() {
 
 </script>
 
+@push('estilos')
 <style>
 /* A11y (WCAG 2.4.7): quitar el outline SOLO para foco de mouse/touch (no feo al hacer
    click), pero CONSERVAR un indicador claro para foco de teclado vía :focus-visible. */
@@ -1410,7 +1422,7 @@ input[type="checkbox"]:focus-visible {
 .inicio-cuerpo .dashboard-table th:first-child,
 .inicio-cuerpo .dashboard-table td:first-child { padding-left: .75rem; }
 #turnos-cola-container .celda-nombre { max-width: 10.5rem; }
-#usuarios-activos-container .celda-nombre { max-width: 8.75rem; }
+#usuarios-activos-container .celda-nombre { max-width: 8.25rem; }
 .inicio-cuerpo .dashboard-table td { font-size: .8125rem; }
 .inicio-cuerpo .panel-cabeza { margin-bottom: .75rem; }
 .inicio-cuerpo .dashboard-title { font-size: 1rem; }
@@ -1426,6 +1438,21 @@ input[type="checkbox"]:focus-visible {
                  background: var(--color-red-100, #ffe2e2); color: var(--color-red-800, #9f0712); white-space: nowrap; }
 .sin-cobertura:hover { text-decoration: underline; }
 .sin-cobertura:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
+
+/* Esqueletos: modal de estadísticas del asesor y lista de sesiones del modal de limpieza */
+.est-esqueleto { display: flex; flex-direction: column; gap: 1rem; padding-block: .25rem; }
+.est-esqueleto__fila { display: grid; gap: .75rem; }
+.est-esqueleto__fila--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.est-esqueleto__fila--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 767px) {
+    .est-esqueleto__fila--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .est-esqueleto__fila--3 { grid-template-columns: minmax(0, 1fr); }
+}
+.est-esqueleto__tabla { display: flex; flex-direction: column; gap: .8rem; padding: .85rem .75rem; border: 1px solid #eef1f6; border-radius: .5rem; }
+.est-esqueleto__tabla .esqueleto:nth-child(odd) { width: 92%; }
+.est-esqueleto__tabla .esqueleto:nth-child(even) { width: 74%; }
+.usuario-esqueleto { display: flex; flex-direction: column; gap: .5rem; padding: .9rem .75rem; }
 </style>
+@endpush
 
 @endsection
