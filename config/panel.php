@@ -29,4 +29,12 @@ return [
         'atencion' => (int) env('PANEL_UMBRAL_ATENCION', 20),
     ],
 
+    // Soporte. Vacíos = no se usan.
+    //  - correo: recibe cada solicitud nueva (necesita MAIL_* configurado en el .env; con MAIL_MAILER=log no sale).
+    //  - contacto: se muestra en la página para urgencias, p. ej. "Extensión 1234 · innovacion@huv.gov.co".
+    'soporte' => [
+        'correo' => env('PANEL_SOPORTE_CORREO'),
+        'contacto' => env('PANEL_SOPORTE_CONTACTO'),
+    ],
+
 ];

@@ -26,11 +26,11 @@
                         <small x-show="errores.nombre_completo" x-text="errores.nombre_completo"></small>
                     </label>
                     <div class="form-panel__fila">
-                        <label class="form-campo">Cédula <span class="form-opcional">(opcional)</span>
+                        <label class="form-campo"><span class="form-rotulo">Cédula <span class="form-opcional">(opcional)</span></span>
                             <input type="text" class="campo" x-model="datos.cedula" inputmode="numeric" maxlength="20" autocomplete="off">
                             <small x-show="errores.cedula" x-text="errores.cedula"></small>
                         </label>
-                        <label class="form-campo">Correo <span class="form-opcional">(opcional)</span>
+                        <label class="form-campo"><span class="form-rotulo">Correo <span class="form-opcional">(opcional)</span></span>
                             <input type="email" class="campo" x-model="datos.correo_electronico" maxlength="255" autocomplete="off">
                             <small x-show="errores.correo_electronico" x-text="errores.correo_electronico"></small>
                         </label>

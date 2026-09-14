@@ -185,6 +185,8 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     // Rutas para soporte
     Route::get('/soporte', [SoporteController::class, 'index'])->name('admin.soporte');
     Route::post('/soporte', [SoporteController::class, 'store'])->name('admin.soporte.store');
+    Route::post('/soporte/{id}/estado', [SoporteController::class, 'estado'])->whereNumber('id')->name('admin.soporte.estado');
+    Route::get('/soporte/{id}/captura', [SoporteController::class, 'adjunto'])->whereNumber('id')->name('admin.soporte.adjunto');
 
     // Sistema de Voz
     Route::prefix('voice')->name('voice.')->group(function () {
