@@ -689,6 +689,15 @@
         .esqueleto--bloque-bajo { height: 3.75rem; border-radius: .5rem; }
         @keyframes esqueleto-pulso { 50% { opacity: .45; } }
         @media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
+
+        /* 6. Primer pintado = estado final: lo que Alpine pone al arrancar ya lo resuelve el CSS (el menú no salta). */
+        body:not(.sidebar-is-collapsed) .sidebar-separador { display: none; }
+        body.sidebar-is-collapsed .sidebar-section-title,
+        body.sidebar-is-collapsed .sidebar-label { display: none; }
+        body.sidebar-is-collapsed .sidebar-item { justify-content: center; padding-left: .5rem; padding-right: .5rem; }
+        body.sidebar-is-collapsed .sidebar-user-card,
+        body.sidebar-is-collapsed .sidebar-logout { justify-content: center; }
+        body.sidebar-is-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
     </style>
     {{-- Estilos propios de cada vista (@push('estilos')): aquí, después de los del layout, para que se apliquen
          desde el primer pintado. Al final del cuerpo, las transiciones de borde se veían como bordes negros al cargar. --}}
@@ -696,7 +705,11 @@
 </head>
 <body class="min-h-screen bg-gray-100"
       x-data="{ sidebarOpen: false, sidebarCollapsed: window.innerWidth >= 768 && localStorage.getItem('huvSidebarCollapsed') === '1' }"
-      :class="sidebarCollapsed ? 'sidebar-is-collapsed' : ''">
+      :class="{ 'sidebar-is-collapsed': sidebarCollapsed }">
+    <script>
+        // El menú plegado se aplica antes del primer pintado; Alpine llega después y solo lo mantiene.
+        try { if (window.innerWidth >= 768 && localStorage.getItem('huvSidebarCollapsed') === '1') document.body.classList.add('sidebar-is-collapsed'); } catch (e) {}
+    </script>
     <a href="#main-content" class="skip-link">Saltar al contenido</a>
     @include('components.admin.header')
 

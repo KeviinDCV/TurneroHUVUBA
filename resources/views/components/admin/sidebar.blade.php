@@ -94,7 +94,7 @@
                 <div>
                     @if($section['title'])
                         <div class="sidebar-section-title px-3" x-show="!sidebarCollapsed">{{ $section['title'] }}</div>
-                        <div class="hidden md:block mr-3 mb-2 border-t" style="border-color: rgba(255,255,255,0.10);" x-show="sidebarCollapsed"></div>
+                        <div class="sidebar-separador hidden md:block mr-3 mb-2 border-t" style="border-color: rgba(255,255,255,0.10);" x-show="sidebarCollapsed"></div>
                     @endif
 
                     <div class="space-y-0.5">
@@ -102,8 +102,8 @@
                             @php $isActive = $currentRoute === $item['route']; @endphp
                             <a href="{{ route($item['route']) }}" @if($isActive) aria-current="page" @endif
                                title="{{ $item['label'] }}{{ !empty($item['hint']) ? ' — '.$item['hint'] : '' }}"
-                               class="sidebar-item group relative flex items-center transition-colors duration-150 {{ $isActive ? 'sidebar-item-active' : '' }}"
-                               :class="sidebarCollapsed ? 'justify-center pr-2 pl-2' : 'justify-start px-3 gap-3'">
+                               class="sidebar-item group relative flex items-center justify-start px-3 gap-3 transition-colors duration-150 {{ $isActive ? 'sidebar-item-active' : '' }}"
+                               :class="{ 'justify-center pr-2 pl-2': sidebarCollapsed, 'justify-start px-3 gap-3': !sidebarCollapsed }">
                                 <span class="flex-shrink-0 flex items-center justify-center">
                                     @switch($item['icon'])
                                         @case('home')
@@ -156,8 +156,8 @@
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit"
-                    class="sidebar-logout w-full flex items-center transition-colors"
-                    :class="sidebarCollapsed ? 'justify-center px-2' : 'justify-start px-3 gap-3'"
+                    class="sidebar-logout w-full flex items-center justify-start px-3 gap-3 transition-colors"
+                    :class="{ 'justify-center px-2': sidebarCollapsed, 'justify-start px-3 gap-3': !sidebarCollapsed }"
                     title="Cerrar sesión">
                 <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
