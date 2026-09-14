@@ -407,13 +407,8 @@ class TableroService
                 'minutos' => $x['min'],
                 'servicio' => $servicioNombre($t->servicio_id),
                 'limite' => $umbrales['prioritario'],
-                // Gestión de turnos (AdminController::turnos y su API turnos-hoy) busca `search` con LIKE en
-                // codigo, en numero y en el nombre del servicio, por separado: el código completo "K-016"
-                // no coincide con nada. Servicio + número sí encuentran el turno (y como mucho otros del
-                // mismo servicio cuyo número contenga esas cifras: 116, 160...).
-                'accion' => ['texto' => 'Ver turno', 'url' => route('admin.turnos', [
-                    'servicio' => (int) $t->servicio_id, 'search' => (int) $t->numero,
-                ], false)],
+                // La pantalla Turnos entiende el código impreso ("K-016") y lo busca exacto.
+                'accion' => ['texto' => 'Ver turno', 'url' => route('admin.turnos', ['search' => $t->codigo_completo], false)],
             ];
         }
 

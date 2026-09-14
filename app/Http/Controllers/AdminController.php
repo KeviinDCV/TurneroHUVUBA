@@ -966,153 +966,125 @@ class AdminController extends Controller
     }
 
     /**
-     * Vista de gestión de turnos del día
+     * Pantalla Turnos: los turnos de hoy, paginados y filtrables. La primera pintura y el refresco
+     * (GET /api/admin/turnos-hoy, cada 5 s) usan los mismos datos: turnosHoyDatos().
      */
     public function turnos(Request $request)
     {
         $user = Auth::user();
-        
-        // Obtener filtros
-        $estado = $request->input('estado');
-        $servicio = $request->input('servicio');
-        $asesor = $request->input('asesor');
-        $search = $request->input('search');
-        
-        // Obtener todos los servicios para el filtro
-        $servicios = Servicio::where('estado', 'activo')->orderBy('nombre')->get();
-        
-        // Obtener todos los asesores para el filtro
-        $asesores = User::whereIn('rol', ['asesor', 'administrador'])
-            ->orderBy('nombre_completo')
-            ->get();
-        
-        // Construir query de turnos del día
-        $query = Turno::with(['servicio', 'caja', 'asesor'])
-            ->whereDate('fecha_creacion', Carbon::today())
-            ->orderBy('fecha_creacion', 'desc');
-        
-        // Aplicar filtros
-        if ($estado) {
-            $query->where('estado', $estado);
-        }
-        
-        if ($servicio) {
-            $query->where('servicio_id', $servicio);
-        }
-        
-        if ($asesor) {
-            $query->where('asesor_id', $asesor);
-        }
-        
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('codigo', 'like', "%{$search}%")
-                  ->orWhere('numero', 'like', "%{$search}%")
-                  ->orWhereHas('servicio', function($sq) use ($search) {
-                      $sq->where('nombre', 'like', "%{$search}%");
-                  });
-            });
-        }
-        
-        $turnos = $query->paginate(20);
-        
-        // Estadísticas rápidas
-        $estadisticas = [
-            'total' => Turno::whereDate('fecha_creacion', Carbon::today())->count(),
-            'pendientes' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'pendiente')->count(),
-            'llamados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'llamado')->count(),
-            'atendidos' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'atendido')->count(),
-            'aplazados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'aplazado')->count(),
-            'cancelados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'cancelado')->count(),
-        ];
-        
-        return view('admin.turnos', compact('user', 'turnos', 'servicios', 'asesores', 'estadisticas', 'estado', 'servicio', 'asesor', 'search'));
+        $servicios = Servicio::where('estado', 'activo')->orderBy('nombre')->get(['id', 'nombre']);
+        $asesores = User::whereIn('rol', ['asesor', 'administrador'])->orderBy('nombre_completo')->get(['id', 'nombre_completo']);
+        $datos = $this->turnosHoyDatos($request);
+
+        return view('admin.turnos', compact('user', 'servicios', 'asesores', 'datos'));
     }
 
     /**
-     * API para obtener turnos del día (actualización en tiempo real)
+     * Refresco de la pantalla Turnos (mismos filtros y página que la URL).
      */
     public function getTurnosHoy(Request $request)
     {
-        $estado = $request->input('estado');
-        $servicio = $request->input('servicio');
-        $asesor = $request->input('asesor');
-        $search = $request->input('search');
-        
-        $query = Turno::with(['servicio', 'caja', 'asesor'])
-            ->whereDate('fecha_creacion', Carbon::today())
-            ->orderBy('fecha_creacion', 'desc');
-        
-        if ($estado) {
-            $query->where('estado', $estado);
-        }
-        
-        if ($servicio) {
-            $query->where('servicio_id', $servicio);
-        }
-        
-        if ($asesor) {
-            $query->where('asesor_id', $asesor);
-        }
-        
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('codigo', 'like', "%{$search}%")
-                  ->orWhere('numero', 'like', "%{$search}%")
-                  ->orWhereHas('servicio', function($sq) use ($search) {
-                      $sq->where('nombre', 'like', "%{$search}%");
-                  });
-            });
+        return response()
+            ->json($this->turnosHoyDatos($request), 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            ->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Turnos de HOY con filtros y paginación, conteos por estado y umbrales de espera.
+     *
+     *  - "Hoy" = created_at. NO fecha_creacion: se reescribía en cada UPDATE (ON UPDATE heredado).
+     *  - Búsqueda: "C-093", "c93", "C 93" o "CIT-MG-001" -> código + número exactos; solo cifras -> número;
+     *    texto -> código de servicio, nombre del servicio o del asesor.
+     *  - Los mosaicos de estado cuentan el día con los filtros de servicio y asesor, sin la búsqueda.
+     *  - En espera y aplazados: primero el que más lleva esperando; en lo demás, lo más reciente arriba.
+     */
+    private function turnosHoyDatos(Request $request): array
+    {
+        $ahora = Carbon::now();
+        $desde = $ahora->copy()->startOfDay();
+        $hasta = $desde->copy()->addDay();
+        $umbrales = array_merge(['espera' => 30, 'prioritario' => 15, 'atencion' => 20], (array) config('panel.umbrales', []));
+
+        $estados = ['pendiente', 'llamado', 'atendido', 'aplazado', 'cancelado'];
+        $estado = in_array($request->input('estado'), $estados, true) ? $request->input('estado') : '';
+        $servicio = (int) $request->input('servicio') ?: null;
+        $asesor = (int) $request->input('asesor') ?: null;
+        $search = trim((string) $request->input('search', ''));
+        $porPagina = min(100, max(10, (int) $request->input('per_page', 25)));
+
+        $delDia = fn () => Turno::query()
+            ->where('created_at', '>=', $desde)->where('created_at', '<', $hasta)
+            ->when($servicio, fn ($q) => $q->where('servicio_id', $servicio))
+            ->when($asesor, fn ($q) => $q->where('asesor_id', $asesor));
+
+        $conteos = $delDia()->selectRaw('estado, COUNT(*) AS n')->groupBy('estado')->pluck('n', 'estado');
+
+        $q = $delDia()->with(['servicio:id,nombre', 'caja:id,numero_caja', 'asesor:id,nombre_completo'])
+            ->when($estado !== '', fn ($q) => $q->where('estado', $estado));
+
+        if ($search !== '') {
+            if (preg_match('/^([A-Za-z][A-Za-z\-]{0,9}?)\s*-?\s*(\d{1,4})$/u', $search, $m)) {
+                $q->where('codigo', strtoupper($m[1]))->where('numero', (int) $m[2]);
+            } elseif (ctype_digit($search)) {
+                $q->where('numero', (int) $search);
+            } else {
+                $q->where(function ($w) use ($search) {
+                    $w->where('codigo', strtoupper($search))
+                      ->orWhereHas('servicio', fn ($s) => $s->where('nombre', 'like', '%' . $search . '%'))
+                      ->orWhereHas('asesor', fn ($a) => $a->where('nombre_completo', 'like', '%' . $search . '%'));
+                });
+            }
         }
 
-        $turnos = $query->get()->map(function($turno) {
+        if (in_array($estado, ['pendiente', 'aplazado'], true)) {
+            $q->orderBy('created_at')->orderBy('id');
+        } else {
+            $q->orderByDesc('created_at')->orderByDesc('id');
+        }
+
+        $pagina = $q->paginate($porPagina, ['*'], 'page', max(1, (int) $request->input('page', 1)));
+        $minutos = fn ($a, $b) => ($a && $b) ? intdiv(max(0, $b->getTimestamp() - $a->getTimestamp()), 60) : null;
+
+        $filas = $pagina->getCollection()->map(function (Turno $t) use ($ahora, $umbrales, $minutos) {
+            $prioritario = $t->esPrioritario();
+            $esperando = in_array($t->estado, ['pendiente', 'aplazado'], true);
+            $espera = $minutos($t->created_at, $esperando ? $ahora : $t->fecha_llamado);
+            $limite = $prioritario ? $umbrales['prioritario'] : $umbrales['espera'];
+            $duracion = $t->duracion_atencion !== null ? abs((int) $t->duracion_atencion) : null;
+
             return [
-                'id' => $turno->id,
-                'codigo' => $turno->codigo,
-                'numero' => $turno->numero,
-                'codigo_completo' => $turno->codigo_completo,
-                'servicio' => $turno->servicio ? [
-                    'id' => $turno->servicio->id,
-                    'nombre' => $turno->servicio->nombre,
-                    'codigo' => $turno->servicio->codigo,
-                ] : null,
-                'caja' => $turno->caja ? [
-                    'id' => $turno->caja->id,
-                    'nombre' => $turno->caja->nombre,
-                    'numero' => $turno->caja->numero_caja,
-                ] : null,
-                'asesor' => $turno->asesor ? [
-                    'id' => $turno->asesor->id,
-                    'nombre' => $turno->asesor->nombre_completo,
-                ] : null,
-                'estado' => $turno->estado,
-                'prioridad' => $turno->prioridad,
-                'prioridad_letra' => $turno->prioridad_letra,
-                'prioridad_color' => $turno->prioridad_color,
-                'fecha_creacion' => $turno->fecha_creacion ? $turno->fecha_creacion->format('H:i:s') : null,
-                'fecha_llamado' => $turno->fecha_llamado ? $turno->fecha_llamado->format('H:i:s') : null,
-                'fecha_atencion' => $turno->fecha_atencion ? $turno->fecha_atencion->format('H:i:s') : null,
-                'duracion_atencion' => $turno->duracion_atencion,
-                'duracion_formateada' => $turno->duracion_atencion 
-                    ? gmdate('i:s', abs($turno->duracion_atencion)) 
-                    : null,
-                'observaciones' => $turno->observaciones,
+                'id' => $t->id,
+                'codigo' => $t->codigo_completo,
+                'prioritario' => $prioritario,
+                'servicio' => $t->servicio?->nombre,
+                'estado' => $t->estado,
+                'observaciones' => $t->observaciones,
+                'modulo' => $t->caja?->numero_caja,
+                'asesor' => $t->asesor?->nombre_completo,
+                'llego' => $t->created_at?->format('H:i'),
+                'espera_min' => $espera,
+                'espera_alerta' => $esperando && $espera !== null && $espera > $limite,
+                'espera_limite' => $limite,
+                'en_atencion_min' => $t->estado === 'llamado' ? $minutos($t->fecha_llamado, $ahora) : null,
+                'duracion' => $duracion !== null ? sprintf('%d:%02d', intdiv($duracion, 60), $duracion % 60) : null,
             ];
-        });
-        
-        $estadisticas = [
-            'total' => Turno::whereDate('fecha_creacion', Carbon::today())->count(),
-            'pendientes' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'pendiente')->count(),
-            'llamados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'llamado')->count(),
-            'atendidos' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'atendido')->count(),
-            'aplazados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'aplazado')->count(),
-            'cancelados' => Turno::whereDate('fecha_creacion', Carbon::today())->where('estado', 'cancelado')->count(),
+        })->values();
+
+        $conteo = fn ($e) => (int) ($conteos[$e] ?? 0);
+
+        return [
+            'turnos' => $filas,
+            'meta' => [
+                'pagina' => $pagina->currentPage(), 'ultima' => $pagina->lastPage(),
+                'por_pagina' => $pagina->perPage(), 'total' => $pagina->total(),
+                'desde' => $pagina->firstItem(), 'hasta' => $pagina->lastItem(),
+            ],
+            'conteos' => [
+                'pendiente' => $conteo('pendiente'), 'llamado' => $conteo('llamado'), 'atendido' => $conteo('atendido'),
+                'aplazado' => $conteo('aplazado'), 'cancelado' => $conteo('cancelado'), 'total' => (int) $conteos->sum(),
+            ],
+            'filtros' => ['estado' => $estado, 'servicio' => $servicio, 'asesor' => $asesor, 'search' => $search],
         ];
-        
-        return response()->json([
-            'turnos' => $turnos,
-            'estadisticas' => $estadisticas,
-        ]);
     }
 
     /**
