@@ -3,151 +3,108 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'Turnero HUV') }} - Sistema de Turnos</title>
+    <link rel="preload" href="{{ asset('fonts/InterVariable.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <title>Generar turno · {{ config('app.name', 'Turnero HUV') }}</title>
     @include('components.favicon')
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        @keyframes pulse-gentle {
-            0%, 100% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{ asset('fonts/InterVariable.woff2') }}') format('woff2');
+            font-weight: 100 900; font-style: normal; font-display: block;
         }
+        :root { --azul: #064b9e; --azul-hover: #053d7a; --tinta: #0f1f3d; --mudo: #5b6b82; --linea: #d9e1ec; --fondo: #f3f6fb; }
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
+        body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-feature-settings: 'cv05'; color: var(--tinta); background: var(--fondo); overflow: hidden; user-select: none; -webkit-user-select: none; }
 
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        /* Kiosco del asesor: barra con la identidad y la hora; toda la pantalla lleva al menú de servicios */
+        .kiosco { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); color: inherit; text-decoration: none; cursor: pointer; }
+        .barra { display: flex; align-items: center; gap: clamp(.8rem, 1.6vw, 1.6rem); padding: clamp(.7rem, 1.6vh, 1.2rem) clamp(1.25rem, 3vw, 3rem); background: #fff; box-shadow: inset 0 -1px 0 var(--linea); }
+        .barra img { height: clamp(46px, 7vh, 80px); width: auto; flex: none; }
+        .barra-nombre { font-size: clamp(1rem, 1.6vw, 1.5rem); font-weight: 700; line-height: 1.15; color: var(--azul); }
+        .barra-unidad { margin-top: .15rem; font-size: clamp(.8rem, 1.1vw, 1.05rem); color: var(--mudo); }
+        .barra-reloj { margin-left: auto; text-align: right; }
+        .barra-hora { font-size: clamp(1.6rem, 3vw, 2.8rem); font-weight: 700; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .barra-fecha { margin-top: .25rem; font-size: clamp(.8rem, 1.05vw, 1.05rem); color: var(--mudo); }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
+        .bienvenida { min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4vh 6vw; text-align: center; }
+        .antetitulo { font-size: clamp(.9rem, 1.3vw, 1.2rem); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--azul); }
+        .bienvenida h1 { margin-top: 1.4vh; font-size: clamp(2.6rem, 6.4vw, 6rem); font-weight: 800; line-height: 1.02; letter-spacing: -.03em; }
+        .bienvenida .sub { margin-top: 2vh; font-size: clamp(1.2rem, 2.2vw, 2rem); color: var(--mudo); }
+        .comenzar { position: relative; margin-top: 5vh; display: inline-flex; align-items: center; gap: 1rem; height: clamp(84px, 11vh, 124px); padding: 0 clamp(2.5rem, 4.5vw, 4.5rem);
+                    border-radius: 999px; background: var(--azul); color: #fff; font-size: clamp(1.4rem, 2.5vw, 2.3rem); font-weight: 700; box-shadow: 0 18px 40px -18px rgba(6, 75, 158, .6); }
+        .comenzar svg { width: 1.1em; height: 1.1em; }
+        .kiosco:active .comenzar { background: var(--azul-hover); }
 
-        .animate-pulse-gentle {
-            animation: pulse-gentle 2s ease-in-out infinite;
-        }
+        .firma { position: fixed; right: 1rem; bottom: .75rem; font-size: .75rem; color: #9aa6b8; }
 
-        .animate-fade-in {
-            animation: fade-in 1s ease-out;
-        }
-
-        .animate-float {
-            animation: float 3s ease-in-out infinite;
-        }
-
-        .cursor-touch {
-            cursor: pointer;
-        }
-
-        /* Efecto de ondas al hacer clic */
-        .ripple {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .ripple::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .ripple:active::before {
-            width: 300px;
-            height: 300px;
+        @media (orientation: portrait) {
+            .bienvenida h1 { font-size: clamp(2.6rem, 9vw, 6rem); }
+            .bienvenida .sub { font-size: clamp(1.2rem, 3.4vw, 2rem); }
         }
     </style>
 </head>
-<body class="min-h-screen bg-gray-100 overflow-hidden">
-    <!-- Elementos decorativos de fondo -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <!-- Círculos decorativos -->
-        <div class="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-5 animate-float" style="background-color: #064b9e;"></div>
-        <div class="absolute -bottom-16 -left-16 w-32 h-32 rounded-full opacity-5 animate-float" style="background-color: #064b9e; animation-delay: 1s;"></div>
-        <div class="absolute top-1/4 left-1/4 w-3 h-3 rounded-full opacity-10 animate-pulse" style="background-color: #064b9e; animation-delay: 2s;"></div>
-        <div class="absolute top-3/4 right-1/4 w-2 h-2 rounded-full opacity-10 animate-pulse" style="background-color: #064b9e; animation-delay: 3s;"></div>
-    </div>
-
-    <!-- Contenido principal -->
-    <div class="min-h-screen flex flex-col items-center justify-center p-8 cursor-touch ripple" onclick="window.location.href='{{ route('turnos.menu') }}'">
-        <!-- Logo del Hospital -->
-        <div class="mb-12 animate-fade-in">
-            <img src="{{ asset('images/logo.png') }}" alt="Logo Hospital Universitario del Valle" class="mx-auto h-32 w-auto animate-float">
-        </div>
-
-        <!-- Texto del Hospital -->
-        <div class="text-center mb-16 animate-fade-in" style="animation-delay: 0.3s; animation-fill-mode: both;">
-            <h1 class="text-3xl font-bold leading-tight mb-2" style="color: #064b9e;">Hospital Universitario Del Valle</h1>
-            <h2 class="text-xl font-semibold text-gray-700">"Evaristo García" E.S.E</h2>
-            <div class="mt-4 h-1 w-24 mx-auto rounded-full" style="background-color: #064b9e;"></div>
-        </div>
-
-        <!-- Mensaje principal -->
-        <div class="text-center animate-fade-in" style="animation-delay: 0.6s; animation-fill-mode: both;">
-            <h2 class="text-5xl md:text-6xl font-bold text-gray-800 mb-6 animate-pulse-gentle">
-                Toque la pantalla
-            </h2>
-            <h3 class="text-3xl md:text-4xl font-medium text-gray-600 mb-8">
-                para continuar
-            </h3>
-
-            <!-- Indicador visual -->
-            <div class="flex justify-center items-center space-x-2 animate-pulse-gentle" style="animation-delay: 1s;">
-                <div class="w-3 h-3 rounded-full" style="background-color: #064b9e;"></div>
-                <div class="w-3 h-3 rounded-full" style="background-color: #064b9e; animation-delay: 0.2s;"></div>
-                <div class="w-3 h-3 rounded-full" style="background-color: #064b9e; animation-delay: 0.4s;"></div>
+<body>
+    @php
+        $ahoraKiosco = \Carbon\Carbon::now('America/Bogota');
+        $fechaKiosco = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][$ahoraKiosco->dayOfWeek] . ' ' . $ahoraKiosco->day . ' de '
+            . ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][$ahoraKiosco->month - 1];
+    @endphp
+    <a href="{{ route('turnos.menu') }}" class="kiosco" aria-label="Toque la pantalla para elegir el servicio">
+        <header class="barra">
+            <img src="{{ asset('images/logo.png') }}" alt="">
+            <div>
+                <div class="barra-nombre">Hospital Universitario del Valle</div>
+                <div class="barra-unidad">{{ config('panel.unidad_nombre') }} · “Evaristo García” E.S.E.</div>
             </div>
-        </div>
+            <div class="barra-reloj" aria-hidden="true">
+                <div class="barra-hora" id="reloj-hora">{{ $ahoraKiosco->format('H:i') }}</div>
+                <div class="barra-fecha" id="reloj-fecha">{{ $fechaKiosco }}</div>
+            </div>
+        </header>
 
-        <!-- Instrucción adicional -->
-        <div class="absolute bottom-8 left-0 right-0 text-center animate-fade-in" style="animation-delay: 1s; animation-fill-mode: both;">
-            <p class="text-lg text-gray-500">
-                👆 Toque en cualquier parte de la pantalla
-            </p>
-        </div>
-    </div>
-
-    <!-- Firma -->
-    <div class="absolute bottom-4 right-4">
-        <p class="text-xs text-gray-400">
-            Turnero HUV - Innovación y desarrollo
-        </p>
-    </div>
+        <main class="bienvenida">
+            <div class="antetitulo">Turnero</div>
+            <h1>Generar turno</h1>
+            <p class="sub">Toque la pantalla para elegir el servicio e imprimir el turno.</p>
+            <span class="comenzar">
+                Elegir servicio
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 5l7 7-7 7M4 12h15"/></svg>
+            </span>
+        </main>
+    </a>
+    <p class="firma">Turnero HUV · Innovación y desarrollo</p>
 
     <script>
-        // Agregar efecto de vibración en dispositivos móviles al tocar
-        document.addEventListener('click', function() {
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
+        // Hora del kiosco (Colombia)
+        (function () {
+            const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            function pintar() {
+                const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+                document.getElementById('reloj-hora').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                document.getElementById('reloj-fecha').textContent = dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
             }
+            pintar();
+            setInterval(pintar, 15000);
+        })();
+
+        // Vibración corta al tocar (en equipos que la tienen)
+        document.addEventListener('click', function () {
+            if (navigator.vibrate) navigator.vibrate(50);
         });
 
-        // Prevenir zoom en dispositivos táctiles
-        document.addEventListener('touchstart', function(event) {
-            if (event.touches.length > 1) {
-                event.preventDefault();
-            }
+        // Prevenir zoom en pantallas táctiles
+        document.addEventListener('touchstart', function (event) {
+            if (event.touches.length > 1) event.preventDefault();
         });
-
         let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(event) {
+        document.addEventListener('touchend', function (event) {
             const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
+            if (now - lastTouchEnd <= 300) event.preventDefault();
             lastTouchEnd = now;
         }, false);
     </script>

@@ -4,288 +4,253 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Turnero HUV') }} - Menú de Servicios</title>
+    <link rel="preload" href="{{ asset('fonts/InterVariable.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <title>Generar turno · {{ config('app.name', 'Turnero HUV') }}</title>
     @include('components.favicon')
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        @keyframes slide-in {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* KIOSCO 2026-09 — lo usa el asesor: fichas grandes para el dedo y lectura rápida */
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{ asset('fonts/InterVariable.woff2') }}') format('woff2');
+            font-weight: 100 900; font-style: normal; font-display: block;
         }
+        :root { --azul: #064b9e; --azul-hover: #053d7a; --tinta: #0f1f3d; --mudo: #5b6b82; --linea: #d9e1ec; --fondo: #f3f6fb; --rojo: #b42318; }
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
+        body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-feature-settings: 'cv05'; color: var(--tinta); background: var(--fondo); overflow: hidden; user-select: none; -webkit-user-select: none; }
+        button { cursor: pointer; }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
-        }
+        .kiosco { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+        .barra { display: flex; align-items: center; gap: clamp(.8rem, 1.6vw, 1.6rem); padding: clamp(.7rem, 1.6vh, 1.2rem) clamp(1.25rem, 3vw, 3rem); background: #fff; box-shadow: inset 0 -1px 0 var(--linea); }
+        .barra img { height: clamp(46px, 7vh, 80px); width: auto; flex: none; }
+        .barra-nombre { font-size: clamp(1rem, 1.6vw, 1.5rem); font-weight: 700; line-height: 1.15; color: var(--azul); }
+        .barra-unidad { margin-top: .15rem; font-size: clamp(.8rem, 1.1vw, 1.05rem); color: var(--mudo); }
+        .barra-reloj { margin-left: auto; text-align: right; }
+        .barra-hora { font-size: clamp(1.6rem, 3vw, 2.8rem); font-weight: 700; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .barra-fecha { margin-top: .25rem; font-size: clamp(.8rem, 1.05vw, 1.05rem); color: var(--mudo); }
 
-        .animate-slide-in {
-            animation: slide-in 0.3s ease-out;
-        }
+        .contenido { min-height: 0; overflow-y: auto; padding: clamp(1.5rem, 4.5vh, 3.75rem) clamp(1.25rem, 5vw, 6rem); }
+        .antetitulo { font-size: clamp(.9rem, 1.3vw, 1.2rem); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--azul); }
+        .encabezado h1 { margin-top: .6vh; font-size: clamp(2rem, 3.8vw, 3.6rem); font-weight: 800; line-height: 1.08; letter-spacing: -.025em; }
+        .encabezado .sub { margin-top: 1vh; font-size: clamp(1.05rem, 1.7vw, 1.55rem); color: var(--mudo); }
+        .opciones { margin-top: clamp(1.5rem, 4.5vh, 3.25rem); display: grid; grid-template-columns: repeat(var(--columnas, 2), minmax(0, 1fr)); gap: clamp(.9rem, 2.2vh, 1.6rem); }
+        @media (max-width: 900px) and (orientation: landscape) { .opciones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .opcion { display: flex; align-items: center; gap: 1.2rem; min-height: clamp(90px, 13vh, 150px); padding: 1.2rem clamp(1.4rem, 2.4vw, 2.4rem); border: 0; border-radius: 22px;
+                  background: var(--azul); color: #fff; text-align: left; box-shadow: 0 16px 32px -20px rgba(6, 75, 158, .75); transition: background .15s, transform .1s; }
+        .opcion:active { transform: scale(.985); background: var(--azul-hover); }
+        .opcion:focus-visible { outline: 4px solid rgba(6, 75, 158, .35); outline-offset: 4px; }
+        .opcion-texto { flex: 1; min-width: 0; }
+        .opcion-nombre { display: block; font-size: clamp(1.35rem, 2.3vw, 2.3rem); font-weight: 750; line-height: 1.15; letter-spacing: .01em; overflow-wrap: anywhere; }
+        .opcion-nota { display: block; margin-top: .45rem; font-size: clamp(.95rem, 1.25vw, 1.2rem); font-weight: 500; color: #bfdbfe; }
+        .opcion-flecha { flex: none; width: clamp(50px, 5vw, 66px); height: clamp(50px, 5vw, 66px); display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .15); }
+        .opcion-flecha svg { width: 46%; height: 46%; }
+        .vacio { padding: 3rem 1rem; text-align: center; font-size: clamp(1.1rem, 1.6vw, 1.5rem); color: var(--mudo); }
 
-        .animate-float {
-            animation: float 3s ease-in-out infinite;
-        }
+        .pie { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: clamp(.8rem, 2vh, 1.4rem) clamp(1.25rem, 3vw, 3rem); background: #fff; box-shadow: inset 0 1px 0 var(--linea); }
+        .volver { height: clamp(58px, 7.5vh, 78px); padding: 0 clamp(1.4rem, 2vw, 2.2rem); display: inline-flex; align-items: center; gap: .6rem; border-radius: 16px; border: 2px solid #c9d5e6;
+                  background: #fff; color: var(--azul); font-size: clamp(1.1rem, 1.6vw, 1.45rem); font-weight: 700; }
+        .volver:active { background: #eef3fb; }
+        .volver svg { width: 1.2em; height: 1.2em; }
+        .firma { font-size: .75rem; color: #9aa6b8; }
 
-        .btn-service {
-            background: linear-gradient(135deg, #064b9e 0%, #0a5fb4 100%);
-            border: 2px solid #053a7a;
-            transition: all 0.15s ease;
-        }
+        /* Ventanas */
+        .velo { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 3vh 4vw; background: rgba(7, 20, 40, .55); }
+        .dialogo { width: 100%; max-width: 40rem; max-height: 94vh; overflow-y: auto; border-radius: 26px; background: #fff; padding: clamp(1.6rem, 4.5vh, 3rem) clamp(1.5rem, 3.2vw, 3rem);
+                   text-align: center; box-shadow: 0 30px 80px -30px rgba(7, 20, 40, .6); animation: aparecer .18s ease-out; }
+        .dialogo--ancho { max-width: 60rem; }
+        @keyframes aparecer { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+        .dialogo h2 { font-size: clamp(1.6rem, 2.9vw, 2.7rem); font-weight: 800; line-height: 1.12; letter-spacing: -.02em; }
+        .dialogo .sub { margin-top: .7rem; font-size: clamp(1.05rem, 1.6vw, 1.45rem); line-height: 1.45; color: var(--mudo); }
+        .icono-dialogo { width: clamp(64px, 7vw, 84px); height: clamp(64px, 7vw, 84px); margin: 0 auto 1.2rem; display: grid; place-items: center; border-radius: 50%; background: #e3ecf9; color: var(--azul); }
+        .icono-dialogo--alerta { background: #fdecec; color: var(--rojo); }
+        .icono-dialogo svg { width: 48%; height: 48%; }
+        .tipos { margin-top: clamp(1.4rem, 3.5vh, 2.6rem); display: grid; grid-template-columns: 1fr 1fr; gap: clamp(.9rem, 1.6vw, 1.4rem); }
+        .tipo { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: .75rem; min-height: clamp(190px, 27vh, 310px); padding: clamp(1.6rem, 4vh, 2.6rem) 1.4rem 1.4rem;
+                border: 0; border-radius: 22px; color: #fff; transition: transform .1s, filter .15s; }
+        .tipo:active { transform: scale(.985); filter: brightness(.92); }
+        .tipo svg { width: clamp(46px, 5vw, 66px); height: clamp(46px, 5vw, 66px); }
+        .tipo-nombre { font-size: clamp(1.4rem, 2.4vw, 2.2rem); font-weight: 800; }
+        .tipo-nota { max-width: 22rem; font-size: clamp(.98rem, 1.35vw, 1.25rem); line-height: 1.35; opacity: .92; }
+        .btn-prioridad-normal { background: var(--azul); }
+        .btn-prioridad-alta { background: var(--rojo); }
+        .botones { display: flex; justify-content: center; flex-wrap: wrap; gap: .9rem; margin-top: clamp(1.3rem, 3vh, 2.2rem); }
+        .primario, .secundario { min-width: 11rem; height: clamp(58px, 7vh, 72px); padding: 0 2rem; border-radius: 16px; font-size: clamp(1.1rem, 1.6vw, 1.4rem); font-weight: 700; }
+        .primario { border: 0; background: var(--azul); color: #fff; }
+        .primario:active { background: var(--azul-hover); }
+        .secundario { border: 2px solid #c9d5e6; background: #fff; color: #33415c; }
+        .secundario:active { background: #eef3fb; }
 
-        .btn-service:hover {
-            background: linear-gradient(135deg, #053a7a 0%, #064b9e 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(6, 75, 158, 0.3);
-        }
+        .cargando { position: fixed; inset: 0; z-index: 60; flex-direction: column; align-items: center; justify-content: center; gap: 1.3rem; padding: 6vw; background: var(--fondo); text-align: center; }
+        .giro { width: clamp(70px, 8vw, 100px); height: clamp(70px, 8vw, 100px); border-radius: 50%; border: 7px solid #d6e2f3; border-top-color: var(--azul); animation: giro .8s linear infinite; }
+        @keyframes giro { to { transform: rotate(360deg); } }
+        #loadingMessage { font-size: clamp(1.7rem, 3.2vw, 3rem); font-weight: 800; letter-spacing: -.02em; color: var(--azul); }
+        #loadingSubMessage { font-size: clamp(1.1rem, 1.7vw, 1.55rem); color: var(--mudo); }
+        #errorOverlay { z-index: 61; }
 
-        .btn-service:active {
-            transform: translateY(0px);
-            box-shadow: 0 5px 15px rgba(6, 75, 158, 0.2);
-        }
-
-        .btn-volver {
-            background-color: #064b9e;
-            border: 2px solid #053a7a;
-        }
-
-        .btn-volver:hover {
-            background-color: #053a7a;
-            transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(6, 75, 158, 0.3);
-        }
-
-        /* Estilos para botones de prioridad */
-        .btn-prioridad-normal {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        }
-        .btn-prioridad-normal:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        }
-
-        .btn-prioridad-alta {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-        .btn-prioridad-alta:hover {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-        }
-
-        /* Estilos para modal overlay */
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-        }
-
-        /* Loading overlay */
-        .loading-overlay {
-            background-color: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(6px);
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner {
-            width: 48px; height: 48px;
-            border: 4px solid #e5e7eb;
-            border-top-color: #064b9e;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        @media (orientation: portrait) {
+            .opciones { grid-template-columns: 1fr; }
+            .opcion { min-height: clamp(110px, 10.5vh, 190px); }
+            .opcion-nombre { font-size: clamp(1.5rem, 4.4vw, 2.6rem); }
+            .encabezado h1 { font-size: clamp(2.2rem, 6.6vw, 4rem); }
+            .tipos { grid-template-columns: 1fr; }
         }
     </style>
 </head>
-<body class="min-h-screen bg-gray-100 p-4">
-    <!-- Elementos decorativos de fondo -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-5 animate-float" style="background-color: #064b9e;"></div>
-        <div class="absolute -bottom-16 -left-16 w-32 h-32 rounded-full opacity-5 animate-float" style="background-color: #064b9e; animation-delay: 1s;"></div>
-        <div class="absolute top-1/4 left-1/4 w-3 h-3 rounded-full opacity-10 animate-pulse" style="background-color: #064b9e; animation-delay: 2s;"></div>
-        <div class="absolute top-3/4 right-1/4 w-2 h-2 rounded-full opacity-10 animate-pulse" style="background-color: #064b9e; animation-delay: 3s;"></div>
+<body>
+    @php
+        $ahoraKiosco = \Carbon\Carbon::now('America/Bogota');
+        $fechaKiosco = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][$ahoraKiosco->dayOfWeek] . ' ' . $ahoraKiosco->day . ' de '
+            . ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][$ahoraKiosco->month - 1];
+        $enSubservicios = isset($mostrandoSubservicios) && $mostrandoSubservicios;
+    @endphp
+    <div class="kiosco">
+        <header class="barra">
+            <img src="{{ asset('images/logo.png') }}" alt="">
+            <div>
+                <div class="barra-nombre">Hospital Universitario del Valle</div>
+                <div class="barra-unidad">{{ config('panel.unidad_nombre') }} · “Evaristo García” E.S.E.</div>
+            </div>
+            <div class="barra-reloj" aria-hidden="true">
+                <div class="barra-hora" id="reloj-hora">{{ $ahoraKiosco->format('H:i') }}</div>
+                <div class="barra-fecha" id="reloj-fecha">{{ $fechaKiosco }}</div>
+            </div>
+        </header>
+
+        <main class="contenido">
+            <div class="encabezado">
+                @if($enSubservicios)
+                    <div class="antetitulo">{{ mb_strtoupper($servicioSeleccionado->nombre) }}</div>
+                    <h1>Elija la opción</h1>
+                    <p class="sub">Al tocarla se imprime el turno para entregarlo al paciente.</p>
+                @else
+                    <div class="antetitulo">Generar turno</div>
+                    <h1>Elija el servicio</h1>
+                    <p class="sub">Al tocarlo se imprime el turno para entregarlo al paciente; si tiene opciones, primero se elige la opción.</p>
+                @endif
+            </div>
+
+            @php
+                $cantidadFichas = $enSubservicios ? max($subservicios->count(), 1) : $servicios->count();
+            @endphp
+            <div class="opciones" style="--columnas: {{ $cantidadFichas <= 4 ? 2 : 3 }}">
+                @if($enSubservicios)
+                    @forelse($subservicios as $subservicio)
+                        <button type="button" class="opcion btn-service" onclick="seleccionarSubservicio({{ $subservicio->id }}, @js($subservicio->nombre))">
+                            <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($subservicio->nombre) }}</span><span class="opcion-nota">Imprimir turno</span></span>
+                            <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
+                        </button>
+                    @empty
+                        <button type="button" class="opcion btn-service" onclick="seleccionarServicio({{ $servicioSeleccionado->id }}, @js($servicioSeleccionado->nombre))">
+                            <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($servicioSeleccionado->nombre) }}</span><span class="opcion-nota">Imprimir turno</span></span>
+                            <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
+                        </button>
+                    @endforelse
+                @else
+                    @forelse($servicios as $servicio)
+                        @php
+                            $opcionesActivas = $servicio->subservicios()->where('estado', 'activo')->count();
+                        @endphp
+                        @if($opcionesActivas > 0)
+                            <button type="button" class="opcion btn-service" onclick="navegarASubservicios({{ $servicio->id }})">
+                            <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($servicio->nombre) }}</span><span class="opcion-nota">{{ $opcionesActivas }} {{ $opcionesActivas === 1 ? 'opción' : 'opciones' }}</span></span>
+                            <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
+                        </button>
+                        @else
+                            <button type="button" class="opcion btn-service" onclick="seleccionarServicio({{ $servicio->id }}, @js($servicio->nombre))">
+                            <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($servicio->nombre) }}</span><span class="opcion-nota">Imprimir turno</span></span>
+                            <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
+                        </button>
+                        @endif
+                    @empty
+                        <p class="vacio">No hay servicios disponibles en este momento.</p>
+                    @endforelse
+                @endif
+            </div>
+        </main>
+
+        <footer class="pie">
+            <button type="button" class="volver" onclick="window.location.href='{{ $enSubservicios ? route('turnos.menu') : route('turnos.inicio') }}'">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M15 19l-7-7 7-7"/></svg>
+                Volver
+            </button>
+            <span class="firma">Turnero HUV · Innovación y desarrollo</span>
+        </footer>
     </div>
 
-    <!-- Header with Volver button and logo -->
-    <div class="flex justify-between items-start mb-8 animate-slide-in">
-        <button
-            @if(isset($mostrandoSubservicios) && $mostrandoSubservicios)
-                onclick="window.location.href='{{ route('turnos.menu') }}'"
-            @else
-                onclick="window.location.href='{{ route('turnos.inicio') }}'"
-            @endif
-            class="btn-volver text-white px-6 py-2 rounded-md font-medium flex items-center transition-all duration-150"
-        >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-            </svg>
-            Volver
-        </button>
-
-        <!-- Logo/watermark del hospital -->
-        <div class="text-gray-300 text-sm opacity-50 font-light text-right">
-            <div class="text-lg font-semibold" style="color: #064b9e; opacity: 0.3;">HUV</div>
-            <div class="text-xs">TURNERO</div>
-        </div>
-    </div>
-
-    <!-- Main navigation buttons -->
-    <div class="flex flex-col items-center justify-center space-y-6 max-w-2xl mx-auto mt-16">
-        <!-- Título del menú -->
-        <div class="text-center mb-8 animate-slide-in" style="animation-delay: 0.05s; animation-fill-mode: both;">
-            @if(isset($mostrandoSubservicios) && $mostrandoSubservicios)
-                <h1 class="text-3xl font-bold mb-2" style="color: #064b9e;">{{ $servicioSeleccionado->nombre }}</h1>
-                <p class="text-lg text-gray-600 mb-4">Seleccione el subservicio</p>
-            @else
-                <h1 class="text-3xl font-bold mb-2" style="color: #064b9e;">Seleccione el Servicio</h1>
-            @endif
-            <div class="h-1 w-24 mx-auto rounded-full" style="background-color: #064b9e;"></div>
-        </div>
-
-        <!-- Botones dinámicos de servicios o subservicios -->
-        @if(isset($mostrandoSubservicios) && $mostrandoSubservicios)
-            <!-- Mostrar subservicios -->
-            @forelse($subservicios as $index => $subservicio)
-                <button
-                    class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
-                    style="animation-delay: {{ 0.1 + ($index * 0.05) }}s; animation-fill-mode: both;"
-                    onclick="seleccionarSubservicio({{ $subservicio->id }}, '{{ addslashes($subservicio->nombre) }}')"
-                >
-                    {{ strtoupper($subservicio->nombre) }}
+    <!-- Tipo de turno (servicios con prioridad) -->
+    <div id="prioridadModal" class="velo" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="prioridadModalTitle">
+        <div class="dialogo dialogo--ancho">
+            <h2 id="prioridadModalTitle">Tipo de turno</h2>
+            <p id="prioridadServicioNombre" class="sub"></p>
+            <div class="tipos">
+                <button type="button" onclick="seleccionarPrioridad('normal')" class="tipo btn-prioridad-normal">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <span class="tipo-nombre">General</span>
+                    <span class="tipo-nota">Atención en orden de llegada</span>
                 </button>
-            @empty
-                <button
-                    class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
-                    style="animation-delay: 0.1s; animation-fill-mode: both;"
-                    onclick="seleccionarServicio({{ $servicioSeleccionado->id }}, '{{ addslashes($servicioSeleccionado->nombre) }}')"
-                >
-                    {{ strtoupper($servicioSeleccionado->nombre) }}
+                <button type="button" onclick="seleccionarPrioridad('alta')" class="tipo btn-prioridad-alta">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.48 3.5a.56.56 0 011.04 0l2.13 4.9 5.32.46c.5.04.7.66.32.98l-4.03 3.5 1.2 5.2c.11.49-.42.87-.85.61L12 16.4l-4.61 2.75c-.43.26-.96-.12-.85-.61l1.2-5.2-4.03-3.5c-.38-.32-.18-.94.32-.98l5.32-.46 2.13-4.9z"/></svg>
+                    <span class="tipo-nombre">Prioritario</span>
+                    <span class="tipo-nota">Adultos mayores, mujeres embarazadas y personas con discapacidad</span>
                 </button>
-            @endforelse
-        @else
-            <!-- Mostrar servicios principales -->
-            @forelse($servicios as $index => $servicio)
-                @php
-                    $tieneSubservicios = $servicio->subservicios()->where('estado', 'activo')->count() > 0;
-                @endphp
-                <button
-                    class="btn-service w-full max-w-lg h-16 text-white text-xl font-medium rounded-lg shadow-lg animate-slide-in"
-                    style="animation-delay: {{ 0.1 + ($index * 0.05) }}s; animation-fill-mode: both;"
-                    @if($tieneSubservicios)
-                        onclick="navegarASubservicios({{ $servicio->id }})"
-                    @else
-                        onclick="seleccionarServicio({{ $servicio->id }}, '{{ addslashes($servicio->nombre) }}')"
-                    @endif
-                >
-                    {{ strtoupper($servicio->nombre) }}
-                </button>
-            @empty
-                <div class="text-center text-gray-600 py-8">
-                    <p class="text-lg">No hay servicios disponibles en este momento</p>
-                </div>
-            @endforelse
-        @endif
-    </div>
-
-    <!-- Instrucciones -->
-
-
-    <!-- Firma -->
-    <div class="absolute bottom-4 right-4">
-        <p class="text-xs text-gray-400">
-            Turnero HUV - Innovación y desarrollo
-        </p>
-    </div>
-
-    <!-- Modal de selección de prioridad -->
-    <div id="prioridadModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-y-auto max-h-[90vh] animate-slide-in">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-gray-900">Seleccione el Tipo de Turno</h3>
-                    <button onclick="cerrarPrioridadModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                
-                <p id="prioridadServicioNombre" class="text-sm text-gray-600 mb-6 text-center"></p>
-                
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <button onclick="seleccionarPrioridad('normal')" class="btn-prioridad-normal h-32 rounded-lg font-bold text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center">
-                        <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                        <div class="text-xl">Normal</div>
-                    </button>
-                    <button onclick="seleccionarPrioridad('alta')" class="btn-prioridad-alta h-32 rounded-lg font-bold text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center">
-                        <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                        </svg>
-                        <div class="text-xl">Prioritario</div>
-                        <div class="text-xs font-normal opacity-80">Adulto mayor, embarazada, discapacidad</div>
-                    </button>
-                </div>
-                
-                <div class="flex justify-center mt-4">
-                    <button onclick="cerrarPrioridadModal()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-400 transition-colors">
-                        Cancelar
-                    </button>
-                </div>
+            </div>
+            <div class="botones">
+                <button type="button" class="secundario" onclick="cerrarPrioridadModal()">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de confirmación personalizado -->
-    <div id="confirmModal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 animate-slide-in">
-            <div class="text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Turno Solicitado</h3>
-                <p id="confirmMessage" class="text-sm text-gray-500 mb-4"></p>
-                <button onclick="cerrarModal()" class="btn-service px-4 py-2 text-white rounded-md hover:opacity-90 transition-opacity">
-                    Aceptar
-                </button>
-            </div>
+    <!-- Aviso -->
+    <div id="confirmModal" class="velo" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+        <div class="dialogo">
+            <div class="icono-dialogo"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+            <h2 id="confirmModalTitle">Aviso</h2>
+            <p id="confirmMessage" class="sub"></p>
+            <div class="botones"><button type="button" class="primario" onclick="cerrarModal()">Aceptar</button></div>
         </div>
     </div>
 
-    <!-- Loading overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 loading-overlay z-[60] flex flex-col items-center justify-center" style="display: none;">
-        <div class="spinner mb-4"></div>
-        <p id="loadingMessage" class="text-lg font-semibold" style="color: #064b9e;">Generando turno...</p>
-        <p id="loadingSubMessage" class="text-sm text-gray-500 mt-1">Por favor espere</p>
+    <!-- Generando / imprimiendo el turno -->
+    <div id="loadingOverlay" class="cargando" style="display: none;" role="status" aria-live="polite">
+        <div class="giro" aria-hidden="true"></div>
+        <p id="loadingMessage">Generando turno...</p>
+        <p id="loadingSubMessage">Por favor espere</p>
     </div>
 
-    <!-- Error/Retry overlay -->
-    <div id="errorOverlay" class="fixed inset-0 loading-overlay z-[60] flex flex-col items-center justify-center p-4" style="display: none;">
-        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full text-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">El servidor está tardando</h3>
-            <p id="errorMessage" class="text-sm text-gray-500 mb-6">La solicitud tardó demasiado. ¿Desea intentar de nuevo?</p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="reintentarSolicitud()" class="btn-service px-6 py-3 text-white rounded-lg font-semibold text-lg">
-                    Reintentar
-                </button>
-                <button onclick="cancelarSolicitud()" class="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg font-semibold text-lg hover:bg-gray-400 transition-colors">
-                    Cancelar
-                </button>
+    <!-- El servidor tarda: reintentar o cancelar -->
+    <div id="errorOverlay" class="velo" style="display: none;" role="alertdialog" aria-modal="true" aria-labelledby="errorTitulo">
+        <div class="dialogo">
+            <div class="icono-dialogo icono-dialogo--alerta"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+            <h2 id="errorTitulo">El servidor está tardando</h2>
+            <p id="errorMessage" class="sub">La solicitud tardó demasiado. ¿Desea intentar de nuevo?</p>
+            <div class="botones">
+                <button type="button" class="primario" onclick="reintentarSolicitud()">Reintentar</button>
+                <button type="button" class="secundario" onclick="cancelarSolicitud()">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Iframe oculto para impresión directa -->
     <iframe id="printFrame" style="position:absolute;width:0;height:0;border:0;"></iframe>
+
+    <script>
+        // Hora del kiosco (Colombia)
+        (function () {
+            const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            function pintar() {
+                const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+                document.getElementById('reloj-hora').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                document.getElementById('reloj-fecha').textContent = dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
+            }
+            pintar();
+            setInterval(pintar, 15000);
+        })();
+    </script>
 
     <script>
         // ============================================
