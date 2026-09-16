@@ -319,8 +319,12 @@ class AdminController extends Controller
         }
 
         try {
-            // Obtener todos los usuarios con session_id
-            $usersWithSessions = User::whereNotNull('session_id')->get();
+            // La sesión de quien ejecuta la limpieza no se toca: si su pestaña estuvo oculta 15 min o más, su última
+            // actividad guardada es vieja y se borraba a sí mismo (el siguiente clic recibía la página 419 en HTML).
+            $sesionPropia = $request->session()->getId();
+
+            // Obtener todos los usuarios con session_id, menos quien ejecuta la limpieza
+            $usersWithSessions = User::whereNotNull('session_id')->where('id', '!=', Auth::id())->get();
             $cleanedUsers = 0;
             $cleanedBoxes = 0;
 
@@ -373,11 +377,13 @@ class AdminController extends Controller
             // Limpiar sesiones huérfanas en la tabla sessions (sin usuario asociado o expiradas)
             $expiredSessionsCount = DB::table('sessions')
                 ->where('last_activity', '<', now()->subMinutes(15)->timestamp)
+                ->where('id', '!=', $sesionPropia)
                 ->count();
 
             if ($expiredSessionsCount > 0) {
                 DB::table('sessions')
                     ->where('last_activity', '<', now()->subMinutes(15)->timestamp)
+                    ->where('id', '!=', $sesionPropia)
                     ->delete();
             }
 
@@ -413,8 +419,11 @@ class AdminController extends Controller
         }
 
         try {
-            // Obtener todos los usuarios con session_id (activos)
-            $usersWithSessions = User::whereNotNull('session_id')->get();
+            // Todas menos la de quien ejecuta la limpieza: borrarla dejaba esta página sin sesión
+            $sesionPropia = $request->session()->getId();
+
+            // Obtener todos los usuarios con session_id (activos), menos quien ejecuta la limpieza
+            $usersWithSessions = User::whereNotNull('session_id')->where('id', '!=', Auth::id())->get();
             $cleanedUsers = $usersWithSessions->count();
             $cleanedBoxes = 0;
 
@@ -466,15 +475,15 @@ class AdminController extends Controller
                 $cleanedBoxes += $cajasHuerfanas;
             }
 
-            // Limpiar todas las sesiones de la tabla sessions
-            $allSessionsCount = DB::table('sessions')->count();
+            // Limpiar todas las sesiones de la tabla sessions, menos la de quien ejecuta la limpieza
+            $allSessionsCount = DB::table('sessions')->where('id', '!=', $sesionPropia)->count();
             if ($allSessionsCount > 0) {
-                DB::table('sessions')->delete();
+                DB::table('sessions')->where('id', '!=', $sesionPropia)->delete();
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Todas las sesiones han sido limpiadas exitosamente. Se han liberado todas las cajas asignadas.',
+                'message' => 'Todas las sesiones han sido limpiadas exitosamente, menos la tuya. Se han liberado todas las cajas asignadas.',
                 'data' => [
                     'usuarios_limpiados' => $cleanedUsers,
                     'cajas_liberadas' => $cleanedBoxes,
@@ -506,6 +515,14 @@ class AdminController extends Controller
         $request->validate([
             'user_id' => 'required|integer|exists:users,id'
         ]);
+
+        // La sesión propia no se limpia desde aquí: dejaría esta página sin sesión
+        if ((int) $request->user_id === Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No puedes limpiar tu propia sesión desde aquí. Para salir, usa "Cerrar sesión".'
+            ], 422);
+        }
 
         try {
             $user = User::findOrFail($request->user_id);

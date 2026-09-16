@@ -153,7 +153,7 @@
                             </label>
                         </div>
                         <p class="ml-7 text-sm text-gray-500 mt-1">
-                            <span class="text-red-600 font-medium">¡Cuidado!</span> Esto cerrará la sesión de todos los usuarios activos, incluyendo asesores que estén trabajando. <strong>También liberará todas las cajas asignadas</strong>.
+                            <span class="text-red-600 font-medium">¡Cuidado!</span> Esto cerrará la sesión de todos los usuarios activos, incluyendo asesores que estén trabajando (la tuya se mantiene). <strong>También liberará todas las cajas asignadas</strong>.
                         </p>
                     </div>
 
@@ -440,6 +440,7 @@
                 </div>
                 <div class="flex justify-end">
                     <button
+                        id="resultCerrarBtn"
                         onclick="closeResultModal()"
                         class="px-4 py-2 text-sm font-medium text-white bg-hospital-blue border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Cerrar
@@ -453,6 +454,34 @@
 <script>
 let selectedCleanOption = null;
 let selectedUserId = null;
+
+// Peticiones de Inicio: piden JSON y reconocen la sesión cerrada (HTTP 419/401 o redirección al acceso).
+// Antes se leía como JSON la página HTML de "sesión expirada" y salía "Unexpected token '<'".
+const CSRF_INICIO = document.querySelector('meta[name="csrf-token"]')?.content || @json(csrf_token());
+const USUARIO_ACTUAL_ID = @json(auth()->id());
+class SesionCerrada extends Error {}
+function pedirJson(url, opciones = {}) {
+    const cabeceras = Object.assign({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, opciones.headers);
+    if ((opciones.method || 'GET') !== 'GET') cabeceras['X-CSRF-TOKEN'] = CSRF_INICIO;
+    return fetch(url, Object.assign({}, opciones, { headers: cabeceras })).then(r => {
+        if (r.status === 401 || r.status === 419) throw new SesionCerrada();
+        if (!(r.headers.get('content-type') || '').includes('application/json')) {
+            if (r.redirected) throw new SesionCerrada();
+            throw new Error('el servidor respondió HTTP ' + r.status);
+        }
+        if (opciones.exigirOk && !r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    });
+}
+// Con la sesión cerrada se detiene la actualización y se ofrece recargar (la página lleva al acceso).
+function mostrarSesionCerrada() {
+    if (autoUpdateInterval) { clearInterval(autoUpdateInterval); autoUpdateInterval = null; }
+    showResult({ success: false, message: 'Tu sesión se cerró (por inactividad o porque se limpiaron las sesiones). Recarga la página para volver a entrar.' });
+    document.getElementById('resultTitle').textContent = 'Sesión cerrada';
+    const boton = document.getElementById('resultCerrarBtn');
+    boton.textContent = 'Recargar página';
+    boton.onclick = () => location.reload();
+}
 
 function showCleanSessionsOptions() {
     document.getElementById('cleanSessionsModal').classList.remove('hidden');
@@ -513,9 +542,10 @@ function selectCleanOption(option) {
 }
 
 function loadActiveUsers() {
-    fetch('{{ route("api.admin.usuarios-activos") }}')
-        .then(response => response.json())
-        .then(users => {
+    pedirJson('{{ route("api.admin.usuarios-activos") }}', { exigirOk: true })
+        .then(todos => {
+            // La sesión propia no se limpia desde aquí (dejaría esta página sin sesión)
+            const users = todos.filter(u => Number(u.id) !== Number(USUARIO_ACTUAL_ID));
             const container = document.getElementById('usersListContent');
 
             if (users.length === 0) {
@@ -582,6 +612,7 @@ function loadActiveUsers() {
             }
         })
         .catch(error => {
+            if (error instanceof SesionCerrada) { closeCleanSessionsModal(); mostrarSesionCerrada(); return; }
             console.error('Error cargando usuarios:', error);
             document.getElementById('usersListContent').innerHTML = '<div class="p-3 text-sm text-red-500 text-center">Error cargando usuarios</div>';
         });
@@ -661,15 +692,11 @@ function confirmCleanSessions() {
         route = '{{ route("admin.clean-user-session") }}';
     }
 
-    fetch(route, {
+    pedirJson(route, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
     .then(data => {
         // Restaurar botón
         btn.disabled = false;
@@ -686,10 +713,10 @@ function confirmCleanSessions() {
         btn.disabled = false;
         btn.innerHTML = originalText;
 
-        // Mostrar error
+        if (error instanceof SesionCerrada) { mostrarSesionCerrada(); return; }
         showResult({
             success: false,
-            message: 'Error de conexión: ' + error.message
+            message: 'No se pudo completar la limpieza (' + error.message + '). Inténtalo de nuevo.'
         });
     });
 }
@@ -700,6 +727,9 @@ function showResult(data) {
     const title = document.getElementById('resultTitle');
     const message = document.getElementById('resultMessage');
     const details = document.getElementById('resultDetails');
+    const cerrarBtn = document.getElementById('resultCerrarBtn');
+    cerrarBtn.textContent = 'Cerrar';
+    cerrarBtn.onclick = closeResultModal;
 
     if (data.success) {
         icon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center';
@@ -873,10 +903,13 @@ function pintarTablero(t) {
 }
 
 function actualizarTablero() {
-    return fetch(TABLERO_URL, { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    return pedirJson(TABLERO_URL, { cache: 'no-store', exigirOk: true })
         .then(pintarTablero)
-        .catch(err => console.warn('No se pudo actualizar el Inicio:', err));
+        .catch(err => {
+            // Sin sesión, las cifras en pantalla dejan de ser reales: se avisa una vez en lugar de seguir mostrándolas
+            if (err instanceof SesionCerrada) { if (autoUpdateInterval) mostrarSesionCerrada(); return; }
+            console.warn('No se pudo actualizar el Inicio:', err);
+        });
 }
 
 // Los modales (limpiar sesiones, emergencia) siguen llamando a estos nombres después de actuar.
@@ -972,8 +1005,7 @@ function updateTurnosConfirmButton() {
 }
 
 function loadServiciosForEmergency() {
-    fetch('/api/servicios-activos')
-        .then(response => response.json())
+    pedirJson('/api/servicios-activos', { exigirOk: true })
         .then(servicios => {
             const select = document.getElementById('servicioSelect');
             select.innerHTML = '<option value="">Seleccionar servicio...</option>';
@@ -986,6 +1018,7 @@ function loadServiciosForEmergency() {
             });
         })
         .catch(error => {
+            if (error instanceof SesionCerrada) { closeEmergencyTurnosModal(); mostrarSesionCerrada(); return; }
             console.error('Error cargando servicios:', error);
             const select = document.getElementById('servicioSelect');
             select.innerHTML = '<option value="">Error cargando servicios</option>';
@@ -1025,15 +1058,11 @@ function confirmEmergencyTurnos() {
     // Determinar la ruta
     const route = '/admin/emergency-turnos';
 
-    fetch(route, {
+    pedirJson(route, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
     .then(data => {
         // Restaurar botón
         confirmBtn.disabled = false;
@@ -1057,10 +1086,10 @@ function confirmEmergencyTurnos() {
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalText;
 
-        // Mostrar error
+        if (error instanceof SesionCerrada) { closeEmergencyTurnosModal(); mostrarSesionCerrada(); return; }
         showResult({
             success: false,
-            message: 'Error de conexión. Inténtalo de nuevo.'
+            message: 'No se pudo completar la acción (' + error.message + '). Inténtalo de nuevo.'
         });
     });
 }
@@ -1142,8 +1171,7 @@ function estadisticasUsuarioModal() {
                 url += `?fecha_inicio=${this.fechaInicio}&fecha_fin=${this.fechaFin}`;
             }
             
-            fetch(url)
-                .then(response => response.json())
+            pedirJson(url, { exigirOk: true })
                 .then(data => {
                     this.loading = false;
                     this.renderizarEstadisticas(data);
@@ -1156,7 +1184,7 @@ function estadisticasUsuarioModal() {
                             <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            <p>Error al cargar las estadísticas</p>
+                            <p>${error instanceof SesionCerrada ? 'Tu sesión se cerró. Recarga la página para volver a entrar.' : 'Error al cargar las estadísticas'}</p>
                         </div>
                     `;
                 });
