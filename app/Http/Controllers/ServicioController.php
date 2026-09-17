@@ -32,6 +32,7 @@ class ServicioController extends Controller
         $asesores = DB::table('user_servicio')
             ->join('users', 'users.id', '=', 'user_servicio.user_id')
             ->where('users.rol', 'Asesor')
+            ->when(\App\Models\User::soportaDesactivacion(), fn ($q) => $q->whereNull('users.fecha_desactivacion'))
             ->groupBy('user_servicio.servicio_id')
             ->selectRaw('user_servicio.servicio_id, COUNT(*) AS n')
             ->pluck('n', 'servicio_id');

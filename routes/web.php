@@ -81,6 +81,8 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::get('/admin/usuarios/{id}', [AdminController::class, 'getUser'])->name('admin.users.get');
     Route::put('/admin/usuarios/{id}', [AdminController::class, 'updateUser'])->name('admin.users.update');
     Route::delete('/admin/usuarios/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
+    Route::post('/admin/usuarios/{id}/desactivar', [AdminController::class, 'desactivarUsuario'])->name('admin.users.desactivar');
+    Route::post('/admin/usuarios/{id}/reactivar', [AdminController::class, 'reactivarUsuario'])->name('admin.users.reactivar');
 
     // Redirecciones para compatibilidad con URLs antiguas
     Route::get('/users', function () {

@@ -73,6 +73,13 @@ class AuthController extends Controller
         $user = User::where('nombre_usuario', $request->usuario)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
+            // Cuenta desactivada: se avisa solo con la contraseña correcta (sus turnos e historial se conservan).
+            if ($user->estaDesactivada()) {
+                return back()->withErrors([
+                    'usuario' => 'Esta cuenta está desactivada. Si necesitas entrar, habla con un administrador.',
+                ])->withInput();
+            }
+
             $currentSessionId = session()->getId();
 
             // Si el usuario ya tenía una sesión previa distinta (por ejemplo, cerró el

@@ -21,7 +21,7 @@ class AsignacionServicioController extends Controller
     {
         $user = Auth::user();
 
-        $asesores = User::where('rol', 'Asesor')->orderBy('nombre_completo')->get(['id', 'nombre_completo', 'nombre_usuario']);
+        $asesores = User::where('rol', 'Asesor')->habilitados()->orderBy('nombre_completo')->get(['id', 'nombre_completo', 'nombre_usuario']);
 
         // Solo lo activo: lo inactivo no sale en el kiosco (y asignarlo está bloqueado).
         $servicios = Servicio::where('estado', 'activo')->orderBy('orden')->orderBy('nombre')

@@ -25,6 +25,18 @@ class CheckAdminRole
 
         $user = Auth::user();
 
+        // Cuenta desactivada con la sesión abierta: se cierra aquí (desactivarUsuario ya borra sus sesiones; esto cubre el resto).
+        if ($user->estaDesactivada()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Esta cuenta fue desactivada.'], 401);
+            }
+            return redirect()->route('admin.login')
+                ->with('info', 'Esta cuenta fue desactivada. Si necesitas entrar, habla con un administrador.');
+        }
+
         // Verificar que el usuario sea administrador
         if (!$user->esAdministrador()) {
             // Si es asesor, redirigir a su dashboard

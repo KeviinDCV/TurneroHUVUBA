@@ -59,6 +59,7 @@ class User extends Authenticatable
             'last_activity' => 'datetime',
             'session_start' => 'datetime',
             'inicio_canal_no_presencial' => 'datetime',
+            'fecha_desactivacion' => 'datetime',
         ];
     }
 
@@ -76,6 +77,35 @@ class User extends Authenticatable
     public function esAsesor(): bool
     {
         return $this->rol === 'Asesor';
+    }
+
+    /**
+     * Cuenta desactivada: no inicia sesión, pero sus turnos, su historial y su nombre siguen en Reportes y Gráficos.
+     */
+    public function estaDesactivada(): bool
+    {
+        return !empty($this->attributes['fecha_desactivacion'] ?? null);
+    }
+
+    /**
+     * Cuentas habilitadas (no desactivadas). No confundir con activos(): esos son los conectados ahora.
+     */
+    public function scopeHabilitados($query)
+    {
+        return static::soportaDesactivacion() ? $query->whereNull($this->getTable() . '.fecha_desactivacion') : $query;
+    }
+
+    /**
+     * ¿La BD ya tiene users.fecha_desactivacion? Así nada se rompe si el código se sube antes de correr la migración.
+     */
+    public static function soportaDesactivacion(bool $fresco = false): bool
+    {
+        if ($fresco) {
+            \Illuminate\Support\Facades\Cache::forget('users_fecha_desactivacion');
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember('users_fecha_desactivacion', 600,
+            fn () => \Illuminate\Support\Facades\Schema::hasColumn('users', 'fecha_desactivacion'));
     }
 
     /**

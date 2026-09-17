@@ -31,8 +31,9 @@ class ReportesController extends Controller
     {
         $user = Auth::user();
 
-        $asesores = User::where('rol', 'Asesor')->orderBy('nombre_completo')->get(['id', 'nombre_completo', 'nombre_usuario'])
-            ->map(fn ($u) => ['id' => (int) $u->id, 'nombre' => $u->nombre_completo ?: $u->nombre_usuario, 'usuario' => $u->nombre_usuario])->values();
+        $asesores = User::where('rol', 'Asesor')->orderBy('nombre_completo')->get()
+            ->map(fn ($u) => ['id' => (int) $u->id, 'nombre' => ($u->nombre_completo ?: $u->nombre_usuario) . ($u->estaDesactivada() ? ' (desactivada)' : ''),
+                'usuario' => $u->nombre_usuario])->values();
 
         // Secciones con sus subservicios (también los inactivos: pueden tener turnos en el periodo).
         $servicios = Servicio::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'servicio_padre_id', 'estado']);

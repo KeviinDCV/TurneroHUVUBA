@@ -20,6 +20,8 @@
                     </button>
                 </div>
                 <form class="form-panel" @submit.prevent="guardar()" novalidate autocomplete="off">
+                    <p class="aviso-desactivada" x-show="modo === 'editar' && original.desactivada">Cuenta desactivada desde el <span x-text="desactivadaDesde()"></span>:
+                        no puede iniciar sesión. Sus turnos e historial se conservan.</p>
                     <p class="form-seccion">Identidad</p>
                     <label class="form-campo">Nombre completo
                         <input type="text" class="campo" x-model="datos.nombre_completo" x-ref="primero" maxlength="255" autocomplete="off">
@@ -78,6 +80,8 @@
 
                     <p class="form-error" x-show="errores.general" x-text="errores.general"></p>
                     <div class="modal-panel__pie modal-panel__pie--separado">
+                        <button type="button" class="enlace-panel" x-show="modo === 'editar' && !original.yo && !original.desactivada" @click="pedirDesactivar()">Desactivar cuenta</button>
+                        <button type="button" class="enlace-panel" x-show="modo === 'editar' && original.desactivada" :disabled="guardando" @click="reactivar()">Reactivar cuenta</button>
                         <button type="button" class="enlace-peligro" x-show="modo === 'editar' && !original.yo" @click="pedirEliminar()">Eliminar usuario</button>
                         <span class="espaciador"></span>
                         <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
@@ -109,8 +113,10 @@
                         <div class="form-texto space-y-2">
                             <p x-show="impacto.turnos > 0">Llamó o atendió <b x-text="miles(impacto.turnos)"></b> turnos. Si lo eliminas, esos turnos quedarán
                                 <b>sin asesor</b> en Reportes y Gráficos<span x-show="impacto.canal > 0">, y se borran sus <b x-text="miles(impacto.canal)"></b> registros de canales no presenciales</span>.</p>
-                            <p x-show="impacto.turnos > 0" class="texto-mudo">Si solo quieres que no vuelva a entrar, cámbiale la contraseña.</p>
-                            <p x-show="!impacto.turnos">Se eliminará la cuenta<span x-show="impacto.servicios > 0"> y sus <b x-text="impacto.servicios"></b> servicios asignados</span>. No se puede deshacer.</p>
+                            <p x-show="impacto.turnos > 0 && !u.desactivada" class="texto-mudo">Si solo quieres que no vuelva a entrar, mejor
+                                <button type="button" class="enlace-panel" @click="desactivarEnSuLugar()">desactiva la cuenta</button>: conserva su nombre en los informes y se puede reactivar.</p>
+                            <p x-show="!impacto.turnos">Se eliminará la cuenta<span x-show="impacto.servicios > 0"> y sus <b x-text="impacto.servicios"></b> servicios asignados</span><span
+                                x-show="impacto.canal > 0">, y se borran sus <b x-text="miles(impacto.canal)"></b> registros de canales no presenciales</span>. No se puede deshacer.</p>
                             <label class="form-campo" x-show="impacto.turnos > 0">
                                 <span>Escribe <b x-text="u.usuario"></b> para confirmar</span>
                                 <input type="text" class="campo" x-model="confirmacion" autocomplete="off" spellcheck="false">
@@ -127,6 +133,34 @@
         </div>
     </div>
 
+    <!-- Desactivar: la cuenta no entra, pero conserva su historial y su nombre en los informes -->
+    <div class="envoltorio-modal" x-data="desactivarUsuario()" @desactivar-usuario.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
+        <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+            <div class="modal-panel__caja modal-panel__caja--angosta" role="dialog" aria-modal="true" aria-labelledby="t-desactivar-usuario">
+                <div class="modal-panel__cabeza">
+                    <h2 id="t-desactivar-usuario" x-text="u ? 'Desactivar la cuenta de ' + u.nombre : ''"></h2>
+                    <button type="button" class="accion-icono" aria-label="Cerrar" @click="cerrar()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="form-panel">
+                    <template x-if="u">
+                        <div class="form-texto space-y-2">
+                            <p>No podrá iniciar sesión. Sus turnos, su historial y sus servicios asignados se conservan, y sigue apareciendo con su nombre en Reportes y Gráficos.</p>
+                            <p x-show="u.conectado">Ahora está conectado<span x-show="u.conectado && u.conectado.modulo"> en el módulo <b x-text="u.conectado && u.conectado.modulo"></b></span>: su sesión se cerrará y el módulo quedará libre.</p>
+                            <p class="texto-mudo">Puedes reactivarla cuando quieras desde Editar.</p>
+                        </div>
+                    </template>
+                    <p class="form-error" x-show="error" x-text="error"></p>
+                    <div class="modal-panel__pie">
+                        <button type="button" class="btn-secundario" @click="cerrar()">Cancelar</button>
+                        <button type="button" class="btn-peligro" :disabled="trabajando" @click="confirmar()" x-text="trabajando ? 'Desactivando…' : 'Desactivar cuenta'"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtros rápidos, búsqueda y alta en una sola fila -->
     <div class="barra-vista">
         <div class="filtros-rapidos" role="group" aria-label="Filtrar usuarios">
@@ -134,7 +168,7 @@
                 <span class="filtro-rapido" data-esqueleto aria-hidden="true"><span class="esqueleto" style="width: {{ $ancho }}rem"></span></span>
             @endforeach
             <template x-for="f in filtros" :key="f.clave">
-                <button type="button" class="filtro-rapido" :aria-pressed="(filtro === f.clave).toString()" @click="filtro = f.clave">
+                <button type="button" class="filtro-rapido" x-show="f.clave !== 'desactivadas' || contar('desactivadas') > 0" :aria-pressed="(filtro === f.clave).toString()" @click="filtro = f.clave">
                     <span x-text="f.rotulo"></span> <span class="filtro-rapido__n" x-text="contar(f.clave)"></span>
                 </button>
             </template>
@@ -178,22 +212,26 @@
             </tbody>
             <tbody>
                 <template x-for="u in visibles()" :key="u.id">
-                    <tr>
+                    <tr :class="u.desactivada ? 'fila-desactivada' : ''">
                         <td>
                             <span class="usuario-nombre" x-text="u.nombre"></span>
                             <span class="marca-yo" x-show="u.yo">Tú</span>
+                            <span class="marca-desactivada" x-show="u.desactivada">Desactivada</span>
                             <span class="usuario-cedula" x-show="u.cedula" x-text="u.cedula"></span>
                         </td>
                         <td class="usuario-login" x-text="u.usuario"></td>
                         <td><span :class="u.rol === 'Administrador' ? 'rol-admin' : 'texto-mudo'" x-text="u.rol"></span></td>
                         <td>
                             <template x-if="u.rol !== 'Asesor'"><span class="texto-mudo">—</span></template>
-                            <template x-if="u.rol === 'Asesor' && !u.servicios.length">
+                            <template x-if="u.rol === 'Asesor' && !u.desactivada && !u.servicios.length">
                                 <a class="sin-asesor" :href="asignacionUrl(u)" title="No atiende ningún servicio">Ninguno · Asignar</a>
                             </template>
-                            <template x-if="u.rol === 'Asesor' && u.servicios.length">
+                            <template x-if="u.rol === 'Asesor' && !u.desactivada && u.servicios.length">
                                 <a class="codigos-servicio" :href="asignacionUrl(u)" :title="u.servicios.map(s => s.nombre).join(', ')"
                                    x-text="u.servicios.map(s => s.codigo || '?').join(' · ')"></a>
+                            </template>
+                            <template x-if="u.rol === 'Asesor' && u.desactivada">
+                                <span class="texto-mudo" x-text="u.servicios.length ? u.servicios.map(s => s.codigo || '?').join(' · ') : '—'"></span>
                             </template>
                         </td>
                         <td>
@@ -232,6 +270,10 @@ document.addEventListener('alpine:init', () => {
     const AVISO = 'aviso-usuarios';
     const recargarCon = texto => { try { sessionStorage.setItem(AVISO, texto); } catch (e) {} location.reload(); };
     const mensajeDe = (estado, datos, porDefecto) => estado === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.' : (datos.message || porDefecto);
+    // Desactivar / reactivar: POST sin cuerpo, con la misma respuesta { ok, estado, datos } del resto de la vista.
+    const accion = url => fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+        .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }));
+    const fechaCorta = iso => { const f = new Date(iso); return f.getDate() + ' ' + MESES[f.getMonth()] + (f.getFullYear() !== new Date().getFullYear() ? ' ' + f.getFullYear() : ''); };
 
     Alpine.data('usuariosVista', (filas, busquedaInicial) => ({
         filas,
@@ -244,6 +286,7 @@ document.addEventListener('alpine:init', () => {
             { clave: 'admins', rotulo: 'Administradores' },
             { clave: 'conectados', rotulo: 'Conectados' },
             { clave: 'sin', rotulo: 'Sin servicios' },
+            { clave: 'desactivadas', rotulo: 'Desactivadas' },
         ],
         init() {
             this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
@@ -253,6 +296,9 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {}
         },
         pasa(u, clave) {
+            if (clave === 'desactivadas') return !!u.desactivada;
+            if (clave === 'todos') return true;
+            if (u.desactivada) return false; // las cuentas desactivadas solo salen en Todos y en Desactivadas
             if (clave === 'asesores') return u.rol === 'Asesor';
             if (clave === 'admins') return u.rol === 'Administrador';
             if (clave === 'conectados') return !!u.conectado;
@@ -266,6 +312,7 @@ document.addEventListener('alpine:init', () => {
         },
         asignacionUrl(u) { return ASIGNACION_URL + '?asesor=' + u.id; },
         actividad(u) {
+            if (u.desactivada) return 'Desactivada el ' + fechaCorta(u.desactivada);
             if (u.conectado) return 'Módulo ' + u.conectado.modulo + ' · ' + (ESTADOS[u.conectado.estado] || 'Conectado');
             if (!u.ultima_actividad) return 'Sin actividad';
             const f = new Date(u.ultima_actividad), min = Math.round((Date.now() - f) / 60000);
@@ -302,6 +349,17 @@ document.addEventListener('alpine:init', () => {
         // Clic fuera: solo cierra si no hay nada escrito (antes se perdía el formulario sin aviso).
         cerrarSiLimpio() { if (!this.sucio()) this.cerrar(); },
         pedirEliminar() { this.abierto = false; this.$dispatch('eliminar-usuario', { usuario: this.original }); },
+        pedirDesactivar() { this.abierto = false; this.$dispatch('desactivar-usuario', { usuario: this.original }); },
+        desactivadaDesde() { return this.original.desactivada ? fechaCorta(this.original.desactivada) : ''; },
+        reactivar() {
+            this.guardando = true; this.errores = {};
+            accion(USUARIOS_URL + '/' + this.id + '/reactivar')
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) { recargarCon('Cuenta reactivada.'); return; }
+                    this.guardando = false; this.errores = { general: mensajeDe(estado, datos, 'No se pudo reactivar la cuenta.') };
+                })
+                .catch(() => { this.guardando = false; this.errores = { general: 'No hay conexión con el servidor. Inténtalo de nuevo.' }; });
+        },
         guardar() {
             this.guardando = true; this.errores = {};
             const d = this.datos, cuerpo = new FormData();
@@ -340,6 +398,7 @@ document.addEventListener('alpine:init', () => {
                 .finally(() => { this.cargando = false; });
         },
         cerrar() { if (!this.trabajando) this.abierto = false; },
+        desactivarEnSuLugar() { this.abierto = false; this.$dispatch('desactivar-usuario', { usuario: this.u }); },
         miles(n) { return Number(n).toLocaleString('es-CO'); },
         puedeEliminar() { return !!this.impacto && (!this.impacto.turnos || this.confirmacion.trim() === this.u.usuario); },
         confirmar() {
@@ -350,6 +409,21 @@ document.addEventListener('alpine:init', () => {
                 .then(({ ok, estado, datos }) => {
                     if (ok && datos.success !== false) { recargarCon('Usuario eliminado.'); return; }
                     this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo eliminar el usuario.');
+                })
+                .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
+        },
+    }));
+
+    Alpine.data('desactivarUsuario', () => ({
+        abierto: false, u: null, trabajando: false, error: '',
+        abrir({ usuario }) { this.u = usuario; this.error = ''; this.trabajando = false; this.abierto = true; },
+        cerrar() { if (!this.trabajando) this.abierto = false; },
+        confirmar() {
+            this.trabajando = true; this.error = '';
+            accion(USUARIOS_URL + '/' + this.u.id + '/desactivar')
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) { recargarCon('Cuenta desactivada.'); return; }
+                    this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo desactivar la cuenta.');
                 })
                 .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
         },
@@ -407,6 +481,12 @@ document.addEventListener('alpine:init', () => {
 .enlace-peligro:hover { text-decoration: underline; }
 .enlace-peligro:focus-visible { outline: 2px solid #b7191c; outline-offset: 2px; }
 .impacto-esqueleto { display: flex; flex-direction: column; gap: .6rem; padding: .25rem 0 .5rem; }
+/* Cuenta desactivada */
+.fila-desactivada .usuario-nombre, .fila-desactivada .usuario-login, .fila-desactivada .rol-admin { color: #6b7280; }
+.marca-desactivada { margin-left: .4rem; padding: .05rem .4rem; border-radius: .3rem; font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: #eef1f6; color: #4b5563; }
+.aviso-desactivada { padding: .55rem .75rem; border-radius: .5rem; font-size: .8125rem; line-height: 1.45; background: #eef1f6; color: #374151; }
+.modal-panel__pie--separado > .enlace-panel { margin-right: .75rem; font-size: .875rem; font-weight: 600; }
+.form-texto .enlace-panel { display: inline; font-size: inherit; }
 </style>
 @endpush
 @endsection

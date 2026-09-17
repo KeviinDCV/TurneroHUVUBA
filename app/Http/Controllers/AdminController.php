@@ -88,6 +88,7 @@ class AdminController extends Controller
             'auto_llamado' => $autoLlamado ? (bool) $u->auto_llamado_activo : null,
             'auto_llamado_minutos' => (int) ($u->auto_llamado_minutos ?: 10),
             'yo' => (int) $u->id === (int) $user->id,
+            'desactivada' => $u->fecha_desactivacion?->toIso8601String(),
         ])->values();
 
         return view('admin.users', compact('user', 'filas', 'search', 'autoLlamado'));
@@ -303,6 +304,66 @@ class AdminController extends Controller
 
         return redirect()->route('admin.users')
             ->with('success', 'Usuario eliminado correctamente');
+    }
+
+    /**
+     * Desactivar una cuenta: no vuelve a iniciar sesión, pero sus turnos, su historial y su nombre siguen en Reportes y
+     * Gráficos (eliminarla los deja "sin asesor"). Si está conectada, se cierra su sesión y se libera su módulo en el acto.
+     */
+    public function desactivarUsuario(Request $request, $id)
+    {
+        $usuario = User::findOrFail($id);
+
+        if ((int) $usuario->id === (int) Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'No puedes desactivar tu propia cuenta.'], 422);
+        }
+        if (!User::soportaDesactivacion(true)) {
+            return response()->json(['success' => false,
+                'message' => 'Falta actualizar la base de datos (columna fecha_desactivacion). Corre la migración y vuelve a intentarlo.'], 409);
+        }
+        if ($usuario->estaDesactivada()) {
+            return response()->json(['success' => true, 'message' => 'La cuenta ya estaba desactivada.']);
+        }
+
+        DB::transaction(function () use ($usuario) {
+            // Módulo libre y sesiones cerradas ya: no espera a que caduquen.
+            Caja::where('asesor_activo_id', $usuario->id)->update([
+                'asesor_activo_id' => null,
+                'session_id' => null,
+                'fecha_asignacion' => null,
+                'ip_asesor' => null,
+            ]);
+            DB::table('sessions')->where('user_id', $usuario->id)
+                ->when($usuario->session_id, fn ($q) => $q->orWhere('id', $usuario->session_id))
+                ->delete();
+
+            $usuario->forceFill([
+                'fecha_desactivacion' => now(),
+                'session_id' => null,
+                'session_start' => null,
+                'last_ip' => null,
+                'remember_token' => \Illuminate\Support\Str::random(60),
+            ])->save();
+        });
+
+        Log::info('Cuenta desactivada', ['id' => $usuario->id, 'usuario' => $usuario->nombre_usuario, 'por' => Auth::user()->nombre_usuario ?? null]);
+
+        return response()->json(['success' => true, 'message' => 'Cuenta desactivada.']);
+    }
+
+    /**
+     * Reactivar una cuenta: vuelve a iniciar sesión con su misma contraseña, sus servicios y su historial.
+     */
+    public function reactivarUsuario(Request $request, $id)
+    {
+        $usuario = User::findOrFail($id);
+
+        if (User::soportaDesactivacion(true) && $usuario->estaDesactivada()) {
+            $usuario->forceFill(['fecha_desactivacion' => null])->save();
+            Log::info('Cuenta reactivada', ['id' => $usuario->id, 'usuario' => $usuario->nombre_usuario, 'por' => Auth::user()->nombre_usuario ?? null]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Cuenta reactivada.']);
     }
 
     /**
