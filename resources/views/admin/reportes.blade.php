@@ -123,17 +123,12 @@
 <script>
 document.addEventListener('alpine:init', () => {
     const URL_GENERAR = @json(route('admin.reportes.generar'));
-    const TOKEN = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
     // Fechas LOCALES (new Date('AAAA-MM-DD') es UTC y en Bogotá cae en el día anterior).
     const aFecha = t => { const [a, m, d] = t.split('-').map(Number); return new Date(a, m - 1, d); };
     const aTexto = f => f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
     const sumar = (f, dias) => { const x = new Date(f); x.setDate(x.getDate() + dias); return x; };
-    const nombreDe = cabecera => {
-        const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cabecera || '');
-        return m ? decodeURIComponent(m[1]) : null;
-    };
 
     Alpine.data('informeTurnos', (secciones, asesores, inicial) => ({
         secciones, asesores,
@@ -227,38 +222,38 @@ document.addEventListener('alpine:init', () => {
             return '';
         },
 
-        // Se pide el archivo por fetch: así se sabe cuándo terminó y, si falla, por qué.
+        // La descarga va por URL (GET) en un iframe oculto, como el formulario GET de antes: así los gestores de descarga
+        // (Chrono, IDM…) la toman y la bajan ellos. Con fetch + Blob no la tomaban y, por http, Chrome la dejaba al 100 %
+        // sin terminar. El servidor avisa con la cookie informe_listo_<aviso> que el archivo ya salió. Si en el iframe carga
+        // un documento, es un error (sesión cerrada o fallo del servidor; el .htaccess no deja mostrarlo: X-Frame-Options).
         generar() {
             if (!this.listo() || this.trabajando) return;
             this.trabajando = true;
             this.estado = { tipo: 'trabajando', texto: 'Generando el informe' + (this.dias() > 31 ? '; con un periodo largo puede tardar un poco.' : '…') };
-            const cuerpo = new FormData();
-            cuerpo.append('fecha_inicio', this.desde);
-            cuerpo.append('fecha_fin', this.hasta);
-            cuerpo.append('formato', this.formato);
-            cuerpo.append('alcance', this.alcance);
-            if (this.alcance === 'servicios') this.servicios.forEach(id => cuerpo.append('servicios[]', id));
-            if (this.alcance === 'asesores') this.usuarios.forEach(id => cuerpo.append('usuarios[]', id));
-            fetch(URL_GENERAR, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
-                .then(async r => {
-                    const tipo = r.headers.get('Content-Type') || '';
-                    if (!r.ok || tipo.includes('application/json') || tipo.includes('text/html')) {
-                        const d = await r.json().catch(() => ({}));
-                        const primero = d.errors ? Object.values(d.errors)[0] : null;
-                        throw new Error(r.status === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.'
-                            : (primero ? (Array.isArray(primero) ? primero[0] : primero) : (d.message || 'No se pudo generar el informe (error ' + r.status + ').')));
-                    }
-                    const archivo = await r.blob();
-                    const nombre = nombreDe(r.headers.get('Content-Disposition')) || ('informe_turnos.' + (this.formato === 'excel' ? 'xlsx' : 'pdf'));
-                    const enlace = document.createElement('a');
-                    enlace.href = URL.createObjectURL(archivo);
-                    enlace.download = nombre;
-                    document.body.appendChild(enlace); enlace.click(); enlace.remove();
-                    setTimeout(() => URL.revokeObjectURL(enlace.href), 60000);
-                    this.estado = { tipo: 'ok', texto: 'Listo: ' + nombre };
-                })
-                .catch(e => { this.estado = { tipo: 'error', texto: e instanceof TypeError ? 'No hay conexión con el servidor. Inténtalo de nuevo.' : e.message }; })
-                .finally(() => { this.trabajando = false; });
+            const aviso = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+            const datos = new URLSearchParams({ fecha_inicio: this.desde, fecha_fin: this.hasta, formato: this.formato, alcance: this.alcance, aviso });
+            if (this.alcance === 'servicios') this.servicios.forEach(id => datos.append('servicios[]', id));
+            if (this.alcance === 'asesores') this.usuarios.forEach(id => datos.append('usuarios[]', id));
+            const cookie = 'informe_listo_' + aviso + '=';
+            const marco = document.createElement('iframe');
+            marco.hidden = true;
+            marco.src = URL_GENERAR + '?' + datos;
+            let vigia = null, limite = null;
+            const terminar = estado => {
+                clearInterval(vigia); clearTimeout(limite);
+                document.cookie = cookie + '; Max-Age=0; path=/';
+                setTimeout(() => marco.remove(), 60000); // el navegador o el gestor de descargas aún pueden estar tomándola
+                this.estado = estado;
+                this.trabajando = false;
+            };
+            vigia = setInterval(() => {
+                if (document.cookie.split('; ').some(c => c.startsWith(cookie))) terminar({ tipo: 'ok', texto: 'Listo: el informe se está descargando.' });
+            }, 250);
+            marco.addEventListener('load', () => {
+                if (this.trabajando) terminar({ tipo: 'error', texto: 'No se pudo generar el informe. Si llevas un rato sin usar el turnero, recarga la página (la sesión pudo cerrarse) e inténtalo de nuevo.' });
+            });
+            limite = setTimeout(() => terminar({ tipo: 'error', texto: 'El informe está tardando demasiado. Revisa tus descargas o inténtalo de nuevo.' }), 10 * 60 * 1000);
+            document.body.appendChild(marco);
         },
     }));
 });

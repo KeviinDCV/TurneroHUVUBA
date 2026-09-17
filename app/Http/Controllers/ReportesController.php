@@ -117,11 +117,18 @@ class ReportesController extends Controller
             'generado_por' => Auth::user()?->nombre_completo ?: (Auth::user()?->nombre_usuario ?? ''),
         ];
 
-        if ($request->formato === 'excel') {
-            return $this->exportarExcel($turnos, $estadisticas, $fechaInicio, $fechaFin, $contexto);
-        } else {
-            return $this->exportarPDF($turnos, $estadisticas, $fechaInicio, $fechaFin, $contexto);
+        $respuesta = $request->formato === 'excel'
+            ? $this->exportarExcel($turnos, $estadisticas, $fechaInicio, $fechaFin, $contexto)
+            : $this->exportarPDF($turnos, $estadisticas, $fechaInicio, $fechaFin, $contexto);
+
+        // Reportes descarga por URL (GET) en un iframe para que los gestores de descarga (Chrono, IDM…) puedan tomarla;
+        // la página no ve el archivo, así que esta cookie le avisa que ya salió. Legible por JS y sin Secure: el sitio va por http.
+        $aviso = (string) $request->query('aviso', '');
+        if (preg_match('/^[a-z0-9]{8,40}$/i', $aviso)) {
+            $respuesta->headers->setCookie(new \Symfony\Component\HttpFoundation\Cookie('informe_listo_' . $aviso, '1', time() + 120, '/', null, false, false, false, 'lax'));
         }
+
+        return $respuesta;
     }
 
     /**
