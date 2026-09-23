@@ -32,6 +32,7 @@
  *  - La descripción plegada se oculta con visibility y el texto completo va además para lectores de pantalla; el foco
  *    del teclado hace lo mismo que el puntero (expande y pausa); Escape lo cierra; mientras el puntero está encima no se
  *    pliega solo. Al descartar y volver a mostrar un toast con el mismo id enseguida, el nuevo ya no desaparece.
+ *  - Sombra suave bajo la forma, para que se distinga sobre fondos azules.
  * Propio del turnero: sileo.recargarCon(opciones) recarga la página y muestra el toast al volver (solo texto: sin button).
  */
 (function () {
@@ -173,6 +174,7 @@
 [data-sileo-content][data-edge="bottom"] { top: var(--sileo-height); }
 [data-sileo-content][data-visible="true"] { pointer-events: auto; }
 [data-sileo-description] { width: 100%; text-align: left; padding: 1rem; font-size: .875rem; line-height: 1.25rem; color: var(--sileo-description); }
+[data-sileo-description] > span { white-space: pre-line; }
 
 [data-sileo-button] {
     display: flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 .625rem; margin-top: .75rem;
@@ -303,7 +305,8 @@
 
             // Lienzo: la píldora y el cuerpo, fundidos en una sola forma por el filtro "gooey"
             this.canvas = crear('div', { 'data-sileo-canvas': '', 'data-edge': this.expand });
-            this.canvas.style.filter = 'url(#' + this.filterId + ')';
+            // Sombra suave (no está en Sileo): separa el toast del fondo azul del panel del asesor y de las tablas blancas
+            this.canvas.style.filter = 'url(#' + this.filterId + ') drop-shadow(0 10px 16px rgba(4, 16, 38, .28))';
             this.svg = crear('svg', { 'data-sileo-svg': '', width: WIDTH, height: HEIGHT, viewBox: '0 0 ' + WIDTH + ' ' + HEIGHT, 'aria-hidden': 'true', focusable: 'false' }, SVG_NS);
             this.svg.innerHTML = '<defs><filter id="' + this.filterId + '" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">'
                 + '<feGaussianBlur in="SourceGraphic" stdDeviation="' + this.blur + '" result="blur"/>'

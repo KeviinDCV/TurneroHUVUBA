@@ -421,36 +421,6 @@
     </div>
 </div>
 
-<!-- Modal de resultado -->
-<div id="resultModal" class="fixed inset-0 modal-overlay hidden z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div class="p-6">
-                <div class="flex items-center mb-4">
-                    <div id="resultIcon" class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
-                        <!-- Icon will be set by JavaScript -->
-                    </div>
-                    <div class="ml-4">
-                        <h3 id="resultTitle" class="text-lg font-medium text-gray-900"></h3>
-                        <p id="resultMessage" class="text-sm text-gray-500"></p>
-                    </div>
-                </div>
-                <div id="resultDetails" class="text-sm text-gray-600 mb-6 hidden">
-                    <!-- Details will be populated by JavaScript -->
-                </div>
-                <div class="flex justify-end">
-                    <button
-                        id="resultCerrarBtn"
-                        onclick="closeResultModal()"
-                        class="px-4 py-2 text-sm font-medium text-white bg-hospital-blue border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 let selectedCleanOption = null;
 let selectedUserId = null;
@@ -476,11 +446,14 @@ function pedirJson(url, opciones = {}) {
 // Con la sesión cerrada se detiene la actualización y se ofrece recargar (la página lleva al acceso).
 function mostrarSesionCerrada() {
     if (autoUpdateInterval) { clearInterval(autoUpdateInterval); autoUpdateInterval = null; }
-    showResult({ success: false, message: 'Tu sesión se cerró (por inactividad o porque se limpiaron las sesiones). Recarga la página para volver a entrar.' });
-    document.getElementById('resultTitle').textContent = 'Sesión cerrada';
-    const boton = document.getElementById('resultCerrarBtn');
-    boton.textContent = 'Recargar página';
-    boton.onclick = () => location.reload();
+    // Se queda abierto (sin irse solo) hasta que recarguen: la página ya no puede actualizarse.
+    const unDia = 24 * 60 * 60 * 1000;
+    sileo.error({
+        title: 'Sesión cerrada',
+        description: 'Tu sesión se cerró (por inactividad o porque se limpiaron las sesiones). Recarga la página para volver a entrar.',
+        button: { title: 'Recargar página', onClick: () => location.reload() },
+        duration: unDia, autopilot: { expand: 150, collapse: unDia },
+    });
 }
 
 function showCleanSessionsOptions() {
@@ -650,18 +623,14 @@ function closeCleanSessionsModal() {
     document.getElementById('cleanSessionsModal').classList.add('hidden');
 }
 
-function closeResultModal() {
-    document.getElementById('resultModal').classList.add('hidden');
-}
-
 function confirmCleanSessions() {
     if (!selectedCleanOption) {
-        alert('Por favor selecciona una opción de limpieza');
+        sileo.warning({ title: 'Elige una opción de limpieza' });
         return;
     }
 
     if (selectedCleanOption === 'specific' && !selectedUserId) {
-        alert('Por favor selecciona un usuario');
+        sileo.warning({ title: 'Elige un usuario' });
         return;
     }
 
@@ -703,7 +672,7 @@ function confirmCleanSessions() {
         btn.innerHTML = originalText;
 
         // Mostrar resultado
-        showResult(data);
+        showResult(data, { ok: 'Sesiones limpiadas', error: 'No se limpiaron las sesiones' });
 
         // Actualizar la tabla de usuarios activos
         actualizarUsuariosActivos();
@@ -717,62 +686,23 @@ function confirmCleanSessions() {
         showResult({
             success: false,
             message: 'No se pudo completar la limpieza (' + error.message + '). Inténtalo de nuevo.'
-        });
+        }, { ok: 'Sesiones limpiadas', error: 'No se limpiaron las sesiones' });
     });
 }
 
-function showResult(data) {
-    const modal = document.getElementById('resultModal');
-    const icon = document.getElementById('resultIcon');
-    const title = document.getElementById('resultTitle');
-    const message = document.getElementById('resultMessage');
-    const details = document.getElementById('resultDetails');
-    const cerrarBtn = document.getElementById('resultCerrarBtn');
-    cerrarBtn.textContent = 'Cerrar';
-    cerrarBtn.onclick = closeResultModal;
-
-    if (data.success) {
-        icon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center';
-        icon.innerHTML = '<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-        title.textContent = 'Limpieza Completada';
-        message.textContent = data.message;
-
-        if (data.data) {
-            let detailsHtml = '<ul class="list-disc list-inside space-y-1">';
-
-            // Mostrar diferentes campos según el tipo de limpieza
-            if (data.data.usuarios_limpiados !== undefined) {
-                detailsHtml += `<li>Usuarios limpiados: ${data.data.usuarios_limpiados}</li>`;
-            }
-            if (data.data.usuario_limpiado !== undefined) {
-                detailsHtml += `<li>Usuario: ${data.data.usuario_limpiado}</li>`;
-            }
-            if (data.data.cajas_liberadas !== undefined) {
-                detailsHtml += `<li>Cajas liberadas: ${data.data.cajas_liberadas}</li>`;
-            }
-            if (data.data.sesiones_expiradas_eliminadas !== undefined) {
-                detailsHtml += `<li>Sesiones expiradas eliminadas: ${data.data.sesiones_expiradas_eliminadas}</li>`;
-            }
-            if (data.data.sesiones_eliminadas !== undefined) {
-                detailsHtml += `<li>Sesiones eliminadas: ${data.data.sesiones_eliminadas}</li>`;
-            }
-            if (data.data.sesion_eliminada !== undefined) {
-                detailsHtml += `<li>Sesión eliminada: ${data.data.sesion_eliminada ? 'Sí' : 'No'}</li>`;
-            }
-
-            detailsHtml += '</ul>';
-            details.innerHTML = detailsHtml;
-            details.classList.remove('hidden');
-        }
-    } else {
-        icon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center';
-        icon.innerHTML = '<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-        title.textContent = 'Error';
-        message.textContent = data.message;
-        details.classList.add('hidden');
-    }
-
-    modal.classList.remove('hidden');
+// Resultado de "Limpiar sesiones" o de "Emergencia de turnos": toast (sileo.js) con el mensaje y el detalle.
+function showResult(data, titulos) {
+    const d = data.data || {};
+    const detalle = [];
+    if (d.usuarios_limpiados !== undefined) detalle.push('Usuarios limpiados: ' + d.usuarios_limpiados);
+    if (d.usuario_limpiado !== undefined) detalle.push('Usuario: ' + d.usuario_limpiado);
+    if (d.cajas_liberadas !== undefined) detalle.push('Cajas liberadas: ' + d.cajas_liberadas);
+    if (d.sesiones_expiradas_eliminadas !== undefined) detalle.push('Sesiones expiradas eliminadas: ' + d.sesiones_expiradas_eliminadas);
+    if (d.sesiones_eliminadas !== undefined) detalle.push('Sesiones eliminadas: ' + d.sesiones_eliminadas);
+    if (d.sesion_eliminada !== undefined) detalle.push('Sesión eliminada: ' + (d.sesion_eliminada ? 'sí' : 'no'));
+    const description = [data.message, detalle.join(' · ')].filter(Boolean).join('\n');
+    if (data.success) sileo.success({ title: titulos.ok, description, duration: 8000 });
+    else sileo.error({ title: titulos.error, description, duration: 8000 });
 }
 
 // ===== Inicio: cifras, cola por servicio y asesores conectados =====
@@ -1072,7 +1002,7 @@ function confirmEmergencyTurnos() {
         closeEmergencyTurnosModal();
 
         // Mostrar resultado
-        showResult(data);
+        showResult(data, { ok: 'Turnos eliminados', error: 'No se eliminaron los turnos' });
 
         // Actualizar las estadísticas
         actualizarTurnosPorServicio();
@@ -1090,7 +1020,7 @@ function confirmEmergencyTurnos() {
         showResult({
             success: false,
             message: 'No se pudo completar la acción (' + error.message + '). Inténtalo de nuevo.'
-        });
+        }, { ok: 'Turnos eliminados', error: 'No se eliminaron los turnos' });
     });
 }
 
