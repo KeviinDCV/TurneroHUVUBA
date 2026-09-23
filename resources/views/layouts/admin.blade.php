@@ -7,6 +7,8 @@
     <link rel="preload" href="{{ asset('fonts/InterVariable.woff2') }}" as="font" type="font/woff2" crossorigin>
     <title>@yield('title', 'Turnero HUV') - Turnero HUV</title>
     @include('components.favicon')
+    {{-- Toasts: sileo.js (port sin React de Sileo). Antes que Alpine, para que las vistas ya tengan window.sileo --}}
+    <script src="{{ asset('js/sileo.js') }}?v={{ is_file(public_path('js/sileo.js')) ? filemtime(public_path('js/sileo.js')) : 0 }}" defer></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -773,16 +775,6 @@
         .form-casilla input { width: 1rem; height: 1rem; margin-top: .15rem; accent-color: #064b9e; flex-shrink: 0; }
         .form-texto { font-size: .875rem; line-height: 1.5; color: #374151; }
         .modal-panel__pie { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .25rem; }
-
-        .aviso-flotante {
-            position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 60; display: flex; align-items: center; gap: .9rem;
-            max-width: 26rem; padding: .7rem 1rem; border-radius: .625rem; background: #0f2547; color: #ffffff;
-            font-size: .875rem; line-height: 1.4; box-shadow: 0 12px 28px -10px rgba(15, 37, 71, .45);
-        }
-        .aviso-flotante--error { background: #9a1518; }
-        .aviso-flotante button { color: #a9c7f5; font-weight: 600; cursor: pointer; white-space: nowrap; }
-        .aviso-flotante--error button { color: #ffd4d4; }
-        .aviso-flotante button:hover { color: #ffffff; text-decoration: underline; }
     </style>
     {{-- Estilos propios de cada vista (@push('estilos')): aquí, después de los del layout, para que se apliquen
          desde el primer pintado. Al final del cuerpo, las transiciones de borde se veían como bordes negros al cargar. --}}

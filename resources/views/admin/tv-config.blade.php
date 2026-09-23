@@ -8,9 +8,6 @@
 <div class="tv-vista max-w-7xl mx-auto space-y-4"
      x-data="configTv(@js(['ticker_message' => $tvConfig->ticker_message, 'ticker_speed' => (int) $tvConfig->ticker_speed, 'ticker_enabled' => (bool) $tvConfig->ticker_enabled]), @js($multimedia))">
     <h1 class="sr-only">Configuración del TV</h1>
-    <div class="aviso-flotante" :class="{ 'aviso-flotante--error': aviso && aviso.error }" role="status" x-show="aviso" x-transition.opacity x-cloak>
-        <span x-text="aviso && aviso.texto"></span>
-    </div>
 
     <!-- Confirmar eliminación de un archivo -->
     <div class="envoltorio-modal" @keydown.escape.window="porEliminar = null">
@@ -202,9 +199,7 @@ document.addEventListener('alpine:init', () => {
         subida: subidaVacia(),
         porEliminar: null, eliminando: false,
         arrastrado: null, destino: null, resaltado: null, estadoOrden: '',
-        aviso: null,
 
-        avisar(texto, error = false) { this.aviso = { texto, error }; clearTimeout(this._aviso); this._aviso = setTimeout(() => this.aviso = null, error ? 6000 : 3500); },
         duracion(seg) {
             seg = Math.round(seg || 0);
             if (seg < 60) return seg + ' s';
@@ -257,9 +252,9 @@ document.addEventListener('alpine:init', () => {
                 .then(({ ok, estado, datos }) => {
                     if (!ok || datos.success === false) throw new Error(mensajeDe(estado, datos, 'No se pudo cambiar el estado.'));
                     m.activo = !!datos.activo;
-                    this.avisar(m.nombre + (m.activo ? ' vuelve al TV.' : ' queda pausado.'));
+                    sileo.success({ title: m.activo ? 'Vuelve al TV' : 'Pausado en el TV', description: m.nombre });
                 })
-                .catch(e => { m.activo = !m.activo; this.avisar(e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message, true); });
+                .catch(e => { m.activo = !m.activo; sileo.error({ title: 'No se cambió el estado', description: e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message }); });
         },
         mover(i, delta) {
             const j = i + delta;
@@ -286,7 +281,7 @@ document.addEventListener('alpine:init', () => {
                         this.lista.forEach((m, k) => m.orden = k + 1);
                         this.estadoOrden = 'Orden guardado.';
                     })
-                    .catch(e => { this.estadoOrden = ''; this.avisar((e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message) + ' Recarga para ver el orden real.', true); });
+                    .catch(e => { this.estadoOrden = ''; sileo.error({ title: 'No se guardó el orden', description: (e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message) + ' Recarga para ver el orden real.' }); });
             }, 500);
         },
         eliminar() {
@@ -298,9 +293,9 @@ document.addEventListener('alpine:init', () => {
                     if (!ok || datos.success === false) throw new Error(mensajeDe(estado, datos, 'No se pudo eliminar el archivo.'));
                     this.lista = this.lista.filter(x => x.id !== m.id);
                     this.porEliminar = null;
-                    this.avisar('Archivo eliminado.');
+                    sileo.success({ title: 'Archivo eliminado' });
                 })
-                .catch(e => { this.avisar(e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message, true); })
+                .catch(e => { sileo.error({ title: 'No se eliminó el archivo', description: e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message }); })
                 .finally(() => { this.eliminando = false; });
         },
 
@@ -356,7 +351,7 @@ document.addEventListener('alpine:init', () => {
                     this.lista = [...this.lista, datos.multimedia];
                     this.resaltado = datos.multimedia.id; setTimeout(() => this.resaltado = null, 2500);
                     this.cerrarSubida();
-                    this.avisar('Subido. El TV lo mostrará en su próxima ronda.');
+                    sileo.success({ title: 'Archivo subido', description: 'El TV lo mostrará en su próxima ronda.' });
                     return;
                 }
                 const e = datos.errors || {};

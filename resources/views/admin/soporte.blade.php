@@ -7,7 +7,6 @@
      servidor (App\Services\SoporteService); antes solo quedaban en laravel.log y nadie las veía. --}}
 <div class="soporte-vista max-w-7xl mx-auto space-y-4" x-data="soporteVista(@js($solicitudes), @js($lugares), @js($donde))">
     <h1 class="sr-only">Soporte</h1>
-    <div class="aviso-flotante" role="status" x-show="aviso" x-transition.opacity x-cloak><span x-text="aviso"></span></div>
 
     <!-- Detalle de una solicitud, con su estado -->
     <div class="envoltorio-modal" @keydown.escape.window="cerrarDetalle()">
@@ -204,7 +203,7 @@ document.addEventListener('alpine:init', () => {
         errores: {}, enviando: false, confirmacion: '', encima: false,
         filtro: 'abiertas',
         detalle: null, edicion: { estado: 'nueva', nota: '' }, guardandoEstado: false, errorDetalle: '',
-        resaltada: null, aviso: '',
+        resaltada: null,
         urgencias: [
             { clave: 'baja', rotulo: 'Baja', ayuda: 'Puede esperar: no afecta la atención.' },
             { clave: 'media', rotulo: 'Media', ayuda: 'Molesta, pero se puede seguir trabajando.' },
@@ -250,7 +249,7 @@ document.addEventListener('alpine:init', () => {
                     if (!ok || !datos.solicitud) throw new Error(mensajeDe(estado, datos, 'No se pudo guardar el estado.'));
                     this.solicitudes = this.solicitudes.map(x => x.id === s.id ? datos.solicitud : x);
                     this.detalle = null;
-                    this.aviso = s.numero + ': ' + this.textoEstado(datos.solicitud.estado).toLowerCase() + '.'; setTimeout(() => this.aviso = '', 3500);
+                    sileo.success({ title: s.numero + ': ' + this.textoEstado(datos.solicitud.estado).toLowerCase() });
                 })
                 .catch(e => { this.errorDetalle = e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message; })
                 .finally(() => { this.guardandoEstado = false; });

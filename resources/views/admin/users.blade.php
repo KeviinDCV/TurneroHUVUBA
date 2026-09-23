@@ -7,7 +7,6 @@
      asignados, conexión y, en huvuba, auto-llamado). Crear, editar y eliminar van por fetch en ventanas propias. --}}
 <div class="usuarios-vista max-w-7xl mx-auto space-y-4" x-data="usuariosVista(@js($filas), @js($search))">
     <h1 class="sr-only">Usuarios</h1>
-    <div class="aviso-flotante" role="status" x-show="aviso" x-transition.opacity x-cloak><span x-text="aviso"></span></div>
 
     <!-- Crear / editar -->
     <div class="envoltorio-modal" x-data="formularioUsuario(@js($autoLlamado))" @abrir-usuario.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
@@ -267,8 +266,8 @@ document.addEventListener('alpine:init', () => {
     const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     const ESTADOS = { atendiendo: 'Atendiendo', libre: 'Libre', descanso: 'En descanso', canal: 'Canal no presencial' };
     const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    const AVISO = 'aviso-usuarios';
-    const recargarCon = texto => { try { sessionStorage.setItem(AVISO, texto); } catch (e) {} location.reload(); };
+    // Lo que se ve tras guardar y recargar: sileo lo guarda y lo muestra al volver.
+    const recargarCon = opciones => sileo.recargarCon(opciones);
     const mensajeDe = (estado, datos, porDefecto) => estado === 419 ? 'La sesión expiró. Recarga la página e inténtalo de nuevo.' : (datos.message || porDefecto);
     // Desactivar / reactivar: POST sin cuerpo, con la misma respuesta { ok, estado, datos } del resto de la vista.
     const accion = url => fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
@@ -279,7 +278,6 @@ document.addEventListener('alpine:init', () => {
         filas,
         filtro: 'todos',
         buscar: busquedaInicial || '',
-        aviso: '',
         filtros: [
             { clave: 'todos', rotulo: 'Todos' },
             { clave: 'asesores', rotulo: 'Asesores' },
@@ -290,10 +288,6 @@ document.addEventListener('alpine:init', () => {
         ],
         init() {
             this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
-            try {
-                const texto = sessionStorage.getItem(AVISO);
-                if (texto) { sessionStorage.removeItem(AVISO); this.aviso = texto; setTimeout(() => this.aviso = '', 4000); }
-            } catch (e) {}
         },
         pasa(u, clave) {
             if (clave === 'desactivadas') return !!u.desactivada;
@@ -355,7 +349,7 @@ document.addEventListener('alpine:init', () => {
             this.guardando = true; this.errores = {};
             accion(USUARIOS_URL + '/' + this.id + '/reactivar')
                 .then(({ ok, estado, datos }) => {
-                    if (ok && datos.success !== false) { recargarCon('Cuenta reactivada.'); return; }
+                    if (ok && datos.success !== false) { recargarCon({ title: 'Cuenta reactivada', description: 'Ya puede iniciar sesión con su misma contraseña.' }); return; }
                     this.guardando = false; this.errores = { general: mensajeDe(estado, datos, 'No se pudo reactivar la cuenta.') };
                 })
                 .catch(() => { this.guardando = false; this.errores = { general: 'No hay conexión con el servidor. Inténtalo de nuevo.' }; });
@@ -377,7 +371,7 @@ document.addEventListener('alpine:init', () => {
             fetch(url, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
                 .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
                 .then(({ ok, estado, datos }) => {
-                    if (ok && datos.success !== false) { recargarCon(this.modo === 'crear' ? 'Usuario creado.' : 'Cambios guardados.'); return; }
+                    if (ok && datos.success !== false) { recargarCon({ title: this.modo === 'crear' ? 'Usuario creado' : 'Cambios guardados' }); return; }
                     this.guardando = false;
                     const e = datos.errors || {};
                     this.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
@@ -407,7 +401,7 @@ document.addEventListener('alpine:init', () => {
             fetch(USUARIOS_URL + '/' + this.u.id, { method: 'POST', body: cuerpo, headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
                 .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
                 .then(({ ok, estado, datos }) => {
-                    if (ok && datos.success !== false) { recargarCon('Usuario eliminado.'); return; }
+                    if (ok && datos.success !== false) { recargarCon({ title: 'Usuario eliminado' }); return; }
                     this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo eliminar el usuario.');
                 })
                 .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
@@ -422,7 +416,7 @@ document.addEventListener('alpine:init', () => {
             this.trabajando = true; this.error = '';
             accion(USUARIOS_URL + '/' + this.u.id + '/desactivar')
                 .then(({ ok, estado, datos }) => {
-                    if (ok && datos.success !== false) { recargarCon('Cuenta desactivada.'); return; }
+                    if (ok && datos.success !== false) { recargarCon({ title: 'Cuenta desactivada', description: 'No podrá iniciar sesión. Sus turnos y su historial se conservan.' }); return; }
                     this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo desactivar la cuenta.');
                 })
                 .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });

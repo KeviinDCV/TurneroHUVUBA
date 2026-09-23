@@ -8,10 +8,6 @@
 @php $totalServicios = collect($secciones)->sum(fn ($s) => 1 + count($s['hijos'])); @endphp
 <div class="servicios-vista max-w-7xl mx-auto space-y-4" x-data="serviciosVista(@js($secciones), @js($search))">
     <h1 class="sr-only">Servicios</h1>
-    <!-- Aviso de lo que acaba de pasar (sobrevive a la recarga) -->
-    <div class="aviso-flotante" role="status" x-show="aviso" x-transition.opacity x-cloak>
-        <span x-text="aviso"></span>
-    </div>
 
     <!-- Crear / editar -->
     <div class="envoltorio-modal" x-data="formularioServicio(secciones)" @abrir-servicio.window="abrir($event.detail)" @keydown.escape.window="cerrar()">
@@ -259,16 +255,13 @@ document.addEventListener('alpine:init', () => {
     const CODIGO_VALIDO = /^[A-Z]{1,10}$/;
     const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const AVISO = 'aviso-servicios';
-
-    // Lo que se ve tras guardar y recargar: se deja escrito antes de recargar.
-    const recargarCon = texto => { try { sessionStorage.setItem(AVISO, texto); } catch (e) {} location.reload(); };
+    // Lo que se ve tras guardar y recargar: sileo lo guarda y lo muestra al volver.
+    const recargarCon = opciones => sileo.recargarCon(opciones);
 
     Alpine.data('serviciosVista', (secciones, busquedaInicial) => ({
         secciones,
         filtro: 'todos',
         buscar: busquedaInicial || '',
-        aviso: '',
         filtros: [
             { clave: 'todos', rotulo: 'Todos' },
             { clave: 'inactivos', rotulo: 'Inactivos' },
@@ -277,12 +270,7 @@ document.addEventListener('alpine:init', () => {
         ],
         init() {
             this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
-            try {
-                const texto = sessionStorage.getItem(AVISO);
-                if (texto) { sessionStorage.removeItem(AVISO); this.mostrarAviso(texto); }
-            } catch (e) {}
         },
-        mostrarAviso(texto) { this.aviso = texto; clearTimeout(this._aviso); this._aviso = setTimeout(() => this.aviso = '', 4000); },
         // Lo que recibe turnos del kiosco: un subservicio o una sección sin subservicios.
         esHoja(s) { return !(s.hijos && s.hijos.length); },
         todos() { return this.secciones.flatMap(s => [s, ...s.hijos]); },
@@ -368,7 +356,7 @@ document.addEventListener('alpine:init', () => {
             this.guardando = true; this.errores = {};
             const url = this.modo === 'crear' ? SERVICIOS_URL : SERVICIOS_URL + '/' + this.id;
             enviar(url, this.datos, this.modo === 'crear' ? null : 'PUT').then(({ ok, estado, datos }) => {
-                if (ok && datos.success !== false) { recargarCon(this.modo === 'crear' ? 'Servicio creado.' : 'Cambios guardados.'); return; }
+                if (ok && datos.success !== false) { recargarCon({ title: this.modo === 'crear' ? 'Servicio creado' : 'Cambios guardados' }); return; }
                 this.guardando = false;
                 const e = datos.errors || {};
                 this.errores = Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
@@ -397,7 +385,7 @@ document.addEventListener('alpine:init', () => {
             fetch(SERVICIOS_URL + '/' + this.servicio.id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
                 .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
                 .then(({ ok, estado, datos }) => {
-                    if (ok && datos.success !== false) { recargarCon('Servicio eliminado.'); return; }
+                    if (ok && datos.success !== false) { recargarCon({ title: 'Servicio eliminado' }); return; }
                     this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo eliminar el servicio.');
                 })
                 .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
@@ -405,7 +393,7 @@ document.addEventListener('alpine:init', () => {
         desactivar() {
             this.trabajando = true; this.error = '';
             enviar(SERVICIOS_URL + '/' + this.servicio.id, { ...datosDe(this.servicio), activo: false }, 'PUT').then(({ ok, estado, datos }) => {
-                if (ok && datos.success !== false) { recargarCon('Servicio desactivado: ya no sale en el kiosco.'); return; }
+                if (ok && datos.success !== false) { recargarCon({ title: 'Servicio desactivado', description: 'Ya no sale en el kiosco.' }); return; }
                 this.trabajando = false;
                 const e = datos.errors ? Object.values(datos.errors)[0] : null;
                 this.error = e ? (Array.isArray(e) ? e[0] : e) : mensajeDe(estado, datos, 'No se pudo desactivar el servicio.');

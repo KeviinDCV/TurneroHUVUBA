@@ -11,11 +11,6 @@
 @endphp
 <div class="asignacion-vista max-w-7xl mx-auto space-y-4" x-data="matrizCobertura(@js($matriz))">
     <h1 class="sr-only">Asignación de servicios</h1>
-    <!-- Lo que acaba de cambiar, con opción de deshacer -->
-    <div class="aviso-flotante" :class="{ 'aviso-flotante--error': aviso && aviso.error }" role="status" x-show="aviso" x-transition.opacity x-cloak>
-        <span x-text="aviso && aviso.texto"></span>
-        <button type="button" x-show="aviso && aviso.deshacer" @click="deshacer()">Deshacer</button>
-    </div>
 
     <div class="barra-vista">
         <div class="filtros-rapidos" role="group" aria-label="Filtrar asesores">
@@ -147,7 +142,6 @@ document.addEventListener('alpine:init', () => {
         columnaActiva: null,
         destacada: null,
         filaDestacada: null,
-        aviso: null,
         filtros: [
             { clave: 'todos', rotulo: 'Todos' },
             { clave: 'conectados', rotulo: 'Conectados' },
@@ -199,15 +193,15 @@ document.addEventListener('alpine:init', () => {
             const lista = (this.asignados[aid] || []).filter(x => x !== sid);
             this.asignados[aid] = marcado ? [...lista, sid] : lista;
         },
-        avisar(texto, extra = {}) {
-            this.aviso = { texto, ...extra };
-            clearTimeout(this._aviso);
-            this._aviso = setTimeout(() => this.aviso = null, extra.error ? 7000 : 6000);
-        },
-        deshacer() {
-            const d = this.aviso && this.aviso.deshacer;
-            this.aviso = null;
-            if (d) this.alternar(d.a, d.h, d.marcado, true);
+        // Botón "Deshacer" del toast: una sola vez; el toast queda en "Deshaciendo…" hasta que responde el servidor.
+        botonDeshacer(d) {
+            let usado = false;
+            return { title: 'Deshacer', onClick: () => {
+                if (usado) return;
+                usado = true;
+                sileo.show({ type: 'loading', title: 'Deshaciendo…', duration: null });
+                this.alternar(d.a, d.h, d.marcado, true);
+            } };
         },
         // Cambio inmediato en pantalla; la petición va detrás, en orden por asesor. Si falla, la casilla vuelve.
         alternar(a, h, marcado, esDeshacer = false) {
@@ -230,17 +224,17 @@ document.addEventListener('alpine:init', () => {
                         throw e;
                     }
                     if (--this.pendientes[a.id] === 0 && Array.isArray(datos.asignados)) this.asignados[a.id] = datos.asignados;
-                    if (esDeshacer) { this.avisar('Cambio deshecho.'); return; }
+                    if (esDeshacer) { sileo.success({ title: 'Cambio deshecho' }); return; }
                     const quedan = this.totalColumna(h.id);
-                    this.avisar(marcado
-                        ? nombre + ' ahora atiende ' + h.nombre + '.'
-                        : nombre + ' ya no atiende ' + h.nombre + '.' + (quedan === 0 ? ' Nadie más lo atiende.' : ''),
-                        { deshacer: { a, h, marcado: !marcado } });
+                    const button = this.botonDeshacer({ a, h, marcado: !marcado });
+                    if (marcado) sileo.success({ title: 'Servicio asignado', description: nombre + ' ahora atiende ' + h.nombre + '.', button });
+                    else if (quedan === 0) sileo.warning({ title: 'Servicio quitado', description: nombre + ' ya no atiende ' + h.nombre + '. Nadie más lo atiende.', button });
+                    else sileo.success({ title: 'Servicio quitado', description: nombre + ' ya no atiende ' + h.nombre + '.', button });
                 })
                 .catch(e => {
                     this.pendientes[a.id]--;
                     this.fijar(a.id, h.id, !marcado);
-                    this.avisar(e instanceof TypeError ? 'No hay conexión con el servidor. El cambio no se guardó.' : e.message, { error: true });
+                    sileo.error({ title: 'No se guardó el cambio', description: e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message, duration: 7000 });
                 })
                 .finally(() => { delete this.guardando[clave]; }));
         },
