@@ -307,7 +307,7 @@ document.addEventListener('alpine:init', () => {
         asignacionUrl(u) { return ASIGNACION_URL + '?asesor=' + u.id; },
         actividad(u) {
             if (u.desactivada) return 'Desactivada el ' + fechaCorta(u.desactivada);
-            if (u.conectado) return 'Módulo ' + u.conectado.modulo + ' · ' + (ESTADOS[u.conectado.estado] || 'Conectado');
+            if (u.conectado) return (u.conectado.modulo ? 'Módulo ' + u.conectado.modulo : 'Sin módulo') + ' · ' + (ESTADOS[u.conectado.estado] || 'Conectado');
             if (!u.ultima_actividad) return 'Sin actividad';
             const f = new Date(u.ultima_actividad), min = Math.round((Date.now() - f) / 60000);
             if (min < 2) return 'Hace un momento';

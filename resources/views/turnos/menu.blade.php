@@ -617,20 +617,22 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
 
         function seleccionarPrioridad(prioridad) {
             if (procesandoSolicitud) return;
+            // Se leen ANTES de cerrar la ventana: cerrarPrioridadModal() los borra (por eso siempre salía
+            // "No hay servicio seleccionado" y el turno con tipo General/Prioritario nunca se generaba).
+            const sId = servicioSeleccionadoId;
+            const sNombre = servicioSeleccionadoNombre;
             bloquearBotones();
             cerrarPrioridadModal();
-            mostrarLoading('Generando turno...', servicioSeleccionadoNombre);
+            mostrarLoading('Generando turno...', sNombre);
             if (navigator.vibrate) navigator.vibrate(30);
-            
-            if (!servicioSeleccionadoId) {
+
+            if (!sId) {
                 ocultarLoading();
                 desbloquearBotones();
                 mostrarModal('Error: No hay servicio seleccionado');
                 return;
             }
 
-            const sId = servicioSeleccionadoId;
-            const sNombre = servicioSeleccionadoNombre;
             ultimaSolicitud = () => {
                 servicioSeleccionadoId = sId;
                 servicioSeleccionadoNombre = sNombre;
