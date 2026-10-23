@@ -974,31 +974,18 @@ class ReportesController extends Controller
         // Datos
         $row = 2;
         foreach ($porAsesor as $asesorId => $datos) {
-            // Formato de tiempos mm:ss
-            // Formatear promedio de atención
-            $promedioSegundos = abs($datos['tiempo_promedio_atencion']);
-            $minPromedio = floor($promedioSegundos / 60);
-            $segPromedio = $promedioSegundos % 60;
-            $tiempoPromedioFormato = sprintf('%02d:%02d', $minPromedio, $segPromedio);
-
-            // Formatear total de atención
-            $totalSegundos = abs($datos['tiempo_total_atencion']);
-            $minTotal = floor($totalSegundos / 60);
-            $segTotal = $totalSegundos % 60;
-            $tiempoTotalFormato = sprintf('%02d:%02d', $minTotal, $segTotal);
+            // Formatear tiempos con función humanizada
+            $tiempoPromedioFormato = $this->formatearTiempoHumanizado($datos['tiempo_promedio_atencion']);
+            $tiempoTotalFormato = $this->formatearTiempoHumanizado($datos['tiempo_total_atencion']);
             
-            // Formatear tiempo perdido entre turnos (de minutos a mm:ss)
-            $tiempoPerdidoTotal = $datos['tiempo_promedio_entre_turnos'];
-            $minPerdido = floor($tiempoPerdidoTotal);
-            $segPerdido = round(($tiempoPerdidoTotal - $minPerdido) * 60);
-            $tiempoPerdidoFormato = sprintf('%02d:%02d', $minPerdido, $segPerdido);
+            // Tiempo perdido entre turnos (está en minutos, convertir a segundos)
+            $tiempoPerdidoTotalSegundos = $datos['tiempo_promedio_entre_turnos'] * 60;
+            $tiempoPerdidoFormato = $this->formatearTiempoHumanizado($tiempoPerdidoTotalSegundos);
             
             // Calcular promedio por turno
             $turnosAtendidos = $datos['atendidos'] > 0 ? $datos['atendidos'] : 1;
-            $promedioMinutosPorTurno = $tiempoPerdidoTotal / $turnosAtendidos;
-            $minPromedioPorTurno = floor($promedioMinutosPorTurno);
-            $segPromedioPorTurno = round(($promedioMinutosPorTurno - $minPromedioPorTurno) * 60);
-            $promedioTurnoFormato = sprintf('%02d:%02d', $minPromedioPorTurno, $segPromedioPorTurno);
+            $promedioSegundosPorTurno = $tiempoPerdidoTotalSegundos / $turnosAtendidos;
+            $promedioTurnoFormato = $this->formatearTiempoHumanizado($promedioSegundosPorTurno);
             
             $sheet->setCellValue('A' . $row, $datos['nombre_completo']);
             $sheet->setCellValue('B' . $row, $datos['nombre_usuario']);
@@ -1069,5 +1056,38 @@ class ReportesController extends Controller
         foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+    }
+
+    /**
+     * Convertir segundos a formato humanizado legible
+     * Ejemplos: "4 minutos 46 segundos", "63 horas 13 minutos", "7 segundos"
+     */
+    private function formatearTiempoHumanizado($segundosTotales)
+    {
+        $segundosTotales = abs(intval($segundosTotales));
+        
+        if ($segundosTotales == 0) {
+            return '0 segundos';
+        }
+        
+        $horas = intdiv($segundosTotales, 3600);
+        $minutos = intdiv($segundosTotales % 3600, 60);
+        $segundos = $segundosTotales % 60;
+        
+        $partes = [];
+        
+        if ($horas > 0) {
+            $partes[] = $horas . ' ' . ($horas == 1 ? 'hora' : 'horas');
+        }
+        
+        if ($minutos > 0) {
+            $partes[] = $minutos . ' ' . ($minutos == 1 ? 'minuto' : 'minutos');
+        }
+        
+        if ($segundos > 0) {
+            $partes[] = $segundos . ' ' . ($segundos == 1 ? 'segundo' : 'segundos');
+        }
+        
+        return implode(' ', $partes);
     }
 }
