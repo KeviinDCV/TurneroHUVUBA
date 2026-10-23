@@ -951,12 +951,13 @@ class ReportesController extends Controller
         $sheet->setCellValue('D1', 'Atendidos');
         $sheet->setCellValue('E1', 'Aplazados');
         $sheet->setCellValue('F1', 'Transferidos');
-        $sheet->setCellValue('G1', 'Tiempo Prom. (mm:ss)');
-        $sheet->setCellValue('H1', 'Tiempo Total (mm:ss)');
-        $sheet->setCellValue('I1', 'Entre Turnos (min)');
+        $sheet->setCellValue('G1', 'Tiempo Prom. Atención (mm:ss)');
+        $sheet->setCellValue('H1', 'Tiempo Total Atención (mm:ss)');
+        $sheet->setCellValue('I1', 'Tiempo Perdido Total Entre Turnos (mm:ss)');
+        $sheet->setCellValue('J1', 'Promedio por Turno (mm:ss)');
 
         // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:I1')->applyFromArray([
+        $sheet->getStyle('A1:J1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
@@ -974,17 +975,30 @@ class ReportesController extends Controller
         $row = 2;
         foreach ($porAsesor as $asesorId => $datos) {
             // Formato de tiempos mm:ss
-            // Formatear promedio
+            // Formatear promedio de atención
             $promedioSegundos = abs($datos['tiempo_promedio_atencion']);
             $minPromedio = floor($promedioSegundos / 60);
             $segPromedio = $promedioSegundos % 60;
             $tiempoPromedioFormato = sprintf('%02d:%02d', $minPromedio, $segPromedio);
 
-            // Formatear total
+            // Formatear total de atención
             $totalSegundos = abs($datos['tiempo_total_atencion']);
             $minTotal = floor($totalSegundos / 60);
             $segTotal = $totalSegundos % 60;
             $tiempoTotalFormato = sprintf('%02d:%02d', $minTotal, $segTotal);
+            
+            // Formatear tiempo perdido entre turnos (de minutos a mm:ss)
+            $tiempoPerdidoTotal = $datos['tiempo_promedio_entre_turnos'];
+            $minPerdido = floor($tiempoPerdidoTotal);
+            $segPerdido = round(($tiempoPerdidoTotal - $minPerdido) * 60);
+            $tiempoPerdidoFormato = sprintf('%02d:%02d', $minPerdido, $segPerdido);
+            
+            // Calcular promedio por turno
+            $turnosAtendidos = $datos['atendidos'] > 0 ? $datos['atendidos'] : 1;
+            $promedioMinutosPorTurno = $tiempoPerdidoTotal / $turnosAtendidos;
+            $minPromedioPorTurno = floor($promedioMinutosPorTurno);
+            $segPromedioPorTurno = round(($promedioMinutosPorTurno - $minPromedioPorTurno) * 60);
+            $promedioTurnoFormato = sprintf('%02d:%02d', $minPromedioPorTurno, $segPromedioPorTurno);
             
             $sheet->setCellValue('A' . $row, $datos['nombre_completo']);
             $sheet->setCellValue('B' . $row, $datos['nombre_usuario']);
@@ -994,11 +1008,12 @@ class ReportesController extends Controller
             $sheet->setCellValue('F' . $row, $datos['transferidos'] ?? 0);
             $sheet->setCellValue('G' . $row, $tiempoPromedioFormato);
             $sheet->setCellValue('H' . $row, $tiempoTotalFormato);
-            $sheet->setCellValue('I' . $row, round($datos['tiempo_promedio_entre_turnos'], 2));
+            $sheet->setCellValue('I' . $row, $tiempoPerdidoFormato);
+            $sheet->setCellValue('J' . $row, $promedioTurnoFormato);
             
             // Alternar colores de fondo
             $bgColor = $row % 2 === 0 ? 'e6f0ff' : 'FFFFFF';
-            $sheet->getStyle('A' . $row . ':I' . $row)->applyFromArray([
+            $sheet->getStyle('A' . $row . ':J' . $row)->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             ]);
@@ -1007,7 +1022,7 @@ class ReportesController extends Controller
         }
 
         // Ajustar ancho de columnas
-        foreach (range('A', 'I') as $column) {
+        foreach (range('A', 'J') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
