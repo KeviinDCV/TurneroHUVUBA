@@ -118,9 +118,10 @@ class TableroService
             if ($f->estado === 'atendido') {
                 $porServicio[$f->servicio_id] ??= $this->contadoresVacios();
                 $porServicio[$f->servicio_id]['atendidos']++;
-                if ($f->duracion_atencion !== null) {
-                    // abs(): igual que el historial del asesor y los reportes, que muestran |duración|.
-                    $porServicio[$f->servicio_id]['duraciones'][] = abs((int) $f->duracion_atencion);
+                // Misma regla de duración que los informes; las atenciones que quedaron abiertas no cuentan.
+                $segundos = MetricasTurnos::duracion($f);
+                if ($segundos !== null && !MetricasTurnos::esAtipica($segundos)) {
+                    $porServicio[$f->servicio_id]['duraciones'][] = $segundos;
                 }
                 $atendidosHoy++;
                 if ($f->asesor_id !== null) {

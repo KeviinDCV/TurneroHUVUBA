@@ -16,7 +16,13 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class GraficosService
 {
-    private const ATENCION = "CASE WHEN turnos.estado = 'atendido' AND turnos.duracion_atencion > 0 THEN turnos.duracion_atencion END";
+    // Duración de la atención con la regla de los informes (MetricasTurnos::duracion): el cronómetro del asesor, o la hora del
+    // servidor (llamado → atendido) si el cronómetro es negativo o se reinició; más de una hora (turno que quedó abierto) no se promedia.
+    private const SERVIDOR = 'TIMESTAMPDIFF(SECOND, turnos.fecha_llamado, turnos.fecha_atencion)';
+    private const DURACION = '(CASE WHEN turnos.duracion_atencion IS NULL OR turnos.duracion_atencion < 0 THEN (CASE WHEN ' . self::SERVIDOR . ' >= 0 THEN ' . self::SERVIDOR . ' END)'
+        . ' WHEN ' . self::SERVIDOR . ' >= 0 AND turnos.duracion_atencion < ' . self::SERVIDOR . ' - 60 THEN ' . self::SERVIDOR
+        . ' ELSE turnos.duracion_atencion END)';
+    private const ATENCION = "CASE WHEN turnos.estado = 'atendido' AND " . self::DURACION . ' <= ' . MetricasTurnos::ATENCION_MAXIMA_SEG . ' THEN ' . self::DURACION . ' END';
     private const ESPERA = 'CASE WHEN turnos.fecha_llamado IS NOT NULL AND turnos.fecha_llamado >= turnos.created_at '
         . 'THEN TIMESTAMPDIFF(SECOND, turnos.created_at, turnos.fecha_llamado) END';
     private const TRANSFERIDO = "turnos.observaciones LIKE 'Transferido a %'";
@@ -252,7 +258,11 @@ class GraficosService
         try {
             $filas = CanalNoPresencialHistorial::query()
                 ->whereBetween('inicio', [$inicio, $fin])
-                ->selectRaw('user_id, COUNT(*) AS actividades, SUM(COALESCE(duracion_minutos, 0)) AS minutos')
+                // Misma regla que los informes (MetricasTurnos::duracionCanal): una actividad que quedó abierta de un día
+                // para otro no se suma, porque no se sabe cuánto duró.
+                ->selectRaw('user_id, COUNT(*) AS actividades, ROUND(SUM(CASE'
+                    . ' WHEN inicio IS NOT NULL AND fin IS NOT NULL THEN (CASE WHEN fin >= inicio AND DATE(inicio) = DATE(fin) THEN TIMESTAMPDIFF(SECOND, inicio, fin) ELSE 0 END)'
+                    . ' ELSE COALESCE(duracion_minutos, 0) * 60 END) / 60) AS minutos')
                 ->groupBy('user_id')->get();
         } catch (\Throwable $e) {
             report($e);

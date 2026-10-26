@@ -1450,11 +1450,9 @@ class AsesorController extends Controller
             // Calcular tiempo transcurrido
             $tiempoTranscurrido = '00:00';
 
-            if ($turno->estado === 'atendido' && $turno->duracion_atencion) {
-                // Para turnos atendidos, usar la duración guardada (en segundos)
-                // Asegurar que siempre sea positiva para visualización
-                $duracion = abs((int) $turno->duracion_atencion);
-
+            if ($turno->estado === 'atendido' && ($duracion = \App\Services\MetricasTurnos::duracion($turno)) !== null) {
+                // Para turnos atendidos, la duración de los informes: el cronómetro, o la hora del servidor si el
+                // cronómetro se reinició (recarga de la página) o salió negativo (reloj del equipo).
                 $minutos = floor($duracion / 60);
                 $segundos = $duracion % 60;
                 $tiempoTranscurrido = sprintf('%02d:%02d', $minutos, $segundos);

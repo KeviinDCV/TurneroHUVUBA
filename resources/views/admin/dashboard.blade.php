@@ -1155,6 +1155,7 @@ function estadisticasUsuarioModal() {
                             </svg>
                             <div>
                                 <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_atencion}</p>
+                                ${est.atenciones_atipicas ? `<p class="text-xs text-gray-500">sin ${est.atenciones_atipicas} de más de 1 h (quedaron abiertas)</p>` : ''}
                                 <p class="text-xs text-gray-500">Tiempo Prom. Atención</p>
                             </div>
                         </div>
@@ -1177,6 +1178,7 @@ function estadisticasUsuarioModal() {
                             </svg>
                             <div>
                                 <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_entre_turnos}</p>
+                                ${est.pausas_largas ? `<p class="text-xs text-gray-500">${est.pausas_largas} pausas de más de 1 h, aparte</p>` : ''}
                                 <p class="text-xs text-gray-500">Tiempo Entre Turnos</p>
                             </div>
                         </div>
@@ -1217,7 +1219,7 @@ function estadisticasUsuarioModal() {
                                     <tr class="hover:bg-gray-50">
                                         <td class="py-2 px-2">${a.actividad}</td>
                                         <td class="py-2 px-2">${a.inicio}</td>
-                                        <td class="py-2 px-2">${a.duracion_minutos} min</td>
+                                        <td class="py-2 px-2">${a.duracion_minutos === null ? 'Abierta de un día a otro (no se suma)' : a.duracion_minutos + ' min'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
