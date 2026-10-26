@@ -69,88 +69,6 @@
             background-color: var(--hospital-blue-light);
         }
 
-        /* ===== Sidebar "Marca profunda" (azul profundo + pestaña conectada) ===== */
-        .sidebar-shell {
-            background: #072449;
-        }
-
-        /* Titulos de seccion: mas pequenos y con mas caracter, para que se lean
-           como etiquetas de grupo y no compitan con los enlaces. */
-        .sidebar-section-title {
-            color: #718eba;  /* 4,63:1 sobre #072449 (antes #5f7ba6 = 3,59:1, no llegaba a AA) */
-            font-size: 0.6rem;
-            font-weight: 700;
-            letter-spacing: 0.09em;
-            text-transform: uppercase;
-            line-height: 1.4;
-        }
-
-        /* ============ SIDEBAR COMPACTO ============
-           En modo compacto la pestana activa NO puede usar el estilo "conectado"
-           (margen solo a la izquierda + esquinas redondeadas solo a la izquierda):
-           al no tener margen derecho se desbordaba por fuera del ancho del
-           sidebar. Aqui se convierte en un bloque contenido, con margen a ambos
-           lados y esquinas completas, y se centran los iconos. */
-        body.sidebar-is-collapsed .sidebar-item {
-            margin-left: 8px;
-            margin-right: 8px;
-            border-radius: 9px;
-        }
-        /* OJO: al boton de cerrar sesion NO se le ponen margenes. Es w-full, asi
-           que un margen lateral lo desborda 16 px y lo descentra. Solo se le
-           quita el padding lateral para que su icono quede centrado. */
-        /* El <nav> lleva pl-3 para que la pestana conectada respire; en compacto
-           ese desplazamiento descentra los iconos, asi que se anula. */
-        body.sidebar-is-collapsed .sidebar-nav > nav {
-            padding-left: 0;
-            padding-right: 0;
-        }
-
-        /* Encabezado en compacto: el logo y el boton de plegar no caben lado a
-           lado en 72 px (el logo quedaba pegado al borde y la flecha cortada).
-           Se apilan y se centran. */
-        body.sidebar-is-collapsed .sidebar-header {
-            padding-left: 0;
-            padding-right: 0;
-        }
-        body.sidebar-is-collapsed .sidebar-header > div {
-            flex-direction: column;
-            gap: 6px;
-            justify-content: center;
-        }
-        /* Pie en compacto: sin padding lateral para que el icono quede centrado */
-        body.sidebar-is-collapsed .sidebar-logout {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-
-
-        /* Sin brillo de barrido en este diseño */
-        .sidebar-item::before { display: none !important; }
-
-        /* Ítems: pestaña que llega al borde derecho y se "conecta" con el contenido */
-        .sidebar-item {
-            color: #bccce4;
-            margin-left: 12px;
-            border-radius: 10px 0 0 10px;
-        }
-        .sidebar-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #ffffff;
-        }
-        /* La pestaña activa debe ser EXACTAMENTE del color del fondo del contenido
-           (<body class="bg-gray-100">) para que se vea "conectada" y no como un
-           bloque blanco pegado encima. Se usa la MISMA variable de Tailwind que
-           pinta el fondo, asi no se desincronizan; el hex es solo respaldo. */
-        .sidebar-item-active,
-        .sidebar-item-active:hover {
-            background: var(--color-gray-100, #f3f4f6);
-            color: #072449;
-        }
-
-        .sidebar-logout { color: #bccce4; border-radius: 10px; }
-        .sidebar-logout:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
-
         /* Animaciones suaves */
         .transition-all {
             transition: all 0.3s ease;
@@ -254,10 +172,10 @@
         /* Pantallas grandes (1400px+) */
         @media (min-width: 1400px) {
             .sidebar-responsive {
-                width: 18rem !important; /* 288px - valor original */
+                width: 16rem !important; /* 256px: el menú «Limpio» no necesita más (antes 288px) */
             }
             .header-responsive {
-                left: 18rem !important;
+                left: 16rem !important;
             }
         }
 
@@ -294,7 +212,7 @@
         /* Pantallas grandes */
         @media (min-width: 1400px) {
             .main-content {
-                margin-left: 18rem !important;
+                margin-left: 16rem !important;
             }
         }
 
@@ -351,28 +269,6 @@
             }
         }
 
-        /* Estilos adicionales para la sidebar */
-        .sidebar-item {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .sidebar-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            transition: left 0.5s;
-        }
-
-        .sidebar-item:hover::before {
-            left: 100%;
-        }
-
-        /* ===================== PULIDO PROFESIONAL DEL SIDEBAR ===================== */
         /* Colapso suave: animar el ancho/margen al alternar el modo compacto */
         @media (min-width: 768px) {
             .sidebar-responsive { transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -380,21 +276,8 @@
             .main-content       { transition: margin-left 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
         }
 
-        /* Ícono del ítem: leve realce al pasar el cursor y sombra en el activo */
-        .sidebar-icon { transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
-        .sidebar-item:hover .sidebar-icon { transform: scale(1.06); }
-        .sidebar-item-active .sidebar-icon { box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.28); }
-
-        /* Botón de colapsar: realce al pasar el cursor */
-        body.sidebar-is-collapsed .sidebar-header .flex.items-center.min-w-0 { justify-content: center; }
-
         @media (prefers-reduced-motion: reduce) {
-            .sidebar-responsive, .header-responsive, .main-content,
-            .sidebar-item, .sidebar-icon, .sidebar-item::before { transition: none !important; }
-        }
-
-        body.sidebar-is-collapsed .sidebar-label {
-            pointer-events: none;
+            .sidebar-responsive, .header-responsive, .main-content { transition: none !important; }
         }
 
         /* Animación suave para el indicador activo */
@@ -579,69 +462,15 @@
         .header-responsive { height: var(--admin-header-h); padding-top: 0; padding-bottom: 0; }
         .main-content { padding-top: var(--admin-header-h); min-width: 0; }  /* min-width: 0 -> una tabla ancha ya no estira el <main> fuera de la pantalla */
 
-        /* 2. Sidebar: las medidas verticales pasan a variables. La densidad
-              cambia SOLO con la ALTURA de la pantalla; el ancho (256/288 px) y
-              la pestaña conectada no se tocan en ningún tamaño. */
-        .sidebar-shell {
-            --sb-borde: 1.5rem;        /* 24 px: borde izquierdo común de logo, avatar, títulos, pestaña y pie */
-            --sb-item-h: 42px;         /* alto de cada ítem (el min-h-[42px] de siempre) */
-            --sb-grupo: 1rem;          /* aire entre secciones (el space-y-4 de siempre) */
-            --sb-titulo: .375rem;      /* título de sección -> primer ítem */
-            --sb-cabeza-py: 1rem;
-            --sb-bloque-py: .75rem;
-        }
-        .sidebar-header { padding: var(--sb-cabeza-py) .75rem var(--sb-cabeza-py) var(--sb-borde); }
-        .sidebar-user   { padding: var(--sb-bloque-py) 1rem var(--sb-bloque-py) var(--sb-borde); }
-        .sidebar-nav > nav { padding-top: .75rem; padding-bottom: 1.25rem; }
-        .sidebar-nav > nav > div + div { margin-top: var(--sb-grupo); }
-        .sidebar-section-title { margin-bottom: var(--sb-titulo); }
-        .sidebar-item,
-        .sidebar-logout { min-height: var(--sb-item-h); }
-        /* Pie: "Cerrar sesión" arranca donde arranca la pestaña (24 px) y su ícono
-           cae en la misma columna que los íconos del menú (36 px). */
-        .sidebar-footer { padding: var(--sb-bloque-py) .75rem var(--sb-bloque-py) var(--sb-borde); }
-        .sidebar-footer > .sidebar-label { padding-bottom: .5rem; }
-
-        /* Alturas medianas: 720-799 px útiles (1536x864, 1600x900, 1440x900 con barra de tareas) */
+        /* 2. Alturas medianas (720-799 px útiles: 1536x864, 1600x900…): la barra superior baja a 44 px. */
         @media (min-width: 768px) and (max-height: 799px) {
-            :root { --admin-header-h: 2.75rem; }                   /* 44 px, como ya hacía la barra en 1366x768 */
-            .sidebar-shell { --sb-item-h: 38px; --sb-grupo: .75rem; --sb-cabeza-py: .75rem; --sb-bloque-py: .625rem; }
-            .sidebar-nav > nav { padding-top: .5rem; padding-bottom: .75rem; }
-        }
-        /* Alturas cortas: hasta 719 px útiles (1366x768 real ≈ 650, 1280x800 ≈ 680, 1024x768).
-           Las 3 secciones y "Soporte" quedan a la vista sin scroll a 650 px. */
-        @media (min-width: 768px) and (max-height: 719px) {
-            .sidebar-shell { --sb-item-h: 34px; --sb-grupo: .5rem; --sb-titulo: .25rem; --sb-cabeza-py: .625rem; --sb-bloque-py: .5rem; }
-            .sidebar-nav > nav { padding-top: .375rem; padding-bottom: .5rem; }
-            .sidebar-footer > .sidebar-label { padding-bottom: .25rem; }
+            :root { --admin-header-h: 2.75rem; }                   /* 44 px */
         }
 
-        /* Modo compacto (72 px): avatar y "Cerrar sesión" vuelven a centrarse. */
-        body.sidebar-is-collapsed .sidebar-user,
-        body.sidebar-is-collapsed .sidebar-footer { padding-left: .75rem; padding-right: .75rem; }
+        /* 3. Foco de teclado en la barra superior (el del menú está en el bloque 8) */
+        .header-responsive button:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
 
-        /* 3. Hover y foco de teclado: un solo lenguaje para ítems, "Cerrar sesión"
-              y el botón de plegar (antes este último usaba onmouseover en línea y
-              no tenía foco visible). Sin desplazamientos: la pestaña llega al
-              borde y moverla 2 px la desconectaba del contenido. */
-        .sidebar-toggle { color: #9db8dd; }
-        .sidebar-toggle:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
-        .sidebar-shell a:focus-visible,
-        .sidebar-shell button:focus-visible,
-        .header-responsive button:focus-visible {
-            outline: 2px solid #9db8dd;
-            outline-offset: -2px;
-        }
-        .sidebar-item:focus-visible,
-        .sidebar-logout:focus-visible { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
-        .sidebar-shell .sidebar-item-active:focus-visible {
-            background: var(--color-gray-100, #f3f4f6);
-            color: #072449;
-            outline-color: #064b9e;
-        }
-        .sidebar-header a:focus-visible { outline-offset: 3px; border-radius: 10px; }
-        /* 4. Acabado: la letra Inter de verdad (el tema la declaraba y nunca se cargaba; se veía Segoe UI),
-              ficha de usuario, filetes en las secciones y el azul institucional en el ítem activo. */
+        /* 4. La letra Inter de verdad (el tema la declaraba y nunca se cargaba; se veía Segoe UI). */
         @font-face {
             font-family: 'Inter';
             src: url('{{ asset('fonts/InterVariable.woff2') }}') format('woff2');
@@ -649,40 +478,6 @@
             font-weight: 100 900; font-style: normal; font-display: block;
         }
         html { font-feature-settings: 'cv05' 1; }   /* l minúscula con cola: "lcruz" ya no se lee "Icruz" */
-
-        .sidebar-shell { box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06); }
-        .sidebar-brand-name { color: #ffffff; font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.01em; }
-        .sidebar-brand-unit { color: #9db8dd; font-size: 11px; margin-top: 2px; }
-        @media (max-width: 1399px) { .sidebar-brand-unit { font-size: 10px; } }   /* menú de 256 px: "Unidad Básica de Atención" cabe entero */
-
-        .sidebar-user { padding-left: .75rem; padding-right: .75rem; }
-        .sidebar-user-card { background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: .5rem .75rem; }
-        .sidebar-avatar {
-            width: 2.125rem; height: 2.125rem; flex-shrink: 0; border-radius: 9999px;
-            display: grid; place-items: center;
-            background: #064b9e; color: #ffffff; font-size: .875rem; font-weight: 600;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
-        }
-        .sidebar-user-name { color: #ffffff; font-size: .875rem; font-weight: 600; line-height: 1.3; }
-        .sidebar-user-role { color: #9db8dd; font-size: .75rem; line-height: 1.3; margin-top: 1px; }
-        body.sidebar-is-collapsed .sidebar-user-card { background: transparent; padding: 0; }
-
-        .sidebar-section-title { display: flex; align-items: center; gap: .5rem; padding-right: .75rem; }
-        .sidebar-section-title::after { content: ''; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.09); }
-
-        .sidebar-item { color: #c4d2e7; }
-        .sidebar-item svg { color: #8ea8d0; transition: color .15s ease; }
-        .sidebar-item:hover svg,
-        .sidebar-item:focus-visible svg { color: #ffffff; }
-        .sidebar-item-active,
-        .sidebar-item-active:hover { color: #072449; box-shadow: inset 3px 0 0 #064b9e; }
-        .sidebar-item-active svg,
-        .sidebar-item-active:hover svg { color: #064b9e; }
-        .sidebar-item-active .sidebar-label { font-weight: 600; }
-        body.sidebar-is-collapsed .sidebar-item-active { box-shadow: none; }
-
-        .sidebar-firma-titulo { color: #e4ebf5; font-size: 11px; font-weight: 600; line-height: 1.35; }
-        .sidebar-firma-sub { color: #8ea8d0; font-size: 11px; line-height: 1.35; }
 
         /* 5. Esqueletos de carga: la forma del contenido en gris, con un pulso lento, mientras llega del servidor. */
         .esqueleto {
@@ -694,15 +489,6 @@
         .esqueleto--bloque-bajo { height: 3.75rem; border-radius: .5rem; }
         @keyframes esqueleto-pulso { 50% { opacity: .45; } }
         @media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
-
-        /* 6. Primer pintado = estado final: lo que Alpine pone al arrancar ya lo resuelve el CSS (el menú no salta). */
-        body:not(.sidebar-is-collapsed) .sidebar-separador { display: none; }
-        body.sidebar-is-collapsed .sidebar-section-title,
-        body.sidebar-is-collapsed .sidebar-label { display: none; }
-        body.sidebar-is-collapsed .sidebar-item { justify-content: center; padding-left: .5rem; padding-right: .5rem; }
-        body.sidebar-is-collapsed .sidebar-user-card,
-        body.sidebar-is-collapsed .sidebar-logout { justify-content: center; }
-        body.sidebar-is-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
 
         /* 7. Piezas compartidas de las vistas (Servicios, Asignación…): el mismo material de Módulos y del Inicio. */
         .barra-vista { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
@@ -775,6 +561,85 @@
         .form-casilla input { width: 1rem; height: 1rem; margin-top: .15rem; accent-color: #064b9e; flex-shrink: 0; }
         .form-texto { font-size: .875rem; line-height: 1.5; color: #374151; }
         .modal-panel__pie { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .25rem; }
+
+        /* 8. Menú lateral «Limpio · Toque» (2026-10, referencia Linear/Notion) y barra superior blanca.
+              Claro y liviano: el azul institucional va en la opción activa y en el sello HUV. */
+        .menu-lateral {
+            --menu-fondo: #f2f6fc; --menu-borde: #dde6f2; --menu-texto: #2b3d59; --menu-fuerte: #0f2547; --menu-mudo: #6b7f9e;
+            --menu-icono: #6b82a6; --menu-seccion: #7a8fae; --menu-hover: #e3ebf7; --menu-activo: #064b9e;
+            background: var(--menu-fondo); box-shadow: inset -1px 0 0 var(--menu-borde); color: var(--menu-texto);
+            font-size: .84375rem; overflow-x: hidden;
+        }
+        .menu-lateral svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .menu-cabeza { display: flex; align-items: center; gap: .25rem; padding: .75rem .625rem .5rem; flex-shrink: 0; }
+        .menu-espacio { flex: 1; min-width: 0; display: flex; align-items: center; gap: .625rem; padding: .375rem .5rem; border-radius: .375rem; }
+        .menu-espacio:hover { background: var(--menu-hover); }
+        .menu-sello {
+            width: 1.75rem; height: 1.75rem; flex-shrink: 0; display: grid; place-items: center; border-radius: .375rem;
+            background: var(--menu-activo); color: #ffffff; font-size: .625rem; font-weight: 750; letter-spacing: .02em;
+        }
+        .menu-espacio__texto { min-width: 0; line-height: 1.25; }
+        .menu-espacio__nombre { display: block; font-size: .875rem; font-weight: 600; color: var(--menu-fuerte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-espacio__unidad { display: block; font-size: .6875rem; color: var(--menu-mudo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-boton { width: 1.75rem; height: 1.75rem; flex-shrink: 0; display: grid; place-items: center; border-radius: .375rem; color: var(--menu-mudo); }
+        .menu-boton:hover { background: var(--menu-hover); color: var(--menu-fuerte); }
+        .menu-boton--cerrar { display: none; }
+
+        .menu-nav { padding: .25rem .625rem 1rem; }
+        .menu-seccion { padding: 0 .5rem; margin: 1.1rem 0 .25rem; font-size: .75rem; font-weight: 500; color: var(--menu-seccion); }
+        .menu-item { display: flex; align-items: center; gap: .625rem; height: 30px; padding: 0 .5rem; border-radius: .375rem; font-weight: 500; color: var(--menu-texto); }
+        .menu-item + .menu-item { margin-top: 1px; }
+        .menu-item svg { color: var(--menu-icono); }
+        .menu-item:hover { background: var(--menu-hover); color: var(--menu-fuerte); }
+        .menu-item:hover svg { color: var(--menu-texto); }
+        .menu-item.is-activo,
+        .menu-item.is-activo:hover { background: var(--menu-activo); color: #ffffff; font-weight: 600; }
+        .menu-item.is-activo svg { color: #ffffff; }
+        .menu-item__texto { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .menu-pie { margin-top: auto; padding: .5rem .625rem .75rem; flex-shrink: 0; }
+        .menu-usuario { display: flex; align-items: center; gap: .625rem; padding: .25rem .25rem .25rem .5rem; }
+        .menu-avatar {
+            width: 1.375rem; height: 1.375rem; flex-shrink: 0; display: grid; place-items: center; border-radius: 9999px;
+            background: #d6e2f3; color: var(--menu-texto); font-size: .6875rem; font-weight: 650;
+        }
+        .menu-usuario__nombre { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-firma { padding: .25rem .5rem 0; font-size: .6875rem; line-height: 1.4; color: #93a4bd; }
+        .menu-lateral a:focus-visible,
+        .menu-lateral button:focus-visible { outline: 2px solid var(--menu-activo); outline-offset: -1px; }
+        .menu-item.is-activo:focus-visible { outline-color: var(--menu-fuerte); outline-offset: 1px; }
+
+        /* Pantallas bajas (hasta 719 px útiles; 1366x768 real ≈ 650): menos aire entre grupos */
+        @media (min-width: 768px) and (max-height: 719px) {
+            .menu-cabeza { padding-top: .5rem; }
+            .menu-seccion { margin-top: .75rem; }
+        }
+        /* Celular: el menú se abre encima y se cierra con la X; plegar no aplica */
+        @media (max-width: 767px) {
+            .menu-boton--plegar { display: none; }
+            .menu-boton--cerrar { display: grid; }
+        }
+        /* Compacto (72 px): solo íconos, centrados; el título de cada grupo se vuelve una raya fina */
+        @media (min-width: 768px) {
+            body.sidebar-is-collapsed .menu-espacio__texto,
+            body.sidebar-is-collapsed .menu-item__texto,
+            body.sidebar-is-collapsed .menu-usuario__nombre,
+            body.sidebar-is-collapsed .menu-avatar,
+            body.sidebar-is-collapsed .menu-firma { display: none; }
+            body.sidebar-is-collapsed .menu-cabeza { flex-direction: column; gap: .5rem; padding: .75rem 0 .5rem; }
+            body.sidebar-is-collapsed .menu-espacio { flex: none; padding: .25rem; }
+            body.sidebar-is-collapsed .menu-nav { padding: .25rem .875rem 1rem; }
+            body.sidebar-is-collapsed .menu-seccion { height: 1px; margin: .625rem .25rem; padding: 0; overflow: hidden; color: transparent; background: var(--menu-borde); }
+            body.sidebar-is-collapsed .menu-item { justify-content: center; padding: 0; }
+            body.sidebar-is-collapsed .menu-usuario { justify-content: center; padding: .25rem 0; }
+        }
+
+        /* Barra superior: blanca, delgada y en voz baja */
+        .barra-superior { background: #ffffff; box-shadow: inset 0 -1px 0 #e3e8f0; }
+        .barra-superior__titulo { font-size: .9375rem; font-weight: 600; color: #0f2547; }
+        .barra-superior__hospital { font-size: .75rem; color: #7a8fae; }
+        .barra-superior__menu { margin-left: -.5rem; padding: .5rem; border-radius: .375rem; color: #2b3d59; }
+        .barra-superior__menu:hover { background: #eef3fa; }
     </style>
     {{-- Estilos propios de cada vista (@push('estilos')): aquí, después de los del layout, para que se apliquen
          desde el primer pintado. Al final del cuerpo, las transiciones de borde se veían como bordes negros al cargar. --}}
