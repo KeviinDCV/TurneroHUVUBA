@@ -65,7 +65,7 @@
 
     <div class="menu-cabeza">
         <a href="{{ route('admin.dashboard') }}" class="menu-espacio" title="Turnero HUV · {{ $unidad }}">
-            <span class="menu-sello" aria-hidden="true">HUV</span>
+            <img src="{{ asset('images/logo.png') }}" alt="Hospital Universitario del Valle" class="menu-logo">
             <span class="menu-espacio__texto">
                 <span class="menu-espacio__nombre">Turnero HUV</span>
                 <span class="menu-espacio__unidad">{{ $unidad }}</span>

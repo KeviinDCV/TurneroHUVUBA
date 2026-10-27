@@ -563,7 +563,7 @@
         .modal-panel__pie { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .25rem; }
 
         /* 8. Menú lateral «Limpio · Toque» (2026-10, referencia Linear/Notion) y barra superior blanca.
-              Claro y liviano: el azul institucional va en la opción activa y en el sello HUV. */
+              Claro y liviano: el azul institucional va en la opción activa; arriba, el logo del hospital. */
         .menu-lateral {
             --menu-fondo: #f2f6fc; --menu-borde: #dde6f2; --menu-texto: #2b3d59; --menu-fuerte: #0f2547; --menu-mudo: #6b7f9e;
             --menu-icono: #6b82a6; --menu-seccion: #7a8fae; --menu-hover: #e3ebf7; --menu-activo: #064b9e;
@@ -571,16 +571,15 @@
             font-size: .84375rem; overflow-x: hidden;
         }
         .menu-lateral svg { width: 16px; height: 16px; flex-shrink: 0; }
-        .menu-cabeza { display: flex; align-items: center; gap: .25rem; padding: .75rem .625rem .5rem; flex-shrink: 0; }
-        .menu-espacio { flex: 1; min-width: 0; display: flex; align-items: center; gap: .625rem; padding: .375rem .5rem; border-radius: .375rem; }
+        .menu-cabeza { display: flex; align-items: flex-start; gap: .25rem; padding: .75rem .625rem .5rem; flex-shrink: 0; }
+        /* El logo del hospital va en su propio renglón, a buen tamaño; el nombre y la unidad, debajo y completos */
+        .menu-espacio { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; padding: .5rem; border-radius: .375rem; }
         .menu-espacio:hover { background: var(--menu-hover); }
-        .menu-sello {
-            width: 1.75rem; height: 1.75rem; flex-shrink: 0; display: grid; place-items: center; border-radius: .375rem;
-            background: var(--menu-activo); color: #ffffff; font-size: .625rem; font-weight: 750; letter-spacing: .02em;
-        }
+        /* Logo del hospital (dibujo de la fachada, azul sobre transparente): sin recuadro, sobre el fondo del menú */
+        .menu-logo { width: 4.5rem; height: auto; flex-shrink: 0; }
         .menu-espacio__texto { min-width: 0; line-height: 1.25; }
         .menu-espacio__nombre { display: block; font-size: .875rem; font-weight: 600; color: var(--menu-fuerte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .menu-espacio__unidad { display: block; font-size: .6875rem; color: var(--menu-mudo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-espacio__unidad { display: block; font-size: .75rem; color: var(--menu-mudo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .menu-boton { width: 1.75rem; height: 1.75rem; flex-shrink: 0; display: grid; place-items: center; border-radius: .375rem; color: var(--menu-mudo); }
         .menu-boton:hover { background: var(--menu-hover); color: var(--menu-fuerte); }
         .menu-boton--cerrar { display: none; }
@@ -612,6 +611,7 @@
         /* Pantallas bajas (hasta 719 px útiles; 1366x768 real ≈ 650): menos aire entre grupos */
         @media (min-width: 768px) and (max-height: 719px) {
             .menu-cabeza { padding-top: .5rem; }
+            .menu-logo { width: 3.75rem; }
             .menu-seccion { margin-top: .75rem; }
         }
         /* Celular: el menú se abre encima y se cierra con la X; plegar no aplica */
@@ -626,8 +626,9 @@
             body.sidebar-is-collapsed .menu-usuario__nombre,
             body.sidebar-is-collapsed .menu-avatar,
             body.sidebar-is-collapsed .menu-firma { display: none; }
-            body.sidebar-is-collapsed .menu-cabeza { flex-direction: column; gap: .5rem; padding: .75rem 0 .5rem; }
+            body.sidebar-is-collapsed .menu-cabeza { flex-direction: column; align-items: center; gap: .5rem; padding: .75rem 0 .5rem; }
             body.sidebar-is-collapsed .menu-espacio { flex: none; padding: .25rem; }
+            body.sidebar-is-collapsed .menu-logo { width: 2.5rem; }
             body.sidebar-is-collapsed .menu-nav { padding: .25rem .875rem 1rem; }
             body.sidebar-is-collapsed .menu-seccion { height: 1px; margin: .625rem .25rem; padding: 0; overflow: hidden; color: transparent; background: var(--menu-borde); }
             body.sidebar-is-collapsed .menu-item { justify-content: center; padding: 0; }
