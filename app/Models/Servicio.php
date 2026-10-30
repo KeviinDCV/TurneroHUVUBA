@@ -15,7 +15,8 @@ class Servicio extends Model
         'codigo',
         'orden',
         'ocultar_turno',
-        'requiere_priorizacion'
+        'requiere_priorizacion',
+        'requiere_cedula'
     ];
 
     protected $casts = [
@@ -24,7 +25,22 @@ class Servicio extends Model
         'orden' => 'integer',
         'ocultar_turno' => 'boolean',
         'requiere_priorizacion' => 'boolean',
+        'requiere_cedula' => 'boolean',
     ];
+
+    /**
+     * ¿La BD ya tiene servicios.requiere_cedula (y turnos.cedula)? Así nada se rompe si el código se sube antes de
+     * correr la migración 2026_10_29_090000.
+     */
+    public static function soportaCedula(bool $fresco = false): bool
+    {
+        if ($fresco) {
+            \Illuminate\Support\Facades\Cache::forget('servicios_requiere_cedula');
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember('servicios_requiere_cedula', 600,
+            fn () => \Illuminate\Support\Facades\Schema::hasColumn('servicios', 'requiere_cedula'));
+    }
 
     // Relación: Un servicio puede tener muchos subservicios
     public function subservicios()

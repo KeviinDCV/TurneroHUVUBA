@@ -4,7 +4,7 @@
 
 @section('content')
 {{-- Servicios en una sola vista: cada sección del kiosco con sus subservicios debajo (ServicioController::index),
-     con el código del ticket, los asesores asignados, la cola de hoy, el TV y la prioridad. --}}
+     con el código del ticket, los asesores asignados, la cola de hoy, el TV, la prioridad y la cédula. --}}
 @php $totalServicios = collect($secciones)->sum(fn ($s) => 1 + count($s['hijos'])); @endphp
 <div class="servicios-vista max-w-7xl mx-auto space-y-4" x-data="serviciosVista(@js($secciones), @js($search))">
     <h1 class="sr-only">Servicios</h1>
@@ -61,6 +61,9 @@
                         </label>
                         <label class="form-casilla" x-show="!tieneHijosActivos()"><input type="checkbox" x-model="datos.requiere_priorizacion">
                             <span>Pide prioridad en el kiosco <span class="form-ayuda">Al sacar el turno se elige Normal o Alta.</span></span>
+                        </label>
+                        <label class="form-casilla" x-show="!tieneHijosActivos()"><input type="checkbox" x-model="datos.requiere_cedula">
+                            <span>Pide cédula en el atril <span class="form-ayuda">Antes de imprimir el turno, la persona escribe su número de cédula y queda guardado en el turno.</span></span>
                         </label>
                     </div>
                     <label class="form-campo">Descripción
@@ -155,6 +158,7 @@
                     <th scope="col">En cola</th>
                     <th scope="col">TV</th>
                     <th scope="col">Prioridad</th>
+                    <th scope="col">Cédula</th>
                     <th scope="col"><span class="sr-only">Acciones</span></th>
                 </tr>
             </thead>
@@ -167,6 +171,7 @@
                         <td><span class="esqueleto" style="width: 1.25rem"></span></td>
                         <td><span class="esqueleto" style="width: 1.25rem"></span></td>
                         <td><span class="esqueleto" style="width: 3.25rem"></span></td>
+                        <td><span class="esqueleto" style="width: 1.5rem"></span></td>
                         <td><span class="esqueleto" style="width: 1.5rem"></span></td>
                         <td></td>
                     </tr>
@@ -191,6 +196,7 @@
                         <td x-html="celdaCola(g.s.hijos.length ? g.s.hijos.reduce((n, h) => n + h.en_cola, 0) : g.s.en_cola)"></td>
                         <td x-html="celdaTv(g.s)"></td>
                         <td x-html="g.s.hijos.length ? vacio() : celdaPrioridad(g.s)"></td>
+                        <td x-html="g.s.hijos.length ? vacio() : celdaCedula(g.s)"></td>
                         <td class="celda-acciones">
                             <div class="acciones-fila">
                                 <button type="button" class="accion-icono" title="Agregar subservicio" :aria-label="'Agregar subservicio a ' + g.s.nombre"
@@ -222,6 +228,7 @@
                             <td x-html="celdaCola(h.en_cola)"></td>
                             <td x-html="celdaTv(h)"></td>
                             <td x-html="celdaPrioridad(h)"></td>
+                            <td x-html="celdaCedula(h)"></td>
                             <td class="celda-acciones">
                                 <div class="acciones-fila">
                                     <button type="button" class="accion-icono" title="Editar" :aria-label="'Editar ' + h.nombre"
@@ -267,6 +274,7 @@ document.addEventListener('alpine:init', () => {
             { clave: 'inactivos', rotulo: 'Inactivos' },
             { clave: 'ocultos', rotulo: 'Ocultos en el TV' },
             { clave: 'sin_asesor', rotulo: 'Sin asesor' },
+            { clave: 'cedula', rotulo: 'Piden cédula' },
         ],
         init() {
             this.$el.querySelectorAll('[data-esqueleto]').forEach(e => e.remove());
@@ -278,6 +286,7 @@ document.addEventListener('alpine:init', () => {
             if (clave === 'inactivos') return !s.activo;
             if (clave === 'ocultos') return s.ocultar_turno;
             if (clave === 'sin_asesor') return this.esHoja(s) && s.activo && s.asesores === 0;
+            if (clave === 'cedula') return this.esHoja(s) && s.requiere_cedula;
             return true;
         },
         contar(clave) { return this.todos().filter(s => this.pasa(s, clave)).length; },
@@ -314,6 +323,7 @@ document.addEventListener('alpine:init', () => {
                 : '<span class="texto-mudo">Visible</span>';
         },
         celdaPrioridad(s) { return s.requiere_priorizacion ? '<span title="El kiosco pregunta Normal o Alta">Normal / Alta</span>' : '<span class="texto-mudo">—</span>'; },
+        celdaCedula(s) { return s.requiere_cedula ? '<span title="El atril pide el número de cédula antes de imprimir el turno">Pide</span>' : '<span class="texto-mudo">—</span>'; },
     }));
 
     function enviar(url, datos, metodo) {
@@ -327,7 +337,7 @@ document.addEventListener('alpine:init', () => {
     const datosDe = s => ({
         nombre: s.nombre || '', codigo: s.codigo || '', servicio_padre_id: s.padre_id ? String(s.padre_id) : '',
         orden: s.orden ?? '', activo: !!s.activo, ocultar_turno: !!s.ocultar_turno,
-        requiere_priorizacion: !!s.requiere_priorizacion, descripcion: s.descripcion || '',
+        requiere_priorizacion: !!s.requiere_priorizacion, requiere_cedula: !!s.requiere_cedula, descripcion: s.descripcion || '',
     });
 
     Alpine.data('formularioServicio', secciones => ({

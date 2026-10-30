@@ -19,7 +19,7 @@ class ServicioController extends Controller
 
     /**
      * Catálogo en una sola vista: cada sección del kiosco con sus subservicios debajo (sin paginar: son pocos)
-     * y lo que importa en la operación: código del ticket, asesores asignados, cola de hoy, TV y prioridad.
+     * y lo que importa en la operación: código del ticket, asesores asignados, cola de hoy, TV, prioridad y cédula.
      */
     public function index(Request $request)
     {
@@ -62,6 +62,7 @@ class ServicioController extends Controller
                 'orden' => $s->orden,
                 'ocultar_turno' => (bool) $s->ocultar_turno,
                 'requiere_priorizacion' => (bool) $s->requiere_priorizacion,
+                'requiere_cedula' => (bool) $s->requiere_cedula,
                 'asesores' => (int) ($asesores[$s->id] ?? 0),
                 'en_cola' => (int) ($enCola[$s->id] ?? 0),
                 'ubicacion' => $ubicacion,
@@ -111,9 +112,12 @@ class ServicioController extends Controller
     {
         $datos = $this->validar($request, $servicio);
 
-        // Con subservicios activos, la prioridad la piden ellos, no la sección.
+        // Con subservicios activos, la prioridad y la cédula las piden ellos, no la sección.
         if ($servicio->subservicios()->where('estado', 'activo')->exists()) {
             $datos['requiere_priorizacion'] = false;
+            if (array_key_exists('requiere_cedula', $datos)) {
+                $datos['requiere_cedula'] = false;
+            }
         }
 
         $servicio->update($datos);
@@ -233,7 +237,7 @@ class ServicioController extends Controller
 
         $padreId = $request->filled('servicio_padre_id') ? (int) $request->input('servicio_padre_id') : null;
 
-        return [
+        $datos = [
             'nombre' => trim((string) $request->input('nombre')),
             'codigo' => $cambiaCodigo ? $codigo : $servicio->codigo,
             'nivel' => $padreId ? 'subservicio' : 'servicio',
@@ -244,15 +248,24 @@ class ServicioController extends Controller
             'ocultar_turno' => $request->boolean('ocultar_turno'),
             'requiere_priorizacion' => $request->boolean('requiere_priorizacion'),
         ];
+        // Solo si la BD ya tiene la columna (migración 2026_10_29_090000)
+        if (Servicio::soportaCedula()) {
+            $datos['requiere_cedula'] = $request->boolean('requiere_cedula');
+        }
+
+        return $datos;
     }
 
     /**
-     * Una sección con subservicios no pide prioridad en el kiosco: la piden sus subservicios.
+     * Una sección con subservicios no pide prioridad ni cédula en el kiosco: las piden sus subservicios.
      */
     private function quitarPrioridadAlPadre(?int $padreId): void
     {
         if ($padreId) {
             Servicio::where('id', $padreId)->where('requiere_priorizacion', true)->update(['requiere_priorizacion' => false]);
+            if (Servicio::soportaCedula()) {
+                Servicio::where('id', $padreId)->where('requiere_cedula', true)->update(['requiere_cedula' => false]);
+            }
         }
     }
 

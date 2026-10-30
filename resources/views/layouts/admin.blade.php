@@ -9,6 +9,8 @@
     @include('components.favicon')
     {{-- Toasts: sileo.js (port sin React de Sileo). Antes que Alpine, para que las vistas ya tengan window.sileo --}}
     <script src="{{ asset('js/sileo.js') }}?v={{ is_file(public_path('js/sileo.js')) ? filemtime(public_path('js/sileo.js')) : 0 }}" defer></script>
+    {{-- Desplegables propios en lugar de la lista nativa del navegador (se montan sobre cada <select>) --}}
+    <script src="{{ asset('js/desplegable.js') }}?v={{ is_file(public_path('js/desplegable.js')) ? filemtime(public_path('js/desplegable.js')) : 0 }}" defer></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -635,12 +637,64 @@
             body.sidebar-is-collapsed .menu-usuario { justify-content: center; padding: .25rem 0; }
         }
 
+        /* El <main> solo recibe el foco para «Saltar al contenido» (tabindex -1). Al hacer clic en la página lo tomaba y,
+           al presionar cualquier tecla, Chrome le dibujaba el contorno de foco: un borde negro pegado al menú. */
+        #main-content:focus { outline: none; }
+
         /* Barra superior: blanca, delgada y en voz baja */
         .barra-superior { background: #ffffff; box-shadow: inset 0 -1px 0 #e3e8f0; }
         .barra-superior__titulo { font-size: .9375rem; font-weight: 600; color: #0f2547; }
         .barra-superior__hospital { font-size: .75rem; color: #7a8fae; }
         .barra-superior__menu { margin-left: -.5rem; padding: .5rem; border-radius: .375rem; color: #2b3d59; }
         .barra-superior__menu:hover { background: #eef3fa; }
+
+        /* 9. Desplegables propios (public/js/desplegable.js): el <select> real queda oculto debajo y un botón con la
+              misma clase lo reemplaza; la lista es un panel del panel, no la del navegador. */
+        .desplegable__nativo {
+            position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important; padding: 0 !important;
+            overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important;
+            opacity: 0 !important; pointer-events: none !important;
+        }
+        .desplegable__boton {
+            display: flex !important; align-items: center; justify-content: space-between; gap: .5rem; min-width: 0;
+            text-align: left; cursor: pointer; background-color: #ffffff;
+        }
+        .desplegable__boton:disabled { cursor: default; background-color: #f3f5f9; color: #6b7280; }
+        .desplegable__texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desplegable__flecha { width: 1rem; height: 1rem; flex-shrink: 0; color: #6b7f9e; transition: transform .15s ease; }
+        .desplegable__boton--abierto { border-color: #064b9e !important; box-shadow: 0 0 0 3px rgba(6, 75, 158, .15); }
+        .desplegable__boton--abierto .desplegable__flecha { transform: rotate(180deg); color: #064b9e; }
+        .desplegable__boton:focus-visible { outline: none; border-color: #064b9e; box-shadow: 0 0 0 3px rgba(6, 75, 158, .18); }
+        .desplegable__boton--invalido { border-color: #dc2626 !important; }
+
+        .desplegable__panel {
+            position: fixed; z-index: 80; display: flex; flex-direction: column; max-height: min(20rem, calc(100vh - 2rem));
+            padding: .25rem; background: #ffffff; border: 1px solid #dde6f2; border-radius: .625rem;
+            box-shadow: 0 16px 36px -12px rgba(15, 37, 71, .28), 0 2px 6px rgba(15, 37, 71, .06);
+            font-size: .875rem; color: #1f2f4d; animation: desplegable-entra .12s ease-out;
+        }
+        .desplegable__panel--arriba { animation-name: desplegable-entra-arriba; }
+        .desplegable__panel[hidden], .desplegable__buscar[hidden], .desplegable__vacio[hidden] { display: none; }
+        @keyframes desplegable-entra { from { opacity: 0; transform: translateY(-4px); } }
+        @keyframes desplegable-entra-arriba { from { opacity: 0; transform: translateY(4px); } }
+        @media (prefers-reduced-motion: reduce) { .desplegable__panel { animation: none; } .desplegable__flecha { transition: none; } }
+        .desplegable__buscar {
+            flex-shrink: 0; height: 2.125rem; margin: .125rem .125rem .375rem; padding: 0 .625rem;
+            border: 1px solid #dde6f2; border-radius: .4375rem; font-size: .8125rem; color: #1f2f4d; outline: none;
+        }
+        .desplegable__buscar:focus { border-color: #064b9e; box-shadow: 0 0 0 3px rgba(6, 75, 158, .12); }
+        .desplegable__lista { overflow-y: auto; outline: none; overscroll-behavior: contain; }
+        .desplegable__opcion {
+            display: flex; align-items: center; gap: .5rem; min-height: 2.125rem; padding: .375rem .625rem;
+            border-radius: .375rem; cursor: pointer; user-select: none;
+        }
+        .desplegable__opcion--activa { background: #eef3fa; }
+        .desplegable__opcion[aria-selected="true"] { color: #064b9e; font-weight: 600; }
+        .desplegable__opcion[aria-disabled] { color: #a0a8b5; cursor: default; }
+        .desplegable__opcion-texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desplegable__marca { width: 1rem; height: 1rem; flex-shrink: 0; color: #064b9e; }
+        .desplegable__grupo { padding: .5rem .625rem .25rem; font-size: .75rem; font-weight: 600; color: #7a8fae; }
+        .desplegable__vacio { padding: .5rem .625rem; color: #7a8fae; }
     </style>
     {{-- Estilos propios de cada vista (@push('estilos')): aquí, después de los del layout, para que se apliquen
          desde el primer pintado. Al final del cuerpo, las transiciones de borde se veían como bordes negros al cargar. --}}

@@ -28,6 +28,8 @@
         .barra-unidad { margin-top: .15rem; font-size: clamp(.8rem, 1.1vw, 1.05rem); color: var(--mudo); }
         .barra-reloj { margin-left: auto; text-align: right; }
         .barra-hora { font-size: clamp(1.6rem, 3vw, 2.8rem); font-weight: 700; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        /* Hora de 12 horas: «a. m.» / «p. m.» más pequeño, junto a la hora */
+        .barra-meridiano { margin-left: .28em; font-size: .46em; font-weight: 650; letter-spacing: .01em; color: var(--mudo); }
         .barra-fecha { margin-top: .25rem; font-size: clamp(.8rem, 1.05vw, 1.05rem); color: var(--mudo); }
 
         .bienvenida { min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4vh 6vw; text-align: center; }
@@ -61,7 +63,7 @@
                 <div class="barra-unidad">{{ config('panel.unidad_nombre') }} · “Evaristo García” E.S.E.</div>
             </div>
             <div class="barra-reloj" aria-hidden="true">
-                <div class="barra-hora" id="reloj-hora">{{ $ahoraKiosco->format('H:i') }}</div>
+                <div class="barra-hora" id="reloj-hora">{{ $ahoraKiosco->format('g:i') }}<span class="barra-meridiano">{{ $ahoraKiosco->hour < 12 ? 'a. m.' : 'p. m.' }}</span></div>
                 <div class="barra-fecha" id="reloj-fecha">{{ $fechaKiosco }}</div>
             </div>
         </header>
@@ -85,7 +87,10 @@
             const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
             function pintar() {
                 const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
-                document.getElementById('reloj-hora').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                // 12 horas, como se lee en la calle: 3:56 p. m.
+                const h = d.getHours();
+                document.getElementById('reloj-hora').innerHTML = ((h % 12) || 12) + ':' + String(d.getMinutes()).padStart(2, '0')
+                    + '<span class="barra-meridiano">' + (h < 12 ? 'a. m.' : 'p. m.') + '</span>';
                 document.getElementById('reloj-fecha').textContent = dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
             }
             pintar();

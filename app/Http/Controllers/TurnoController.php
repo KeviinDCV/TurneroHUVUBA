@@ -87,6 +87,12 @@ class TurnoController extends Controller
                 ]);
             }
 
+            // Cédula: si el servicio la pide, el atril la pregunta primero (antes del tipo de turno)
+            $cedula = $this->cedulaDelPaciente($request, $servicio);
+            if ($cedula instanceof \Illuminate\Http\JsonResponse) {
+                return $cedula;
+            }
+
             // Verificar si el servicio requiere priorización
             if ($servicio->requiere_priorizacion) {
                 // Retornar indicación de que debe mostrar selector de prioridad
@@ -99,11 +105,13 @@ class TurnoController extends Controller
             }
 
             // Protección contra doble clic: verificar si ya se creó un turno
-            // para este servicio en los últimos 3 segundos (solo doble-clic real)
+            // para este servicio en los últimos 3 segundos (solo doble-clic real).
+            // Con cédula, solo es doble clic si es la misma persona: otro paciente puede sacar turno en esos segundos.
             $turnoReciente = Turno::where('servicio_id', $servicioParaTurno)
                 ->where('estado', 'pendiente')
                 ->where('fecha_creacion', '>=', now()->subSeconds(3))
                 ->whereNull('observaciones') // No contar transferencias
+                ->when($cedula, fn ($q) => $q->where('cedula', $cedula))
                 ->orderBy('id', 'desc')
                 ->first();
 
@@ -130,7 +138,7 @@ class TurnoController extends Controller
 
             // Si no requiere priorización, crear turno con prioridad por defecto
             // Pasar el objeto $servicio para evitar queries redundantes
-            $turno = Turno::crear($servicio, 3); // Prioridad C por defecto
+            $turno = Turno::crear($servicio, 3, $cedula); // Prioridad C por defecto
 
             $nombreServicio = $servicio->nombre_completo;
             $mensaje = "Turno generado: {$turno->codigo_completo} para {$nombreServicio}";
@@ -188,12 +196,20 @@ class TurnoController extends Controller
                 ]);
             }
 
+            // Cédula: el atril la pidió antes del tipo de turno y la manda aquí
+            $cedula = $this->cedulaDelPaciente($request, $servicio);
+            if ($cedula instanceof \Illuminate\Http\JsonResponse) {
+                return $cedula;
+            }
+
             // Protección contra doble clic: verificar si ya se creó un turno
-            // para este servicio en los últimos 3 segundos (solo doble-clic real)
+            // para este servicio en los últimos 3 segundos (solo doble-clic real).
+            // Con cédula, solo es doble clic si es la misma persona.
             $turnoReciente = Turno::where('servicio_id', $servicioId)
                 ->where('estado', 'pendiente')
                 ->where('fecha_creacion', '>=', now()->subSeconds(3))
                 ->whereNull('observaciones') // No contar transferencias
+                ->when($cedula, fn ($q) => $q->where('cedula', $cedula))
                 ->orderBy('id', 'desc')
                 ->first();
 
@@ -219,7 +235,7 @@ class TurnoController extends Controller
             }
 
             // Crear el turno - pasar el objeto $servicio para evitar queries redundantes
-            $turno = Turno::crear($servicio, $prioridad);
+            $turno = Turno::crear($servicio, $prioridad, $cedula);
 
             // Obtener información del servicio para el mensaje
             $nombreServicio = $servicio->nombre_completo;
@@ -249,6 +265,37 @@ class TurnoController extends Controller
                 'message' => 'Error al generar el turno: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * La cédula que escribió el paciente si el servicio la pide (null si no la pide), o la respuesta para el atril:
+     * "pídala" si aún no llegó, o un aviso si no es válida. Un servicio que pide cédula nunca genera turno sin ella.
+     */
+    private function cedulaDelPaciente(Request $request, Servicio $servicio)
+    {
+        if (!$servicio->requiere_cedula) {
+            return null;
+        }
+
+        if (!$request->filled('cedula')) {
+            return response()->json([
+                'success' => true,
+                'requiere_cedula' => true,
+                'servicio_id' => $servicio->id,
+                'servicio_nombre' => $servicio->nombre_completo,
+            ]);
+        }
+
+        $cedula = Turno::normalizarCedula($request->input('cedula'));
+        if ($cedula === null) {
+            return response()->json([
+                'success' => false,
+                'cedula_invalida' => true,
+                'message' => 'Revise el número de cédula: debe tener entre 4 y 12 dígitos.',
+            ]);
+        }
+
+        return $cedula;
     }
 
     /**

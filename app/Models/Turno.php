@@ -45,6 +45,7 @@ class Turno extends Model
         'asesor_id',
         'estado',
         'prioridad',
+        'cedula',
         'fecha_creacion',
         'fecha_llamado',
         'fecha_atencion',
@@ -362,9 +363,9 @@ class Turno extends Model
     // Método estático para crear un nuevo turno
     // Envuelto en transacción con lockForUpdate para evitar números duplicados
     // Acepta $servicioId como int o como instancia de Servicio para evitar queries redundantes
-    public static function crear($servicioId, $prioridad = 3)
+    public static function crear($servicioId, $prioridad = 3, ?string $cedula = null)
     {
-        return DB::transaction(function () use ($servicioId, $prioridad) {
+        return DB::transaction(function () use ($servicioId, $prioridad, $cedula) {
             $servicio = ($servicioId instanceof Servicio) ? $servicioId : Servicio::find($servicioId);
             if (!$servicio) {
                 throw new \Exception('Servicio no encontrado');
@@ -379,15 +380,31 @@ class Turno extends Model
             // Pasar el objeto $servicio para evitar query redundante
             $numero = static::siguienteNumero($servicio, $prioridad);
 
-            return static::create([
+            $datos = [
                 'codigo' => $servicio->codigo,
                 'numero' => $numero,
                 'servicio_id' => $servicio->id,
                 'prioridad' => $prioridad,
                 'fecha_creacion' => now(),
                 'estado' => 'pendiente'
-            ]);
+            ];
+            // Solo cuando la escribió el paciente en el atril (y la BD ya tiene la columna)
+            if ($cedula !== null && $cedula !== '') {
+                $datos['cedula'] = $cedula;
+            }
+
+            return static::create($datos);
         });
+    }
+
+    /**
+     * La cédula como la escribió el paciente, solo con dígitos, o null si no es válida (entre 4 y 12 dígitos).
+     */
+    public static function normalizarCedula($valor): ?string
+    {
+        $cedula = preg_replace('/\D+/', '', (string) $valor);
+
+        return preg_match('/^\d{4,12}$/', $cedula) ? $cedula : null;
     }
 
     // Método estático para convertir tipo de prioridad a número

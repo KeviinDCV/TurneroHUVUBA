@@ -12,7 +12,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        /* KIOSCO 2026-09 — lo usa el asesor: fichas grandes para el dedo y lectura rápida */
+        /* KIOSCO 2026-09 — fichas grandes para el dedo y lectura rápida. 2026-10: lo empiezan a usar los pacientes;
+           los servicios marcados en Servicios piden la cédula con un teclado numérico antes de imprimir. */
         @font-face {
             font-family: 'Inter';
             src: url('{{ asset('fonts/InterVariable.woff2') }}') format('woff2');
@@ -31,6 +32,8 @@
         .barra-unidad { margin-top: .15rem; font-size: clamp(.8rem, 1.1vw, 1.05rem); color: var(--mudo); }
         .barra-reloj { margin-left: auto; text-align: right; }
         .barra-hora { font-size: clamp(1.6rem, 3vw, 2.8rem); font-weight: 700; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        /* Hora de 12 horas: «a. m.» / «p. m.» más pequeño, junto a la hora */
+        .barra-meridiano { margin-left: .28em; font-size: .46em; font-weight: 650; letter-spacing: .01em; color: var(--mudo); }
         .barra-fecha { margin-top: .25rem; font-size: clamp(.8rem, 1.05vw, 1.05rem); color: var(--mudo); }
 
         .contenido { min-height: 0; overflow-y: auto; padding: clamp(1.5rem, 4.5vh, 3.75rem) clamp(1.25rem, 5vw, 6rem); }
@@ -84,6 +87,23 @@
         .secundario { border: 2px solid #c9d5e6; background: #fff; color: #33415c; }
         .secundario:active { background: #eef3fb; }
 
+        /* Cédula: teclado numérico grande para el dedo (servicios que la piden) */
+        .dialogo--cedula { max-width: 34rem; padding-top: clamp(1.4rem, 3.5vh, 2.4rem); padding-bottom: clamp(1.4rem, 3.5vh, 2.4rem); }
+        .cedula-pantalla { margin-top: clamp(1rem, 2.4vh, 1.5rem); display: flex; align-items: center; justify-content: center; min-height: clamp(70px, 9vh, 96px);
+                           padding: 0 1.2rem; border-radius: 18px; background: var(--fondo); box-shadow: inset 0 0 0 2px var(--linea); }
+        .cedula-pantalla.con-error { box-shadow: inset 0 0 0 2px var(--rojo); }
+        .cedula-valor { font-size: clamp(2rem, 4.2vw, 3.1rem); font-weight: 750; letter-spacing: .03em; font-variant-numeric: tabular-nums; color: var(--tinta); }
+        .cedula-vacia { font-size: clamp(1.1rem, 1.8vw, 1.5rem); font-weight: 500; color: #8a98ad; }
+        .cedula-aviso { min-height: 1.4em; margin-top: .35rem; font-size: clamp(.95rem, 1.3vw, 1.15rem); font-weight: 650; color: var(--rojo); }
+        .teclado { margin-top: clamp(.6rem, 1.6vh, 1rem); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(.5rem, 1.1vh, .8rem); }
+        .tecla { height: clamp(62px, 8.6vh, 92px); border: 0; border-radius: 16px; background: #e8eff9; color: var(--tinta);
+                 font-size: clamp(1.7rem, 3.1vw, 2.4rem); font-weight: 700; font-variant-numeric: tabular-nums; transition: background .1s, transform .1s; }
+        .tecla:active { background: #d3e0f3; transform: scale(.97); }
+        .tecla--accion { display: grid; place-items: center; background: #fff; box-shadow: inset 0 0 0 2px #c9d5e6; color: #33415c; font-size: clamp(1rem, 1.6vw, 1.3rem); }
+        .tecla--accion svg { width: 1.9em; height: 1.9em; }
+        .tecla:focus-visible { outline: 4px solid rgba(6, 75, 158, .35); outline-offset: 2px; }
+        .primario:disabled { opacity: .45; cursor: default; }
+
         .cargando { position: fixed; inset: 0; z-index: 60; flex-direction: column; align-items: center; justify-content: center; gap: 1.3rem; padding: 6vw; background: var(--fondo); text-align: center; }
         .giro { width: clamp(70px, 8vw, 100px); height: clamp(70px, 8vw, 100px); border-radius: 50%; border: 7px solid #d6e2f3; border-top-color: var(--azul); animation: giro .8s linear infinite; }
         @keyframes giro { to { transform: rotate(360deg); } }
@@ -115,7 +135,7 @@
                 <div class="barra-unidad">{{ config('panel.unidad_nombre') }} · “Evaristo García” E.S.E.</div>
             </div>
             <div class="barra-reloj" aria-hidden="true">
-                <div class="barra-hora" id="reloj-hora">{{ $ahoraKiosco->format('H:i') }}</div>
+                <div class="barra-hora" id="reloj-hora">{{ $ahoraKiosco->format('g:i') }}<span class="barra-meridiano">{{ $ahoraKiosco->hour < 12 ? 'a. m.' : 'p. m.' }}</span></div>
                 <div class="barra-fecha" id="reloj-fecha">{{ $fechaKiosco }}</div>
             </div>
         </header>
@@ -139,12 +159,12 @@
             <div class="opciones" style="--columnas: {{ $cantidadFichas <= 4 ? 2 : 3 }}">
                 @if($enSubservicios)
                     @forelse($subservicios as $subservicio)
-                        <button type="button" class="opcion btn-service" onclick="seleccionarSubservicio({{ $subservicio->id }}, @js($subservicio->nombre))">
+                        <button type="button" class="opcion btn-service" onclick="seleccionarSubservicio({{ $subservicio->id }}, @js($subservicio->nombre), {{ $subservicio->requiere_cedula ? 'true' : 'false' }})">
                             <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($subservicio->nombre) }}</span><span class="opcion-nota">Imprimir turno</span></span>
                             <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
                         </button>
                     @empty
-                        <button type="button" class="opcion btn-service" onclick="seleccionarServicio({{ $servicioSeleccionado->id }}, @js($servicioSeleccionado->nombre))">
+                        <button type="button" class="opcion btn-service" onclick="seleccionarServicio({{ $servicioSeleccionado->id }}, @js($servicioSeleccionado->nombre), {{ $servicioSeleccionado->requiere_cedula ? 'true' : 'false' }})">
                             <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($servicioSeleccionado->nombre) }}</span><span class="opcion-nota">Imprimir turno</span></span>
                             <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
                         </button>
@@ -160,7 +180,7 @@
                             <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
                         </button>
                         @else
-                            <button type="button" class="opcion btn-service" onclick="seleccionarServicio({{ $servicio->id }}, @js($servicio->nombre))">
+                            <button type="button" class="opcion btn-service" onclick="seleccionarServicio({{ $servicio->id }}, @js($servicio->nombre), {{ $servicio->requiere_cedula ? 'true' : 'false' }})">
                             <span class="opcion-texto"><span class="opcion-nombre">{{ mb_strtoupper($servicio->nombre) }}</span><span class="opcion-nota">Imprimir turno</span></span>
                             <span class="opcion-flecha" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7"/></svg></span>
                         </button>
@@ -181,6 +201,33 @@
         </footer>
     </div>
 
+    <!-- Cédula (servicios que la piden): se pide antes del tipo de turno -->
+    <div id="cedulaModal" class="velo" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="cedulaTitulo">
+        <div class="dialogo dialogo--cedula">
+            <h2 id="cedulaTitulo">Escriba su número de cédula</h2>
+            <p id="cedulaServicio" class="sub"></p>
+            <div id="cedulaPantalla" class="cedula-pantalla" aria-live="polite">
+                <span id="cedulaValor" class="cedula-valor"></span>
+                <span id="cedulaVacia" class="cedula-vacia">Solo números, sin puntos</span>
+            </div>
+            <p id="cedulaAviso" class="cedula-aviso" role="alert"></p>
+            <div class="teclado" role="group" aria-label="Teclado numérico">
+                @foreach ([1, 2, 3, 4, 5, 6, 7, 8, 9] as $digito)
+                    <button type="button" class="tecla" onclick="teclaCedula('{{ $digito }}')">{{ $digito }}</button>
+                @endforeach
+                <button type="button" class="tecla tecla--accion" onclick="limpiarCedula()">Borrar todo</button>
+                <button type="button" class="tecla" onclick="teclaCedula('0')">0</button>
+                <button type="button" class="tecla tecla--accion" onclick="borrarDigitoCedula()" aria-label="Borrar el último número">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9.75 14.25 12m0 0 2.25 2.25M14.25 12l2.25-2.25M14.25 12 12 14.25m-2.58 4.92-6.374-6.375a1.125 1.125 0 0 1 0-1.59L9.42 4.83c.21-.211.497-.33.795-.33H19.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25h-9.284c-.298 0-.585-.119-.795-.33Z"/></svg>
+                </button>
+            </div>
+            <div class="botones">
+                <button type="button" class="secundario" onclick="cerrarCedula()">Cancelar</button>
+                <button type="button" id="cedulaContinuar" class="primario" onclick="confirmarCedula()" disabled>Continuar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Tipo de turno (servicios con prioridad) -->
     <div id="prioridadModal" class="velo" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="prioridadModalTitle">
         <div class="dialogo dialogo--ancho">
@@ -199,7 +246,7 @@
                 </button>
             </div>
             <div class="botones">
-                <button type="button" class="secundario" onclick="cerrarPrioridadModal()">Cancelar</button>
+                <button type="button" class="secundario" onclick="cancelarPrioridad()">Cancelar</button>
             </div>
         </div>
     </div>
@@ -244,7 +291,10 @@
             const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
             function pintar() {
                 const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
-                document.getElementById('reloj-hora').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                // 12 horas, como se lee en la calle: 3:56 p. m.
+                const h = d.getHours();
+                document.getElementById('reloj-hora').innerHTML = ((h % 12) || 12) + ':' + String(d.getMinutes()).padStart(2, '0')
+                    + '<span class="barra-meridiano">' + (h < 12 ? 'a. m.' : 'p. m.') + '</span>';
                 document.getElementById('reloj-fecha').textContent = dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
             }
             pintar();
@@ -261,6 +311,11 @@
         let servicioSeleccionadoId = null;
         let servicioSeleccionadoNombre = '';
         let procesandoSolicitud = false;
+        // Cédula escrita en el atril para el turno en curso ('' = el servicio no la pide)
+        let cedulaParaTurno = '';
+        let cedulaPendiente = null;   // { id, nombre }: servicio que espera la cédula
+        let cedulaEscrita = '';
+        const CEDULA_MIN = 4, CEDULA_MAX = 12;
         let ultimaSolicitud = null; // Para reintentos
 
         // URL base para el enlace móvil del QR (se construye client-side)
@@ -465,6 +520,12 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     mostrarModal(data.message);
                     return;
                 }
+                if (data.requiere_cedula) {
+                    ocultarLoading();
+                    desbloquearBotones();
+                    abrirCedula(data.servicio_id, data.servicio_nombre);
+                    return;
+                }
                 if (data.requiere_priorizacion) {
                     ocultarLoading();
                     servicioSeleccionadoId = data.servicio_id;
@@ -474,6 +535,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     return;
                 }
                 // Turno creado exitosamente → imprimir directamente
+                cedulaParaTurno = '';
                 if (data.turno) {
                     mostrarLoading('Turno generado: ' + data.turno.codigo_completo, 'Enviando a impresora...');
                     imprimirTicket(data.turno);
@@ -482,9 +544,14 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     desbloquearBotones();
                     mostrarModal(data.message);
                 }
+            } else if (data.cedula_invalida && cedulaPendiente) {
+                ocultarLoading();
+                desbloquearBotones();
+                abrirCedula(cedulaPendiente.id, cedulaPendiente.nombre, data.message);
             } else {
                 ocultarLoading();
                 desbloquearBotones();
+                cedulaParaTurno = '';
                 mostrarModal(data.message || 'Error al procesar la solicitud');
             }
         }
@@ -522,14 +589,16 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             window.location.href = `{{ route('turnos.menu') }}?servicio_id=${servicioId}`;
         }
 
-        function seleccionarServicio(servicioId, nombreServicio) {
+        function seleccionarServicio(servicioId, nombreServicio, pideCedula = false) {
             if (procesandoSolicitud) return;
+            if (pideCedula && !cedulaParaTurno) { abrirCedula(servicioId, nombreServicio); return; }
             bloquearBotones();
             mostrarLoading('Generando turno...', nombreServicio);
             if (navigator.vibrate) navigator.vibrate(30);
 
-            // Guardar para reintentos
-            ultimaSolicitud = () => seleccionarServicio(servicioId, nombreServicio);
+            // Guardar para reintentos (con la misma cédula)
+            const cedula = cedulaParaTurno;
+            ultimaSolicitud = () => { cedulaParaTurno = cedula; seleccionarServicio(servicioId, nombreServicio); };
 
             fetchConTimeout('{{ route('turnos.seleccionar') }}', {
                 method: 'POST',
@@ -537,7 +606,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': currentCsrfToken
                 },
-                body: JSON.stringify({ servicio_id: servicioId })
+                body: JSON.stringify(cedula ? { servicio_id: servicioId, cedula: cedula } : { servicio_id: servicioId })
             })
             .then(response => {
                 if (response.status === 419) {
@@ -564,13 +633,15 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             });
         }
 
-        function seleccionarSubservicio(subservicioId, nombreSubservicio) {
+        function seleccionarSubservicio(subservicioId, nombreSubservicio, pideCedula = false) {
             if (procesandoSolicitud) return;
+            if (pideCedula && !cedulaParaTurno) { abrirCedula(subservicioId, nombreSubservicio); return; }
             bloquearBotones();
             mostrarLoading('Generando turno...', nombreSubservicio);
             if (navigator.vibrate) navigator.vibrate(30);
 
-            ultimaSolicitud = () => seleccionarSubservicio(subservicioId, nombreSubservicio);
+            const cedula = cedulaParaTurno;
+            ultimaSolicitud = () => { cedulaParaTurno = cedula; seleccionarSubservicio(subservicioId, nombreSubservicio); };
 
             fetchConTimeout('{{ route('turnos.seleccionar') }}', {
                 method: 'POST',
@@ -578,7 +649,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': currentCsrfToken
                 },
-                body: JSON.stringify({ subservicio_id: subservicioId })
+                body: JSON.stringify(cedula ? { subservicio_id: subservicioId, cedula: cedula } : { subservicio_id: subservicioId })
             })
             .then(response => {
                 if (response.status === 419) throw new Error('CSRF_EXPIRED');
@@ -621,6 +692,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             // "No hay servicio seleccionado" y el turno con tipo General/Prioritario nunca se generaba).
             const sId = servicioSeleccionadoId;
             const sNombre = servicioSeleccionadoNombre;
+            const cedula = cedulaParaTurno;
             bloquearBotones();
             cerrarPrioridadModal();
             mostrarLoading('Generando turno...', sNombre);
@@ -636,6 +708,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             ultimaSolicitud = () => {
                 servicioSeleccionadoId = sId;
                 servicioSeleccionadoNombre = sNombre;
+                cedulaParaTurno = cedula;
                 seleccionarPrioridad(prioridad);
             };
 
@@ -645,10 +718,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': currentCsrfToken
                 },
-                body: JSON.stringify({
-                    servicio_id: sId,
-                    prioridad: prioridad
-                })
+                body: JSON.stringify(cedula ? { servicio_id: sId, prioridad: prioridad, cedula: cedula } : { servicio_id: sId, prioridad: prioridad })
             })
             .then(response => {
                 if (response.status === 419) throw new Error('CSRF_EXPIRED');
@@ -670,6 +740,84 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                 manejarErrorFetch(error);
             });
         }
+
+        function cancelarPrioridad() {
+            cerrarPrioridadModal();
+            cedulaParaTurno = '';
+        }
+
+        // ============================================
+        // CÉDULA (servicios que la piden)
+        // ============================================
+        function abrirCedula(servicioId, nombreServicio, aviso = '') {
+            cedulaPendiente = { id: servicioId, nombre: nombreServicio };
+            if (!aviso) cedulaEscrita = '';
+            document.getElementById('cedulaServicio').textContent = nombreServicio;
+            document.getElementById('cedulaAviso').textContent = aviso;
+            pintarCedula();
+            document.getElementById('cedulaModal').style.display = 'flex';
+        }
+
+        function cerrarCedula() {
+            document.getElementById('cedulaModal').style.display = 'none';
+            cedulaPendiente = null;
+            cedulaEscrita = '';
+            cedulaParaTurno = '';
+        }
+
+        // 1144567890 → 1.144.567.890, como está impresa en el documento
+        function cedulaConPuntos(c) { return c.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+        function pintarCedula() {
+            const valor = document.getElementById('cedulaValor');
+            valor.textContent = cedulaConPuntos(cedulaEscrita);
+            valor.style.display = cedulaEscrita ? '' : 'none';
+            document.getElementById('cedulaVacia').style.display = cedulaEscrita ? 'none' : '';
+            document.getElementById('cedulaContinuar').disabled = cedulaEscrita.length < CEDULA_MIN;
+            document.getElementById('cedulaPantalla').classList.toggle('con-error', !!document.getElementById('cedulaAviso').textContent);
+        }
+
+        function teclaCedula(digito) {
+            if (cedulaEscrita.length >= CEDULA_MAX) return;
+            cedulaEscrita += digito;
+            document.getElementById('cedulaAviso').textContent = '';
+            pintarCedula();
+        }
+
+        function borrarDigitoCedula() {
+            cedulaEscrita = cedulaEscrita.slice(0, -1);
+            document.getElementById('cedulaAviso').textContent = '';
+            pintarCedula();
+        }
+
+        function limpiarCedula() {
+            cedulaEscrita = '';
+            document.getElementById('cedulaAviso').textContent = '';
+            pintarCedula();
+        }
+
+        function confirmarCedula() {
+            if (!cedulaPendiente) return;
+            if (cedulaEscrita.length < CEDULA_MIN || cedulaEscrita.length > CEDULA_MAX) {
+                document.getElementById('cedulaAviso').textContent = 'Debe tener entre ' + CEDULA_MIN + ' y ' + CEDULA_MAX + ' números.';
+                pintarCedula();
+                return;
+            }
+            const { id, nombre } = cedulaPendiente;
+            cedulaParaTurno = cedulaEscrita;
+            document.getElementById('cedulaModal').style.display = 'none';
+            // Sigue como cualquier turno: el servidor guarda la cédula y, si el servicio lo pide, pregunta el tipo de turno
+            seleccionarServicio(id, nombre);
+        }
+
+        // Con teclado físico también: números, borrar, Enter para continuar y Esc para cancelar
+        document.addEventListener('keydown', function (e) {
+            if (document.getElementById('cedulaModal').style.display !== 'flex') return;
+            if (/^[0-9]$/.test(e.key)) { teclaCedula(e.key); e.preventDefault(); }
+            else if (e.key === 'Backspace') { borrarDigitoCedula(); e.preventDefault(); }
+            else if (e.key === 'Enter') { confirmarCedula(); e.preventDefault(); }
+            else if (e.key === 'Escape') { cerrarCedula(); e.preventDefault(); }
+        });
 
         // ============================================
         // MODALES
