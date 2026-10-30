@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Paciente;
 use App\Models\Servicio;
 use App\Models\Turno;
 use App\Models\TurnoHistorial;
@@ -85,7 +86,16 @@ class ServicioController extends Controller
             ->values()
             ->all();
 
-        return view('admin.servicios', compact('user', 'secciones', 'search'));
+        $basePacientes = Paciente::resumen();
+        if ($basePacientes !== null) {
+            $basePacientes += [
+                'sin_cifrar' => app()->isProduction() && !$request->secure(),
+                'restringido' => (bool) Paciente::ipsDeAtriles(),
+                'ip' => $request->ip(),
+            ];
+        }
+
+        return view('admin.servicios', compact('user', 'secciones', 'search', 'basePacientes'));
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Http\Controllers\GraficosController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\VoiceController;
 use App\Http\Controllers\SoporteController;
+use App\Http\Controllers\PacienteController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -101,6 +102,13 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     Route::put('/servicios/{servicio}', [ServicioController::class, 'update'])->name('admin.servicios.update');
     Route::delete('/servicios/{servicio}', [ServicioController::class, 'destroy'])->name('admin.servicios.destroy');
     Route::get('/servicios/{servicio}', [ServicioController::class, 'show'])->name('admin.servicios.show');
+
+    // Base de pacientes del atril (se carga desde Servicios)
+    Route::post('/pacientes/cargas', [PacienteController::class, 'iniciar'])->name('admin.pacientes.iniciar');
+    Route::post('/pacientes/cargas/{carga}/tanda', [PacienteController::class, 'tanda'])->whereNumber('carga')->name('admin.pacientes.tanda');
+    Route::post('/pacientes/cargas/{carga}/terminar', [PacienteController::class, 'terminar'])->whereNumber('carga')->name('admin.pacientes.terminar');
+    Route::delete('/pacientes/cargas/{carga}', [PacienteController::class, 'cancelar'])->whereNumber('carga')->name('admin.pacientes.cancelar');
+    Route::delete('/pacientes', [PacienteController::class, 'eliminar'])->name('admin.pacientes.eliminar');
 
     // Rutas de asignación de servicios
     Route::get('/asignacion-servicios', [App\Http\Controllers\AsignacionServicioController::class, 'index'])->name('admin.asignacion-servicios');

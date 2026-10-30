@@ -13,6 +13,10 @@
 
 return [
 
+    // IP (o rangos) desde donde se puede consultar la base de pacientes en el atril, separadas por coma.
+    // Vacío: sin restricción, cualquier equipo que abra el atril puede ver el nombre de quien tenga una cédula.
+    'atril_ips' => env('ATRIL_IPS', ''),
+
     // Nombre de la unidad: se muestra bajo "Turnero HUV" en el menú lateral.
     'unidad_nombre' => env('PANEL_UNIDAD_NOMBRE', 'Unidad Básica de Atención'),
 

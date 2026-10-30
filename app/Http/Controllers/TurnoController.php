@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Paciente;
 use App\Models\Servicio;
 use App\Models\Turno;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 class TurnoController extends Controller
 {
+    // Nombre de quien escribió su cédula en esta petición (solo para mostrarlo en pantalla: nunca va al ticket)
+    private ?string $nombrePaciente = null;
+
     /**
      * Mostrar la página de inicio de turnos
      */
@@ -100,16 +105,18 @@ class TurnoController extends Controller
                     'success' => true,
                     'requiere_priorizacion' => true,
                     'servicio_id' => $servicioParaTurno,
-                    'servicio_nombre' => $servicio->nombre_completo
+                    'servicio_nombre' => $servicio->nombre_completo,
+                    'paciente_nombre' => $this->nombrePaciente
                 ]);
             }
 
             // Protección contra doble clic: verificar si ya se creó un turno
             // para este servicio en los últimos 3 segundos (solo doble-clic real).
             // Con cédula, solo es doble clic si es la misma persona: otro paciente puede sacar turno en esos segundos.
+            // Y se sabe quién es, así que se mira más atrás: cubre el reintento del atril tras una respuesta perdida.
             $turnoReciente = Turno::where('servicio_id', $servicioParaTurno)
                 ->where('estado', 'pendiente')
-                ->where('fecha_creacion', '>=', now()->subSeconds(3))
+                ->where('fecha_creacion', '>=', now()->subSeconds($cedula ? 60 : 3))
                 ->whereNull('observaciones') // No contar transferencias
                 ->when($cedula, fn ($q) => $q->where('cedula', $cedula))
                 ->orderBy('id', 'desc')
@@ -130,7 +137,8 @@ class TurnoController extends Controller
                         'id' => $turnoReciente->id,
                         'codigo_completo' => $turnoReciente->codigo_completo,
                         'servicio' => $servicio->nombre_completo,
-                        'numero' => $turnoReciente->numero
+                        'numero' => $turnoReciente->numero,
+                        'ubicacion' => $servicio->ubicacionAtencion()
                     ],
                     'duplicado' => true
                 ]);
@@ -154,19 +162,12 @@ class TurnoController extends Controller
                     // Ubicación física de la sección, para imprimirla en el ticket
                     'ubicacion' => $servicio->ubicacionAtencion()
                 ],
+                'paciente_nombre' => $this->nombrePaciente,
                 'redirect_url' => route('turnos.ticket', $turno->id)
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('❌ ERROR en seleccionarServicio()', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al generar el turno: ' . $e->getMessage()
-            ]);
+            return $this->falloAlGenerarTurno($e, 'seleccionarServicio');
         }
     }
 
@@ -204,10 +205,10 @@ class TurnoController extends Controller
 
             // Protección contra doble clic: verificar si ya se creó un turno
             // para este servicio en los últimos 3 segundos (solo doble-clic real).
-            // Con cédula, solo es doble clic si es la misma persona.
+            // Con cédula, solo es doble clic si es la misma persona (y se mira más atrás, ver seleccionarServicio).
             $turnoReciente = Turno::where('servicio_id', $servicioId)
                 ->where('estado', 'pendiente')
-                ->where('fecha_creacion', '>=', now()->subSeconds(3))
+                ->where('fecha_creacion', '>=', now()->subSeconds($cedula ? 60 : 3))
                 ->whereNull('observaciones') // No contar transferencias
                 ->when($cedula, fn ($q) => $q->where('cedula', $cedula))
                 ->orderBy('id', 'desc')
@@ -228,7 +229,8 @@ class TurnoController extends Controller
                         'codigo_completo' => $turnoReciente->codigo_completo,
                         'servicio' => $servicio->nombre_completo,
                         'numero' => $turnoReciente->numero,
-                        'prioridad' => $turnoReciente->prioridad >= 4 ? 'Prioritario' : 'Normal'
+                        'prioridad' => $turnoReciente->prioridad >= 4 ? 'Prioritario' : 'Normal',
+                        'ubicacion' => $servicio->ubicacionAtencion()
                     ],
                     'duplicado' => true
                 ]);
@@ -256,20 +258,35 @@ class TurnoController extends Controller
                     // Ubicación física de la sección, para imprimirla en el ticket
                     'ubicacion' => $servicio->ubicacionAtencion()
                 ],
+                'paciente_nombre' => $this->nombrePaciente,
                 'redirect_url' => route('turnos.ticket', $turno->id)
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al generar el turno: ' . $e->getMessage()
-            ]);
+            return $this->falloAlGenerarTurno($e, 'crearTurnoConPrioridad');
         }
     }
 
     /**
+     * El mensaje de un error de BD trae el SQL con sus valores, cédula incluida: ni a la pantalla del atril ni al log.
+     */
+    private function falloAlGenerarTurno(\Exception $e, string $donde)
+    {
+        \Log::error('❌ ERROR en ' . $donde . '()', [
+            'error' => $e instanceof \Illuminate\Database\QueryException ? ($e->errorInfo[1] ?? $e->getCode()) : $e->getMessage(),
+            'lugar' => $e->getFile() . ':' . $e->getLine(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No se pudo generar el turno. Intente de nuevo o acérquese a una ventanilla.'
+        ]);
+    }
+
+    /**
      * La cédula que escribió el paciente si el servicio la pide (null si no la pide), o la respuesta para el atril:
-     * "pídala" si aún no llegó, o un aviso si no es válida. Un servicio que pide cédula nunca genera turno sin ella.
+     * "pídala" si aún no llegó, o un aviso si no es válida o no está en la base de pacientes: ahí no sale turno.
+     * Un servicio que pide cédula nunca genera turno sin ella. Sin base cargada, la cédula se guarda sin comprobarla.
      */
     private function cedulaDelPaciente(Request $request, Servicio $servicio)
     {
@@ -291,9 +308,60 @@ class TurnoController extends Controller
             return response()->json([
                 'success' => false,
                 'cedula_invalida' => true,
-                'message' => 'Revise el número de cédula: debe tener entre 4 y 12 dígitos.',
+                'message' => 'Revise el número de cédula: debe tener entre 4 y 15 dígitos.',
             ]);
         }
+
+        if (!Paciente::hayBase()) {
+            return $cedula;
+        }
+
+        // El atril es público y una cédula devuelve un nombre: solo los equipos autorizados consultan la base
+        $ip = (string) $request->ip();
+        if (!Paciente::equipoAutorizado($ip)) {
+            return response()->json([
+                'success' => false,
+                'cedula_invalida' => true,
+                'message' => 'Este servicio solo se puede usar desde los atriles del hospital.',
+            ], 403);
+        }
+
+        // Además se limita cuánto se puede probar. Lo que frena recorrer números son los fallos (casi todo número al azar
+        // falla). Por sesión, porque los atriles suelen salir por una misma IP y uno no debe bloquear a los demás; por IP,
+        // un techo mucho más alto, porque una sesión nueva se abre con solo recargar.
+        $sesion = $request->hasSession() ? $request->session()->getId() : $ip;
+        $fallosPorMinuto = ['atril-fallos-sesion:' . $sesion => 30, 'atril-fallos-ip:' . $ip => 120];
+        $fallosPorHora = ['atril-fallos-sesion-hora:' . $sesion => 300, 'atril-fallos-ip-hora:' . $ip => 1500];
+        foreach ($fallosPorMinuto + $fallosPorHora + ['atril-consultas-ip:' . $ip => 300] as $clave => $tope) {
+            if (RateLimiter::tooManyAttempts($clave, $tope)) {
+                \Log::warning('Atril: límite de consultas de cédula', ['limite' => strtok($clave, ':'), 'ip' => $ip]);
+
+                return response()->json([
+                    'success' => false,
+                    'cedula_invalida' => true,
+                    'message' => 'Se han hecho demasiados intentos desde este equipo. Acérquese a una ventanilla.',
+                ], 429);
+            }
+        }
+        RateLimiter::hit('atril-consultas-ip:' . $ip, 60);
+
+        $nombre = Paciente::nombreDe($cedula);
+        if ($nombre === null) {
+            foreach (array_keys($fallosPorMinuto) as $clave) {
+                RateLimiter::hit($clave, 60);
+            }
+            foreach (array_keys($fallosPorHora) as $clave) {
+                RateLimiter::hit($clave, 3600);
+            }
+
+            return response()->json([
+                'success' => false,
+                'cedula_invalida' => true,
+                'message' => 'No encontramos esta cédula. Revísela o acérquese a una ventanilla.',
+            ]);
+        }
+
+        $this->nombrePaciente = $nombre;
 
         return $cedula;
     }

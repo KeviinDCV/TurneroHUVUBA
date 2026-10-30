@@ -63,7 +63,7 @@
                             <span>Pide prioridad en el kiosco <span class="form-ayuda">Al sacar el turno se elige Normal o Alta.</span></span>
                         </label>
                         <label class="form-casilla" x-show="!tieneHijosActivos()"><input type="checkbox" x-model="datos.requiere_cedula">
-                            <span>Pide cédula en el atril <span class="form-ayuda">Antes de imprimir el turno, la persona escribe su número de cédula y queda guardado en el turno.</span></span>
+                            <span>Pide cédula en el atril <span class="form-ayuda">Antes del turno, la persona escribe su cédula. Si está en la base de pacientes, ve su nombre en pantalla y sale el turno; si no está, no sale.</span></span>
                         </label>
                     </div>
                     <label class="form-campo">Descripción
@@ -146,6 +146,106 @@
             Nuevo servicio
         </button>
     </div>
+
+    <!-- Base de pacientes del atril: con ella se comprueba la cédula en los servicios que la piden -->
+    @if ($basePacientes !== null)
+        <div class="envoltorio-modal" x-data="basePacientes(@js($basePacientes), () => todos().filter(s => esHoja(s) && s.requiere_cedula).length)"
+             @keydown.escape.window="cerrar()">
+            <section class="base-pacientes superficie" :class="{ 'base-pacientes--alerta': alerta() }" aria-label="Base de pacientes del atril">
+                <span class="base-pacientes__icono" aria-hidden="true">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 0 0-5.3-3.8M17 20H7m10 0v-2c0-.7-.1-1.3-.3-1.8M7 20H2v-2a4 4 0 0 1 5.3-3.8M7 20v-2c0-.7.1-1.3.3-1.8m0 0a5 5 0 0 1 9.4 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/></svg>
+                </span>
+                <div class="base-pacientes__texto">
+                    <p class="base-pacientes__titulo">Base de pacientes del atril</p>
+                    <p class="base-pacientes__detalle" x-text="detalle()"></p>
+                    <p class="base-pacientes__aviso" x-show="sinRestringir()" x-text="`Sin restringir: con la base cargada, desde cualquier equipo se podría ver el nombre de quien tenga una cédula. Define ATRIL_IPS en el .env con la IP de los atriles (este equipo sale por ${base.ip}).`"></p>
+                </div>
+                <div class="base-pacientes__acciones">
+                    <button type="button" class="btn-secundario" @click="abrir()" x-text="base.total ? 'Actualizar base' : 'Cargar base'"></button>
+                    <button type="button" class="accion-icono accion-icono--peligro" x-show="base.total" aria-label="Eliminar la base de pacientes" title="Eliminar la base de pacientes" @click="abrirEliminar()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.9 12.1A2 2 0 0 1 16.1 21H7.9a2 2 0 0 1-2-1.9L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+            </section>
+
+            <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity @click.self="cerrar()">
+                <div class="modal-panel__caja modal-panel__caja--angosta" role="dialog" aria-modal="true" :aria-label="paso === 'eliminar' ? 'Eliminar la base de pacientes' : 'Cargar la base de pacientes'">
+                    <div class="modal-panel__cabeza">
+                        <h2 x-text="paso === 'eliminar' ? 'Eliminar la base de pacientes' : 'Cargar la base de pacientes'"></h2>
+                        <button type="button" class="accion-icono" aria-label="Cerrar" x-show="paso !== 'cargando'" @click="cerrar()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="form-panel">
+                        <!-- 1. Elegir el archivo -->
+                        <template x-if="paso === 'elegir' && base.sin_cifrar">
+                            <div class="carga-paso">
+                                <p class="carga-aviso">Por seguridad, la base de pacientes solo se carga por https: por http, documentos y nombres cruzarían Internet sin cifrar. Si el navegador advierte sobre el certificado, es por el certificado autofirmado actual.</p>
+                                <a class="btn-primario carga-enlace" :href="location.href.replace(/^http:/, 'https:')">Abrir esta página con https</a>
+                            </div>
+                        </template>
+                        <template x-if="paso === 'elegir' && !base.sin_cifrar">
+                            <div class="carga-paso">
+                                <label class="carga-archivo" :class="{ 'carga-archivo--encima': encima }" @dragover.prevent="encima = true" @dragleave.prevent="encima = false" @drop.prevent="encima = false; soltar($event)">
+                                    <input type="file" class="sr-only" accept=".xlsx,.csv,.txt" @change="elegir($event.target.files[0])">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+                                    <span class="carga-archivo__titulo">Elige el archivo de Excel o CSV</span>
+                                    <span class="form-ayuda">Debe tener una columna con el documento y otra con el nombre del paciente.</span>
+                                </label>
+                                <p class="form-ayuda">El archivo se lee en este computador. Al servidor solo llegan documento y nombre: teléfonos, EPS y observaciones no se suben ni se guardan.</p>
+                            </div>
+                        </template>
+
+                        <!-- 2. Leyendo -->
+                        <template x-if="paso === 'leyendo'">
+                            <div class="carga-paso" role="status">
+                                <p class="form-texto">Leyendo <b x-text="archivo"></b>…</p>
+                                <div class="carga-barra" aria-hidden="true"><span :style="`width: ${Math.round(avance * 100)}%`"></span></div>
+                            </div>
+                        </template>
+
+                        <!-- 3. Revisar antes de tocar la base -->
+                        <template x-if="paso === 'revisar'">
+                            <div class="carga-paso">
+                                <p class="carga-cifra"><b x-text="miles(lectura.total)"></b> pacientes para cargar</p>
+                                <p class="form-ayuda" x-text="`${archivo} · ${miles(lectura.filas)} filas · columnas «${lectura.titulos.documento}» y «${lectura.titulos.nombre}»`"></p>
+                                <ul class="carga-notas">
+                                    <template x-for="nota in notas()" :key="nota"><li x-text="nota"></li></template>
+                                </ul>
+                                <div class="carga-ejemplos">
+                                    <p class="form-ayuda">Revisa que se vean bien:</p>
+                                    <template x-for="e in lectura.ejemplos" :key="e.doc"><p><span x-text="e.doc"></span> <b x-text="e.nombre"></b></p></template>
+                                </div>
+                                <p class="carga-aviso" x-show="reduceMucho()" x-text="`La base actual tiene ${miles(base.total)} pacientes y este archivo trae muchos menos. Quienes no estén en él dejarán de recibir turno en los servicios que piden cédula.`"></p>
+                                <p class="form-ayuda" x-show="base.total && !reduceMucho()">Reemplaza la base actual: quien no esté en este archivo deja de recibir turno en los servicios que piden cédula.</p>
+                            </div>
+                        </template>
+
+                        <!-- 4. Guardando -->
+                        <template x-if="paso === 'cargando'">
+                            <div class="carga-paso" role="status">
+                                <p class="form-texto">Guardando <b x-text="miles(enviados)"></b> de <b x-text="miles(lectura.total)"></b> pacientes…</p>
+                                <div class="carga-barra" aria-hidden="true"><span :style="`width: ${Math.round(enviados / lectura.total * 100)}%`"></span></div>
+                                <p class="form-ayuda">El atril sigue con la base anterior hasta que esto termine. No cierres esta página.</p>
+                            </div>
+                        </template>
+
+                        <!-- Eliminar -->
+                        <template x-if="paso === 'eliminar'">
+                            <p class="form-texto">Se borrarán los <b x-text="miles(base.total)"></b> pacientes. Mientras no se cargue otra base, el atril pedirá la cédula pero <b>no la comprobará</b> y dará turno a cualquiera.</p>
+                        </template>
+
+                        <p class="form-error" x-show="error" x-text="error"></p>
+                        <div class="modal-panel__pie">
+                            <button type="button" class="btn-secundario" x-show="!cerrando" @click="cancelar()" x-text="paso === 'elegir' ? 'Cerrar' : 'Cancelar'"></button>
+                            <button type="button" class="btn-primario" x-show="paso === 'revisar'" :disabled="!lectura || !lectura.total" @click="cargar()" x-text="lectura ? `Cargar ${miles(lectura.total)} pacientes` : ''"></button>
+                            <button type="button" class="btn-peligro" x-show="paso === 'eliminar'" :disabled="trabajando" @click="eliminar()" x-text="trabajando ? 'Eliminando…' : 'Eliminar la base'"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- Catálogo: una tabla, una sección por bloque -->
     <div class="superficie overflow-x-auto">
@@ -323,7 +423,7 @@ document.addEventListener('alpine:init', () => {
                 : '<span class="texto-mudo">Visible</span>';
         },
         celdaPrioridad(s) { return s.requiere_priorizacion ? '<span title="El kiosco pregunta Normal o Alta">Normal / Alta</span>' : '<span class="texto-mudo">—</span>'; },
-        celdaCedula(s) { return s.requiere_cedula ? '<span title="El atril pide el número de cédula antes de imprimir el turno">Pide</span>' : '<span class="texto-mudo">—</span>'; },
+        celdaCedula(s) { return s.requiere_cedula ? '<span title="El atril pide la cédula y solo da turno a quien esté en la base de pacientes">Pide</span>' : '<span class="texto-mudo">—</span>'; },
     }));
 
     function enviar(url, datos, metodo) {
@@ -375,6 +475,156 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Base de pacientes: el navegador lee el archivo (lector-pacientes.js) y aquí se muestra qué trae antes de cargarlo
+    const PACIENTES_URL = @json(url('/pacientes'));
+    const POR_TANDA = 1000;
+    const miles = n => Number(n || 0).toLocaleString('es-CO');
+    const espera = ms => new Promise(ok => setTimeout(ok, ms));
+
+    Alpine.data('basePacientes', (base, serviciosConCedula) => { let pacientes = []; return {   // pacientes: fuera del estado reactivo, son decenas de miles
+        base, miles,
+        abierto: false, paso: 'elegir', encima: false, error: '', trabajando: false,
+        archivo: '', avance: 0, lectura: null, enviados: 0, cancelador: null, cerrando: false,
+
+        sinRestringir() { return !this.base.restringido; },
+        alerta() { return this.sinRestringir() || (!this.base.total && serviciosConCedula() > 0); },
+        detalle() {
+            const b = this.base;
+            if (!b.total) {
+                const n = serviciosConCedula();
+                return n > 0
+                    ? `Sin cargar: ${n === 1 ? 'el servicio que pide' : `los ${n} servicios que piden`} cédula la guardan sin comprobarla y dan turno a cualquiera.`
+                    : 'Sin cargar. Con ella, los servicios que piden cédula solo dan turno a quien esté en la base y le muestran su nombre.';
+            }
+            const f = b.fecha ? new Date(b.fecha) : null;
+            const cuando = f ? ` · Actualizada el ${f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}, ${f.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}` : '';
+            return `${miles(b.total)} pacientes${cuando}${b.cargado_por ? ' por ' + b.cargado_por : ''}`;
+        },
+        abrir() { this.reiniciar(); this.paso = 'elegir'; this.abierto = true; },
+        abrirEliminar() { this.reiniciar(); this.paso = 'eliminar'; this.abierto = true; },
+        reiniciar() { pacientes = []; this.error = ''; this.archivo = ''; this.avance = 0; this.lectura = null; this.enviados = 0; this.trabajando = false; this.cancelador = null; this.cerrando = false; },
+        cerrar() {
+            if (!this.abierto || this.paso === 'cargando') return;
+            if (this.cancelador) this.cancelador.abort();
+            this.abierto = false;
+            this.paso = 'elegir';   // lo demás se limpia al volver a abrir: el paso de revisión aún lee «lectura» al salir
+            pacientes = [];
+        },
+        // Cancelar mientras se guarda: deja de enviar; la base no cambia
+        cancelar() {
+            if (this.paso === 'cargando') { this.cancelador.abort(); return; }
+            this.cerrar();
+        },
+        soltar(e) { if (e.dataTransfer.files.length) this.elegir(e.dataTransfer.files[0]); },
+        async elegir(archivo) {
+            if (!archivo) return;
+            this.error = ''; this.archivo = archivo.name; this.avance = 0; this.paso = 'leyendo';
+            const cancelador = this.cancelador = new AbortController();
+            try {
+                const leido = await leerPacientes(archivo, { senal: cancelador.signal, alProgreso: f => { this.avance = f; } });
+                pacientes = leido.pacientes;
+                const posiciones = [...new Set([0, pacientes.length >> 1, pacientes.length - 1])].filter(i => i >= 0 && i < pacientes.length);
+                this.lectura = {
+                    ...leido, pacientes: undefined, total: pacientes.length,
+                    ejemplos: posiciones.map(i => ({ doc: '•••' + pacientes[i][0].slice(-4), nombre: pacientes[i][1] })),
+                };
+                this.cancelador = null;
+                this.paso = 'revisar';
+                if (!pacientes.length) this.error = 'El archivo no trae ningún paciente que se pueda cargar.';
+            } catch (e) {
+                this.cancelador = null;
+                if (e.name === 'AbortError') return;
+                this.paso = 'elegir';
+                this.error = e instanceof ErrorLectorPacientes ? e.message : 'No se pudo leer el archivo. Revisa que no esté dañado e inténtalo de nuevo.';
+            }
+        },
+        notas() {
+            const r = this.lectura, notas = [];
+            const uno = (n, singular, plural) => `${miles(n)} ${n === 1 ? singular : plural}`;
+            if (r.sinDocumento) notas.push(`${uno(r.sinDocumento, 'fila', 'filas')} sin documento: se omiten.`);
+            if (r.sinNombre) notas.push(`${uno(r.sinNombre, 'fila', 'filas')} sin nombre: se omiten.`);
+            if (r.conLetras) notas.push(`${uno(r.conLetras, 'documento', 'documentos')} con letras: se omiten, porque el teclado del atril solo tiene números.`);
+            if (r.fueraDeRango) notas.push(`${uno(r.fueraDeRango, 'documento', 'documentos')} con menos de 4 o más de 15 dígitos: se omiten.`);
+            if (r.variosNombres) notas.push(`${uno(r.variosNombres, 'persona', 'personas')} con su nombre escrito de varias formas: se usa el que más se repite.`);
+            if (r.conEnie) notas.push(`${uno(r.conEnie, 'nombre', 'nombres')} con «?» en lugar de Ñ: se corrigen (MU?OZ → MUÑOZ).`);
+            if (r.hojasVisibles > 1) notas.push(`El libro tiene ${r.hojasVisibles} hojas: solo se leyó «${r.hoja}».`);
+            return notas;
+        },
+        // Un archivo mucho más pequeño que la base suele ser el archivo equivocado: se avisa antes de cargarlo
+        reduceMucho() { return this.base.total > 0 && this.lectura && this.lectura.total < this.base.total / 2; },
+        async pedir(url, cuerpo, senal) {
+            const r = await fetch(url, {
+                method: 'POST', signal: senal, body: JSON.stringify(cuerpo),
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            });
+            const datos = await r.json().catch(() => ({}));
+            if (!r.ok || datos.success === false) {
+                const e = new Error(mensajeDe(r.status, datos, 'El servidor no pudo guardar los datos.'));
+                e.definitivo = r.status >= 400 && r.status < 500;   // sesión vencida, carga no vigente…: reintentar no sirve
+                throw e;
+            }
+            return datos;
+        },
+        // Una tanda perdida no daña nada: se reintenta sola unas veces (repetirla da lo mismo)
+        async pedirConReintento(url, cuerpo, senal) {
+            for (let intento = 1; ; intento++) {
+                try {
+                    return await this.pedir(url, cuerpo, senal);
+                } catch (e) {
+                    if (e.name === 'AbortError' || e.definitivo || intento >= 4) throw e;
+                    await espera(1000 * intento);
+                }
+            }
+        },
+        async cargar() {
+            const cancelador = this.cancelador = new AbortController();
+            const senal = cancelador.signal;
+            this.error = ''; this.enviados = 0; this.cerrando = false; this.paso = 'cargando';
+            let carga = null;
+            const alSalir = e => { e.preventDefault(); e.returnValue = ''; };
+            window.addEventListener('beforeunload', alSalir);
+            try {
+                ({ carga } = await this.pedirConReintento(PACIENTES_URL + '/cargas', { archivo: this.archivo.slice(0, 190), filas: this.lectura.filas }, senal));
+                let guardados = 0;
+                for (let i = 0; i < pacientes.length; i += POR_TANDA) {
+                    const tanda = pacientes.slice(i, i + POR_TANDA);
+                    const r = await this.pedirConReintento(`${PACIENTES_URL}/cargas/${carga}/tanda`, { filas: tanda }, senal);
+                    guardados += r.guardadas;
+                    this.enviados = i + tanda.length;
+                }
+                // Desde aquí ya no se puede cancelar: el servidor seguiría y la base cambiaría igual
+                this.cerrando = true;
+                const fin = await this.pedirConReintento(`${PACIENTES_URL}/cargas/${carga}/terminar`, { total: guardados });
+                window.removeEventListener('beforeunload', alSalir);
+                recargarCon({ title: 'Base de pacientes actualizada', description: `${miles(fin.total)} pacientes.` });
+            } catch (e) {
+                window.removeEventListener('beforeunload', alSalir);
+                this.cancelador = null;
+                this.paso = 'revisar';
+                if (this.cerrando) {
+                    this.cerrando = false;
+                    this.error = e.definitivo ? e.message : 'No se pudo confirmar si la carga terminó. Recarga la página para ver cómo quedó la base.';
+                    return;
+                }
+                // Lo que alcanzó a llegar no se queda guardado sin uso (si esto falla, se borra en la próxima carga)
+                if (carga) fetch(`${PACIENTES_URL}/cargas/${carga}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } }).catch(() => {});
+                this.error = e.name === 'AbortError'
+                    ? 'Carga cancelada. La base no cambió.'
+                    : (e.definitivo ? e.message : 'Se perdió la conexión con el servidor. La base no cambió; inténtalo de nuevo.');
+            }
+        },
+        eliminar() {
+            this.trabajando = true; this.error = '';
+            fetch(PACIENTES_URL, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': TOKEN(), 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
+                .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                .then(({ ok, estado, datos }) => {
+                    if (ok && datos.success !== false) { recargarCon({ title: 'Base de pacientes eliminada' }); return; }
+                    this.trabajando = false; this.error = mensajeDe(estado, datos, 'No se pudo eliminar la base.');
+                })
+                .catch(() => { this.trabajando = false; this.error = 'No hay conexión con el servidor. Inténtalo de nuevo.'; });
+        },
+    }; });
+
     Alpine.data('eliminarServicio', () => ({
         abierto: false, servicio: null, impacto: null, cargando: false, trabajando: false, error: '',
         abrir({ servicio }) {
@@ -414,6 +664,7 @@ document.addEventListener('alpine:init', () => {
 </script>
 
 @push('estilos')
+<script src="{{ asset('js/lector-pacientes.js') }}?v={{ is_file(public_path('js/lector-pacientes.js')) ? filemtime(public_path('js/lector-pacientes.js')) : 0 }}" defer></script>
 <style>
 [x-cloak] { display: none !important; }
 /* Los modales van en envoltorios sin caja: space-y-4 no les da margen */
@@ -458,6 +709,36 @@ document.addEventListener('alpine:init', () => {
 .form-casillas { display: flex; flex-direction: column; gap: .55rem; padding: .15rem 0; }
 .form-casilla .form-ayuda { display: block; margin-top: .1rem; }
 .impacto-esqueleto { display: flex; flex-direction: column; gap: .6rem; padding: .25rem 0 .5rem; }
+
+/* Base de pacientes del atril */
+/* margin propio: el envoltorio display: contents anula el de space-y-4 */
+.base-pacientes { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; padding: .625rem .75rem .625rem 1rem; }
+.base-pacientes__icono { display: grid; place-items: center; flex-shrink: 0; width: 2rem; height: 2rem; border-radius: .5rem; background: #e7eef9; color: #064b9e; }
+.base-pacientes__icono svg { width: 1.125rem; height: 1.125rem; }
+.base-pacientes__texto { flex: 1; min-width: 0; line-height: 1.3; }
+.base-pacientes__titulo { font-size: .875rem; font-weight: 600; color: #0f2547; }
+.base-pacientes__detalle { font-size: .75rem; color: #6b7280; }
+.base-pacientes__acciones { display: flex; align-items: center; gap: .375rem; flex-shrink: 0; }
+.base-pacientes--alerta { box-shadow: inset 0 0 0 1px #f4c88a, 0 1px 2px rgba(16, 24, 40, .06); }
+.base-pacientes--alerta .base-pacientes__icono { background: #fdf0db; color: #b45309; }
+.base-pacientes__aviso { margin-top: .125rem; font-size: .75rem; color: #92400e; }
+@media (max-width: 639px) { .base-pacientes { flex-wrap: wrap; } .base-pacientes__texto { flex-basis: calc(100% - 2.75rem); } }
+.carga-paso { display: flex; flex-direction: column; gap: .6rem; }
+.carga-archivo { display: flex; flex-direction: column; align-items: center; gap: .25rem; padding: 1.5rem 1rem; text-align: center; cursor: pointer;
+                 border: 1.5px dashed #c5d2e6; border-radius: .75rem; color: #064b9e; transition: background .15s, border-color .15s; }
+.carga-archivo:hover, .carga-archivo--encima { background: #f3f7fd; border-color: #064b9e; }
+.carga-archivo:focus-within { outline: 2px solid #064b9e; outline-offset: 2px; }
+.carga-archivo svg { width: 1.75rem; height: 1.75rem; margin-bottom: .25rem; }
+.carga-archivo__titulo { font-size: .875rem; font-weight: 600; }
+.carga-barra { height: .5rem; border-radius: 999px; background: #e7edf6; overflow: hidden; }
+.carga-barra span { display: block; height: 100%; border-radius: inherit; background: #064b9e; transition: width .15s linear; }
+.carga-cifra { font-size: .9375rem; color: #0f2547; }
+.carga-cifra b { font-size: 1.5rem; font-weight: 700; letter-spacing: -.01em; }
+.carga-notas { display: flex; flex-direction: column; gap: .25rem; padding-left: 1rem; list-style: disc; font-size: .8125rem; line-height: 1.4; color: #374151; }
+.carga-ejemplos { display: flex; flex-direction: column; gap: .125rem; padding: .5rem .625rem; border-radius: .5rem; background: #f3f6fb; font-size: .8125rem; color: #374151; }
+.carga-ejemplos b { font-weight: 600; color: #0f2547; }
+.carga-enlace { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; }
+.carga-aviso { padding: .5rem .625rem; border-radius: .5rem; background: #fef3e2; font-size: .8125rem; line-height: 1.4; color: #92400e; }
 </style>
 @endpush
 @endsection

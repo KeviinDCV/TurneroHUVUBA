@@ -93,10 +93,11 @@
                            padding: 0 1.2rem; border-radius: 18px; background: var(--fondo); box-shadow: inset 0 0 0 2px var(--linea); }
         .cedula-pantalla.con-error { box-shadow: inset 0 0 0 2px var(--rojo); }
         .cedula-valor { font-size: clamp(2rem, 4.2vw, 3.1rem); font-weight: 750; letter-spacing: .03em; font-variant-numeric: tabular-nums; color: var(--tinta); }
+        .cedula-valor--larga { font-size: clamp(1.45rem, 2.9vw, 2.15rem); }
         .cedula-vacia { font-size: clamp(1.1rem, 1.8vw, 1.5rem); font-weight: 500; color: #8a98ad; }
         .cedula-aviso { min-height: 1.4em; margin-top: .35rem; font-size: clamp(.95rem, 1.3vw, 1.15rem); font-weight: 650; color: var(--rojo); }
         .teclado { margin-top: clamp(.6rem, 1.6vh, 1rem); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(.5rem, 1.1vh, .8rem); }
-        .tecla { height: clamp(62px, 8.6vh, 92px); border: 0; border-radius: 16px; background: #e8eff9; color: var(--tinta);
+        .tecla { height: clamp(62px, 8.6vh, 92px); border: 0; border-radius: 16px; background: #e8eff9; color: var(--tinta); touch-action: manipulation;
                  font-size: clamp(1.7rem, 3.1vw, 2.4rem); font-weight: 700; font-variant-numeric: tabular-nums; transition: background .1s, transform .1s; }
         .tecla:active { background: #d3e0f3; transform: scale(.97); }
         .tecla--accion { display: grid; place-items: center; background: #fff; box-shadow: inset 0 0 0 2px #c9d5e6; color: #33415c; font-size: clamp(1rem, 1.6vw, 1.3rem); }
@@ -109,6 +110,9 @@
         @keyframes giro { to { transform: rotate(360deg); } }
         #loadingMessage { font-size: clamp(1.7rem, 3.2vw, 3rem); font-weight: 800; letter-spacing: -.02em; color: var(--azul); }
         #loadingSubMessage { font-size: clamp(1.1rem, 1.7vw, 1.55rem); color: var(--mudo); }
+        /* Nombre del paciente: solo en pantalla, unos segundos; el ticket no lo lleva */
+        .paciente-nombre { max-width: 90vw; font-size: clamp(1.9rem, 3.8vw, 3.5rem); font-weight: 800; line-height: 1.15; letter-spacing: -.015em; color: var(--tinta); overflow-wrap: anywhere; }
+        .paciente-nombre--dialogo { margin-bottom: .5rem; font-size: clamp(1.25rem, 2.2vw, 1.9rem); font-weight: 750; color: var(--azul); }
         #errorOverlay { z-index: 61; }
 
         @media (orientation: portrait) {
@@ -231,6 +235,7 @@
     <!-- Tipo de turno (servicios con prioridad) -->
     <div id="prioridadModal" class="velo" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="prioridadModalTitle">
         <div class="dialogo dialogo--ancho">
+            <p id="prioridadPaciente" class="paciente-nombre paciente-nombre--dialogo" style="display: none;"></p>
             <h2 id="prioridadModalTitle">Tipo de turno</h2>
             <p id="prioridadServicioNombre" class="sub"></p>
             <div class="tipos">
@@ -264,6 +269,7 @@
     <!-- Generando / imprimiendo el turno -->
     <div id="loadingOverlay" class="cargando" style="display: none;" role="status" aria-live="polite">
         <div class="giro" aria-hidden="true"></div>
+        <p id="loadingPaciente" class="paciente-nombre" style="display: none;"></p>
         <p id="loadingMessage">Generando turno...</p>
         <p id="loadingSubMessage">Por favor espere</p>
     </div>
@@ -315,7 +321,7 @@
         let cedulaParaTurno = '';
         let cedulaPendiente = null;   // { id, nombre }: servicio que espera la cédula
         let cedulaEscrita = '';
-        const CEDULA_MIN = 4, CEDULA_MAX = 12;
+        const CEDULA_MIN = 4, CEDULA_MAX = 15;
         let ultimaSolicitud = null; // Para reintentos
 
         // URL base para el enlace móvil del QR (se construye client-side)
@@ -325,6 +331,7 @@
         // FETCH CON TIMEOUT Y AUTO-REINTENTO
         // ============================================
         let reintentoAutomatico = false; // Flag para saber si ya se reintentó automáticamente
+        let esReintento = false;         // La respuesta que viene es de un reintento: la primera se perdió
 
         function fetchConTimeout(url, opciones = {}, timeoutMs = 25000) {
             const controller = new AbortController();
@@ -363,12 +370,20 @@
 
         function ocultarLoading() {
             document.getElementById('loadingOverlay').style.display = 'none';
+            pintarPaciente('loadingPaciente', '');
+        }
+
+        function pintarPaciente(id, nombre) {
+            const el = document.getElementById(id);
+            el.textContent = nombre ? 'Hola, ' + nombre : '';
+            el.style.display = nombre ? '' : 'none';
         }
 
         function mostrarError(mensaje = 'La solicitud tardó demasiado. ¿Desea intentar de nuevo?') {
             ocultarLoading();
             document.getElementById('errorMessage').textContent = mensaje;
             document.getElementById('errorOverlay').style.display = 'flex';
+            vigilarAbandono();
         }
 
         function ocultarError() {
@@ -377,15 +392,25 @@
 
         function reintentarSolicitud() {
             ocultarError();
+            dejarDeVigilar();
+            // Sigue marcada como en proceso: sin esto, ultimaSolicitud() sale de inmediato y el atril queda bloqueado
+            procesandoSolicitud = false;
+            reintentoAutomatico = false;
+            esReintento = true;
             if (ultimaSolicitud) {
                 ultimaSolicitud();
+            } else {
+                desbloquearBotones();
             }
         }
 
         function cancelarSolicitud() {
             ocultarError();
+            dejarDeVigilar();
             desbloquearBotones();
             ultimaSolicitud = null;
+            esReintento = false;
+            olvidarCedula();
         }
 
         // ============================================
@@ -513,8 +538,16 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         // ============================================
         function procesarRespuestaTurno(data) {
             reintentoAutomatico = false; // Reset flag en respuesta exitosa
+            const eraReintento = esReintento;
+            esReintento = false;
             if (data.success) {
                 if (data.duplicado) {
+                    olvidarCedula();
+                    // El primer intento sí creó el turno y se perdió su respuesta: este es el ticket que falta
+                    if (eraReintento && data.turno) {
+                        imprimirTicket(data.turno);
+                        return;
+                    }
                     ocultarLoading();
                     desbloquearBotones();
                     mostrarModal(data.message);
@@ -531,12 +564,17 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                     servicioSeleccionadoId = data.servicio_id;
                     servicioSeleccionadoNombre = data.servicio_nombre;
                     desbloquearBotones();
-                    mostrarPrioridadModal(data.servicio_nombre);
+                    mostrarPrioridadModal(data.servicio_nombre, data.paciente_nombre);
                     return;
                 }
                 // Turno creado exitosamente → imprimir directamente
-                cedulaParaTurno = '';
-                if (data.turno) {
+                olvidarCedula();
+                if (data.turno && data.paciente_nombre) {
+                    // Primero su nombre en pantalla, y ahí sale el turno. El nombre no va en el ticket.
+                    pintarPaciente('loadingPaciente', data.paciente_nombre);
+                    mostrarLoading('Su turno es ' + data.turno.codigo_completo, 'Enseguida sale impreso');
+                    setTimeout(() => imprimirTicket(data.turno), 2200);
+                } else if (data.turno) {
                     mostrarLoading('Turno generado: ' + data.turno.codigo_completo, 'Enviando a impresora...');
                     imprimirTicket(data.turno);
                 } else {
@@ -551,7 +589,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             } else {
                 ocultarLoading();
                 desbloquearBotones();
-                cedulaParaTurno = '';
+                olvidarCedula();
                 mostrarModal(data.message || 'Error al procesar la solicitud');
             }
         }
@@ -561,6 +599,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                 // Si hay una solicitud guardada y aún no se reintentó, reintentar automáticamente una vez
                 if (!reintentoAutomatico && ultimaSolicitud) {
                     reintentoAutomatico = true;
+                    esReintento = true;
                     console.log('⏳ Timeout del servidor, reintentando automáticamente...');
                     mostrarLoading('Reintentando...', 'El servidor está tardando, un momento por favor');
                     // Desbloquear para que el reintento funcione
@@ -675,15 +714,19 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         // ============================================
         // PRIORIDAD
         // ============================================
-        function mostrarPrioridadModal(nombreServicio) {
+        function mostrarPrioridadModal(nombreServicio, nombrePaciente = '') {
             document.getElementById('prioridadServicioNombre').textContent = `Servicio: ${nombreServicio}`;
+            pintarPaciente('prioridadPaciente', nombrePaciente);
             document.getElementById('prioridadModal').style.display = 'flex';
+            if (cedulaParaTurno) vigilarAbandono();
         }
 
         function cerrarPrioridadModal() {
             document.getElementById('prioridadModal').style.display = 'none';
+            pintarPaciente('prioridadPaciente', '');
             servicioSeleccionadoId = null;
             servicioSeleccionadoNombre = '';
+            dejarDeVigilar();
         }
 
         function seleccionarPrioridad(prioridad) {
@@ -743,12 +786,30 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
 
         function cancelarPrioridad() {
             cerrarPrioridadModal();
-            cedulaParaTurno = '';
+            olvidarCedula();
         }
 
         // ============================================
         // CÉDULA (servicios que la piden)
         // ============================================
+        function olvidarCedula() {
+            cedulaPendiente = null;
+            cedulaEscrita = '';
+            cedulaParaTurno = '';
+        }
+
+        // Si la persona se va con la ventana abierta, lo que escribió y su nombre no quedan a la vista del siguiente
+        let abandonoTimer = null;
+        function vigilarAbandono() {
+            clearTimeout(abandonoTimer);
+            abandonoTimer = setTimeout(() => { cerrarCedula(); cancelarPrioridad(); cancelarSolicitud(); }, 45000);
+        }
+        function dejarDeVigilar() {
+            clearTimeout(abandonoTimer);
+            abandonoTimer = null;
+        }
+        ['pointerdown', 'keydown'].forEach(evento => document.addEventListener(evento, () => { if (abandonoTimer) vigilarAbandono(); }));
+
         function abrirCedula(servicioId, nombreServicio, aviso = '') {
             cedulaPendiente = { id: servicioId, nombre: nombreServicio };
             if (!aviso) cedulaEscrita = '';
@@ -756,13 +817,13 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             document.getElementById('cedulaAviso').textContent = aviso;
             pintarCedula();
             document.getElementById('cedulaModal').style.display = 'flex';
+            vigilarAbandono();
         }
 
         function cerrarCedula() {
             document.getElementById('cedulaModal').style.display = 'none';
-            cedulaPendiente = null;
-            cedulaEscrita = '';
-            cedulaParaTurno = '';
+            olvidarCedula();
+            dejarDeVigilar();
         }
 
         // 1144567890 → 1.144.567.890, como está impresa en el documento
@@ -772,6 +833,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             const valor = document.getElementById('cedulaValor');
             valor.textContent = cedulaConPuntos(cedulaEscrita);
             valor.style.display = cedulaEscrita ? '' : 'none';
+            valor.classList.toggle('cedula-valor--larga', cedulaEscrita.length > 11);
             document.getElementById('cedulaVacia').style.display = cedulaEscrita ? 'none' : '';
             document.getElementById('cedulaContinuar').disabled = cedulaEscrita.length < CEDULA_MIN;
             document.getElementById('cedulaPantalla').classList.toggle('con-error', !!document.getElementById('cedulaAviso').textContent);
@@ -806,6 +868,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             const { id, nombre } = cedulaPendiente;
             cedulaParaTurno = cedulaEscrita;
             document.getElementById('cedulaModal').style.display = 'none';
+            dejarDeVigilar();
             // Sigue como cualquier turno: el servidor guarda la cédula y, si el servicio lo pide, pregunta el tipo de turno
             seleccionarServicio(id, nombre);
         }
@@ -850,7 +913,8 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function(event) {
             const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
+            // En el teclado no: cancelaría el toque y, al escribir rápido, se perderían dígitos de la cédula
+            if (now - lastTouchEnd <= 300 && !event.target.closest('.tecla')) {
                 event.preventDefault();
             }
             lastTouchEnd = now;
@@ -863,9 +927,11 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         function resetearInactividad() {
             if (inactividadTimer) clearTimeout(inactividadTimer);
             inactividadTimer = setTimeout(function() {
-                // Solo redirigir si no hay proceso en curso
+                // Solo redirigir si no hay proceso en curso; si lo hay, se vuelve a mirar más tarde
                 if (!procesandoSolicitud) {
                     window.location.href = '{{ route('turnos.inicio') }}';
+                } else {
+                    resetearInactividad();
                 }
             }, 3 * 60 * 1000); // 3 minutos
         }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -25,7 +26,7 @@ class Turno extends Model
         static::updated(function ($turno) {
             TurnoHistorial::crearDesdeturno($turno, 'actualizacion', [
                 'cambios' => $turno->getChanges(),
-                'valores_anteriores' => $turno->getOriginal()
+                'valores_anteriores' => Arr::except($turno->getOriginal(), ['cedula'])
             ]);
         });
 
@@ -36,6 +37,9 @@ class Turno extends Model
             ]);
         });
     }
+
+    // La cédula no sale en ningún JSON: /movil, por ejemplo, es público
+    protected $hidden = ['cedula'];
 
     protected $fillable = [
         'codigo',
@@ -398,13 +402,13 @@ class Turno extends Model
     }
 
     /**
-     * La cédula como la escribió el paciente, solo con dígitos, o null si no es válida (entre 4 y 12 dígitos).
+     * La cédula como la escribió el paciente, solo con dígitos, o null si no es válida (entre 4 y 15 dígitos).
      */
     public static function normalizarCedula($valor): ?string
     {
         $cedula = preg_replace('/\D+/', '', (string) $valor);
 
-        return preg_match('/^\d{4,12}$/', $cedula) ? $cedula : null;
+        return preg_match('/^\d{4,15}$/', $cedula) ? $cedula : null;
     }
 
     // Método estático para convertir tipo de prioridad a número

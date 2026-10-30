@@ -237,7 +237,6 @@
         @if(isset($turnoInfo) && $turnoInfo)
         <!-- Información del Turno Personal -->
         <div id="turno-personal-container" class="gradient-hospital text-white p-3 shadow-lg">
-            <script>console.log('🎯 TurnoInfo encontrado:', @json($turnoInfo));</script>
 
 
 
