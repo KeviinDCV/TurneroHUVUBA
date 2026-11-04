@@ -36,7 +36,7 @@
                     <button type="button" role="radio" :aria-checked="(formato === 'excel').toString()" @click="formato = 'excel'">Excel</button>
                     <button type="button" role="radio" :aria-checked="(formato === 'pdf').toString()" @click="formato = 'pdf'">PDF</button>
                 </div>
-                <p class="form-ayuda" x-show="formato === 'excel'">Hojas: Resumen, Detalle de turnos, Por servicio, Por asesor y una hoja por asesor con sus turnos.</p>
+                <p class="form-ayuda" x-show="formato === 'excel'">Hojas: Resumen, Detalle de turnos (con la cédula, si la persona la escribió en el atril), Por servicio, Por asesor y una hoja por asesor con sus turnos.</p>
                 <p class="form-ayuda" x-show="formato === 'pdf'" x-cloak>Resumen, tablas por servicio y por asesor, y los 50 turnos más recientes (el Excel trae todos).</p>
             </section>
 

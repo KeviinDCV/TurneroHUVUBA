@@ -115,6 +115,16 @@
         .tabla-asesores {
             font-size: 9px;
         }
+        /* Nueve columnas en A4 vertical: letra y márgenes algo menores; la cédula no se parte */
+        .tabla-detalle {
+            font-size: 10px;
+        }
+        .tabla-detalle th, .tabla-detalle td {
+            padding: 6px 5px;
+        }
+        .tabla-detalle .cedula {
+            white-space: nowrap;
+        }
         .tabla-asesores th, .tabla-asesores td {
             padding: 5px 4px;
         }
@@ -345,10 +355,11 @@
     @if($turnos->count() > 0)
     <div class="section page-break">
         <div class="section-title">DETALLE DE TURNOS (los 50 más recientes; el Excel trae todos)</div>
-        <table>
+        <table class="tabla-detalle">
             <thead>
                 <tr>
                     <th>Código</th>
+                    <th>Cédula</th>
                     <th>Servicio</th>
                     <th>Asesor</th>
                     <th>Estado</th>
@@ -362,6 +373,8 @@
                 @foreach($turnos->take(50) as $turno)
                 <tr>
                     <td>{{ $turno->codigo_completo }}</td>
+                    {{-- La que la persona escribió en el atril; «-» si el servicio no la pide --}}
+                    <td class="cedula">{{ trim((string) $turno->cedula) !== '' ? $turno->cedula : '-' }}</td>
                     <td>{{ $turno->servicio->nombre ?? 'N/A' }}</td>
                     <td>{{ $turno->asesor->nombre_completo ?? ($turno->asesor->nombre_usuario ?? 'N/A') }}</td>
                     <td>

@@ -12,6 +12,7 @@ use App\Models\Servicio;
 use App\Services\MetricasTurnos;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -242,6 +243,7 @@ class ReportesController extends Controller
 
                     return [
                         'codigo' => $turno->codigo_completo,
+                        'cedula' => $turno->cedula,
                         'servicio' => $turno->servicio->nombre ?? 'N/A',
                         'fecha_llamado' => $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A',
                         'fecha_atencion' => $turno->fecha_atencion ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') : 'N/A',
@@ -819,16 +821,17 @@ class ReportesController extends Controller
         $headers = [
             'A1' => 'Código',
             'B1' => 'Número',
-            'C1' => 'Servicio',
-            'D1' => 'Asesor',
-            'E1' => 'Caja',
-            'F1' => 'Estado',
-            'G1' => 'Prioridad',
-            'H1' => 'Fecha Creación',
-            'I1' => 'Hora Llamado',
-            'J1' => 'Hora Finalización',
-            'K1' => 'Duración de la Atención',
-            'L1' => 'Observaciones/Transferencia'
+            'C1' => 'Cédula',
+            'D1' => 'Servicio',
+            'E1' => 'Asesor',
+            'F1' => 'Caja',
+            'G1' => 'Estado',
+            'H1' => 'Prioridad',
+            'I1' => 'Fecha Creación',
+            'J1' => 'Hora Llamado',
+            'K1' => 'Hora Finalización',
+            'L1' => 'Duración de la Atención',
+            'M1' => 'Observaciones/Transferencia'
         ];
 
         foreach ($headers as $cell => $header) {
@@ -836,7 +839,7 @@ class ReportesController extends Controller
         }
 
         // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:L1')->applyFromArray([
+        $sheet->getStyle('A1:M1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
@@ -858,22 +861,23 @@ class ReportesController extends Controller
 
             $sheet->setCellValue('A' . $row, $turno->codigo);
             $sheet->setCellValue('B' . $row, $turno->numero);
-            $sheet->setCellValue('C' . $row, $turno->servicio->nombre ?? 'N/A');
-            $sheet->setCellValue('D' . $row, $turno->asesor->nombre_completo ?? ($turno->asesor->nombre_usuario ?? 'N/A'));
-            $sheet->setCellValue('E' . $row, $turno->caja->nombre ?? 'N/A');
-            $sheet->setCellValue('F' . $row, strtoupper($turno->estado));
-            $sheet->setCellValue('G' . $row, $turno->prioridad >= 4 ? 'Prioritario' : 'Normal');
-            $sheet->setCellValue('H' . $row, $turno->created_at ? Carbon::parse($turno->created_at)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('I' . $row, $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('J' . $row, $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('K' . $row, $duracionFormato);
-            $sheet->setCellValue('L' . $row, $turno->observaciones ?? '-');
+            $this->celdaCedula($sheet, 'C' . $row, $turno->cedula);
+            $sheet->setCellValue('D' . $row, $turno->servicio->nombre ?? 'N/A');
+            $sheet->setCellValue('E' . $row, $turno->asesor->nombre_completo ?? ($turno->asesor->nombre_usuario ?? 'N/A'));
+            $sheet->setCellValue('F' . $row, $turno->caja->nombre ?? 'N/A');
+            $sheet->setCellValue('G' . $row, strtoupper($turno->estado));
+            $sheet->setCellValue('H' . $row, $turno->prioridad >= 4 ? 'Prioritario' : 'Normal');
+            $sheet->setCellValue('I' . $row, $turno->created_at ? Carbon::parse($turno->created_at)->format('d/m/Y H:i:s') : 'N/A');
+            $sheet->setCellValue('J' . $row, $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A');
+            $sheet->setCellValue('K' . $row, $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A');
+            $sheet->setCellValue('L' . $row, $duracionFormato);
+            $sheet->setCellValue('M' . $row, $turno->observaciones ?? '-');
             $row++;
         }
 
         // Aplicar bordes a todos los datos
         if ($row > 2) {
-            $sheet->getStyle('A1:L' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:M' . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -883,9 +887,19 @@ class ReportesController extends Controller
         }
 
         // Ajustar ancho de columnas
-        foreach (range('A', 'L') as $column) {
+        foreach (range('A', 'M') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
+    }
+
+    /**
+     * La cédula que la persona escribió en el atril, como texto: como número, Excel la mostraría en notación científica o
+     * le quitaría los ceros de la izquierda. «-» si no la escribió (servicio que no la pide o turno anterior a la función).
+     */
+    private function celdaCedula($sheet, string $celda, ?string $cedula): void
+    {
+        $cedula = trim((string) $cedula);
+        $sheet->setCellValueExplicit($celda, $cedula !== '' ? $cedula : '-', DataType::TYPE_STRING);
     }
 
     /**
@@ -1053,15 +1067,16 @@ class ReportesController extends Controller
 
         // Encabezados (sin Hora Atención porque es redundante con Hora Finalización)
         $sheet->setCellValue('A1', 'Código');
-        $sheet->setCellValue('B1', 'Servicio');
-        $sheet->setCellValue('C1', 'Hora Llamado');
-        $sheet->setCellValue('D1', 'Hora Finalización');
-        $sheet->setCellValue('E1', 'Duración de la Atención');
-        $sheet->setCellValue('F1', 'Caja');
-        $sheet->setCellValue('G1', 'Observaciones');
+        $sheet->setCellValue('B1', 'Cédula');
+        $sheet->setCellValue('C1', 'Servicio');
+        $sheet->setCellValue('D1', 'Hora Llamado');
+        $sheet->setCellValue('E1', 'Hora Finalización');
+        $sheet->setCellValue('F1', 'Duración de la Atención');
+        $sheet->setCellValue('G1', 'Caja');
+        $sheet->setCellValue('H1', 'Observaciones');
 
         // Estilo encabezado
-        $sheet->getStyle('A1:G1')->applyFromArray([
+        $sheet->getStyle('A1:H1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '064b9e']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
@@ -1071,17 +1086,18 @@ class ReportesController extends Controller
         $row = 2;
         foreach ($datosAsesor['turnos_detalle'] as $turno) {
             $sheet->setCellValue('A' . $row, $turno['codigo']);
-            $sheet->setCellValue('B' . $row, $turno['servicio']);
-            $sheet->setCellValue('C' . $row, $turno['fecha_llamado']);
-            $sheet->setCellValue('D' . $row, $turno['fecha_finalizacion']);
-            $sheet->setCellValue('E' . $row, $turno['duracion_atencion']);
-            $sheet->setCellValue('F' . $row, $turno['caja']);
-            $sheet->setCellValue('G' . $row, $turno['observaciones'] ?? '-');
+            $this->celdaCedula($sheet, 'B' . $row, $turno['cedula'] ?? null);
+            $sheet->setCellValue('C' . $row, $turno['servicio']);
+            $sheet->setCellValue('D' . $row, $turno['fecha_llamado']);
+            $sheet->setCellValue('E' . $row, $turno['fecha_finalizacion']);
+            $sheet->setCellValue('F' . $row, $turno['duracion_atencion']);
+            $sheet->setCellValue('G' . $row, $turno['caja']);
+            $sheet->setCellValue('H' . $row, $turno['observaciones'] ?? '-');
             $row++;
         }
 
         // Ajustar columnas
-        foreach (range('A', 'G') as $col) {
+        foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
     }
