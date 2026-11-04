@@ -34,6 +34,40 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // 419 = el token de la página no corresponde a la sesión del navegador. Dos causas: la página llevaba abierta más que
+        // la sesión (2 h), o el navegador guarda además una cookie de sesión vieja SIN dominio (de una configuración anterior),
+        // que se envía primero y gana sobre la buena: así falla cada intento. Se borra esa cookie vieja (sin dominio: con la
+        // función de Laravel quedaría con el del .env y no la tocaría) y, si era el login, se vuelve al formulario con un aviso
+        // y el usuario escrito en lugar de «419 Page Expired».
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
+            if ($e->getStatusCode() !== 419) {
+                return null;
+            }
+
+            if ($request->isMethod('POST') && $request->is('admin', 'login') && !$request->expectsJson()) {
+                $respuesta = redirect()->route('login')
+                    ->withInput($request->only('usuario'))
+                    ->withErrors(['usuario' => 'La página había caducado. Escribe de nuevo tu contraseña para entrar.']);
+            } elseif ($request->expectsJson() || $request->isJson()) {
+                $respuesta = response()->json(['message' => 'La sesión expiró. Recarga la página e inténtalo de nuevo.'], 419);
+            } else {
+                $respuesta = response('La página expiró. Vuelve atrás, recárgala e inténtalo de nuevo.', 419);
+            }
+
+            // Solo si de verdad llegan dos cookies con ese nombre. En local con depuración, EnsureSessionCompatibility quita el
+            // dominio y la cookie sin dominio es la buena: ahí no se toca nada.
+            $cabecera = (string) $request->header('cookie', '');
+            if (config('session.domain') && !(app()->environment('local') && config('app.debug'))) {
+                foreach ([config('session.cookie'), 'XSRF-TOKEN'] as $nombre) {
+                    if (preg_match_all('/(?:^|;\s*)' . preg_quote($nombre, '/') . '=/', $cabecera) > 1) {
+                        $respuesta->headers->setCookie(new \Symfony\Component\HttpFoundation\Cookie($nombre, '', 1, config('session.path', '/'), null));
+                    }
+                }
+            }
+
+            return $respuesta;
+        });
+
         // Manejo personalizado de errores de base de datos
         $exceptions->render(function (\Illuminate\Database\QueryException $e, $request) {
             // Detectar errores de conexión a la base de datos

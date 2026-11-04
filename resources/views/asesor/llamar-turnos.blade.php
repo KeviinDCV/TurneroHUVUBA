@@ -890,6 +890,12 @@
             }
 
             // Para otros errores HTTP, lanzar error
+            // 419: la sesión venció o se cerró en otro lado; el servidor manda el motivo en español
+            if (response.status === 419) {
+                const datos = await response.json().catch(() => ({}));
+                throw new Error(datos.message || 'La sesión expiró. Recarga la página e inténtalo de nuevo.');
+            }
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -925,6 +931,12 @@
                 // Para 400 y otros códigos, simplemente devolver el JSON sin mostrar error
                 if (response.status === 400 || response.status === 403) {
                     return response.json();
+                }
+
+                // 419: la sesión venció o se cerró en otro lado; el servidor manda el motivo en español
+                if (response.status === 419) {
+                    const datos = await response.json().catch(() => ({}));
+                    throw new Error(datos.message || 'La sesión expiró. Recarga la página e inténtalo de nuevo.');
                 }
 
                 if (!response.ok) {

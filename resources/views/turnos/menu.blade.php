@@ -393,6 +393,7 @@
         function reintentarSolicitud() {
             ocultarError();
             dejarDeVigilar();
+            reintentoPorToken = false;
             // Sigue marcada como en proceso: sin esto, ultimaSolicitud() sale de inmediato y el atril queda bloqueado
             procesandoSolicitud = false;
             reintentoAutomatico = false;
@@ -407,6 +408,7 @@
         function cancelarSolicitud() {
             ocultarError();
             dejarDeVigilar();
+            reintentoPorToken = false;
             desbloquearBotones();
             ultimaSolicitud = null;
             esReintento = false;
@@ -607,7 +609,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                 return;
             }
             reintentoPorToken = true;
-            fetch('/turnos/menu', { method: 'GET', headers: { 'Accept': 'text/html' }, cache: 'no-store' })
+            fetchConTimeout('/turnos/menu', { method: 'GET', headers: { 'Accept': 'text/html' }, cache: 'no-store' }, 10000)
                 .then(r => r.text())
                 .then(html => {
                     const m = html.match(/meta name="csrf-token" content="([^"]+)"/);
@@ -626,6 +628,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         }
 
         function manejarErrorFetch(error) {
+            reintentoPorToken = false;
             if (error.name === 'AbortError' || error.message === 'Failed to fetch') {
                 // Si hay una solicitud guardada y aún no se reintentó, reintentar automáticamente una vez
                 if (!reintentoAutomatico && ultimaSolicitud) {
