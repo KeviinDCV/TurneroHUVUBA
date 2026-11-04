@@ -123,6 +123,25 @@
             <form method="POST" action="{{ route('admin.login.post') }}" class="space-y-5" id="loginForm">
                 @csrf
 
+                {{-- Volvió por un 419 (bootstrap/app.php). Si aun así el navegador no trae la cookie de sesión, no la está guardando:
+                     casi siempre es una cookie «Secure» de una visita por https:// que bloquea la de http://. --}}
+                @php
+                    $paginaCaducada = request()->boolean('caducada');
+                    $sinCookie = $paginaCaducada && !request()->cookies->has(config('session.cookie'));
+                @endphp
+                @if ($sinCookie)
+                    <div role="alert" class="border border-orange-300 text-orange-700 px-4 py-3 rounded-2xl text-sm" style="background-color: #fff3e0;">
+                        <div class="font-medium">Este navegador no está guardando la sesión</div>
+                        <div class="text-sm">Suele pasar si antes se entró por https://. Entre una vez por
+                            <a href="https://{{ request()->getHost() }}/login" style="text-decoration: underline; font-weight: 600;">https://{{ request()->getHost() }}/login</a>
+                            o borre las cookies de este sitio, y vuelva a intentarlo.</div>
+                    </div>
+                @elseif ($paginaCaducada && !$errors->any())
+                    <div role="alert" class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-2xl text-sm">
+                        La página había caducado. Escribe de nuevo tu contraseña para entrar.
+                    </div>
+                @endif
+
                 @if ($errors->has('session_active'))
                     <div role="alert" class="border border-orange-300 text-orange-700 px-4 py-3 rounded-2xl text-sm" style="background-color: #fff3e0;">
                         <div class="flex items-center">

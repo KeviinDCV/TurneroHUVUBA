@@ -169,7 +169,10 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Sin valor en el .env, Laravel le pone «Secure» a la cookie cuando la visita es por https. Como el turnero también se
+    // usa por http, esa cookie segura bloquea luego la sesión por http (el login vuelve al formulario sin entrar). Por eso,
+    // por defecto, nunca segura; cuando todo vaya por https con un certificado válido, poner SESSION_SECURE_COOKIE=true.
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     /*
     |--------------------------------------------------------------------------
