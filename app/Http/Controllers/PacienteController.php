@@ -141,7 +141,7 @@ class PacienteController extends Controller
     }
 
     /**
-     * Eliminar la base. El atril vuelve a pedir la cédula sin comprobarla, hasta que se cargue otra.
+     * Eliminar la base. El atril sigue pidiendo la cédula y dando turno; solo deja de mostrar nombres hasta que se cargue otra.
      */
     public function eliminar(): JsonResponse
     {

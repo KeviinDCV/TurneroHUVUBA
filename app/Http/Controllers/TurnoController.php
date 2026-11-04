@@ -285,8 +285,8 @@ class TurnoController extends Controller
 
     /**
      * La cédula que escribió el paciente si el servicio la pide (null si no la pide), o la respuesta para el atril:
-     * "pídala" si aún no llegó, o un aviso si no es válida o no está en la base de pacientes: ahí no sale turno.
-     * Un servicio que pide cédula nunca genera turno sin ella. Sin base cargada, la cédula se guarda sin comprobarla.
+     * "pídala" si aún no llegó, o un aviso si no es válida. Un servicio que pide cédula nunca genera turno sin ella. Si la base
+     * de pacientes la tiene, se guarda su nombre para mostrarlo en pantalla; si no, el turno sale igual, sin nombre.
      */
     private function cedulaDelPaciente(Request $request, Servicio $servicio)
     {
@@ -312,35 +312,40 @@ class TurnoController extends Controller
             ]);
         }
 
+        // La base de pacientes solo pone el nombre en pantalla: esté o no la cédula, el turno sale igual
+        $this->nombrePaciente = $this->nombreParaMostrar($request, $cedula);
+
+        return $cedula;
+    }
+
+    /**
+     * El nombre de quien escribió la cédula, para saludarlo en pantalla (nunca va al ticket). null si no está en la base, si no
+     * hay base, si el equipo no es un atril autorizado (ATRIL_IPS) o si desde ese equipo se probaron demasiadas cédulas que no
+     * están: en todos esos casos el turno sale igual, solo que sin nombre.
+     */
+    private function nombreParaMostrar(Request $request, string $cedula): ?string
+    {
         if (!Paciente::hayBase()) {
-            return $cedula;
+            return null;
         }
 
-        // El atril es público y una cédula devuelve un nombre: solo los equipos autorizados consultan la base
+        // El atril es público y una cédula devuelve un nombre: solo los equipos autorizados lo ven
         $ip = (string) $request->ip();
         if (!Paciente::equipoAutorizado($ip)) {
-            return response()->json([
-                'success' => false,
-                'cedula_invalida' => true,
-                'message' => 'Este servicio solo se puede usar desde los atriles del hospital.',
-            ], 403);
+            return null;
         }
 
         // Además se limita cuánto se puede probar. Lo que frena recorrer números son los fallos (casi todo número al azar
-        // falla). Por sesión, porque los atriles suelen salir por una misma IP y uno no debe bloquear a los demás; por IP,
-        // un techo mucho más alto, porque una sesión nueva se abre con solo recargar.
+        // falla). Por sesión, porque los atriles suelen salir por una misma IP y uno no debe afectar a los demás; por IP, un
+        // techo mucho más alto, porque una sesión nueva se abre con solo recargar. Pasado el límite no se muestran nombres.
         $sesion = $request->hasSession() ? $request->session()->getId() : $ip;
         $fallosPorMinuto = ['atril-fallos-sesion:' . $sesion => 30, 'atril-fallos-ip:' . $ip => 120];
         $fallosPorHora = ['atril-fallos-sesion-hora:' . $sesion => 300, 'atril-fallos-ip-hora:' . $ip => 1500];
         foreach ($fallosPorMinuto + $fallosPorHora + ['atril-consultas-ip:' . $ip => 300] as $clave => $tope) {
             if (RateLimiter::tooManyAttempts($clave, $tope)) {
-                \Log::warning('Atril: límite de consultas de cédula', ['limite' => strtok($clave, ':'), 'ip' => $ip]);
+                \Log::warning('Atril: límite de consultas de cédula, sin nombre', ['limite' => strtok($clave, ':'), 'ip' => $ip]);
 
-                return response()->json([
-                    'success' => false,
-                    'cedula_invalida' => true,
-                    'message' => 'Se han hecho demasiados intentos desde este equipo. Acérquese a una ventanilla.',
-                ], 429);
+                return null;
             }
         }
         RateLimiter::hit('atril-consultas-ip:' . $ip, 60);
@@ -353,17 +358,9 @@ class TurnoController extends Controller
             foreach (array_keys($fallosPorHora) as $clave) {
                 RateLimiter::hit($clave, 3600);
             }
-
-            return response()->json([
-                'success' => false,
-                'cedula_invalida' => true,
-                'message' => 'No encontramos esta cédula. Revísela o acérquese a una ventanilla.',
-            ]);
         }
 
-        $this->nombrePaciente = $nombre;
-
-        return $cedula;
+        return $nombre;
     }
 
     /**

@@ -63,7 +63,7 @@
                             <span>Pide prioridad en el kiosco <span class="form-ayuda">Al sacar el turno se elige Normal o Alta.</span></span>
                         </label>
                         <label class="form-casilla" x-show="!tieneHijosActivos()"><input type="checkbox" x-model="datos.requiere_cedula">
-                            <span>Pide cédula en el atril <span class="form-ayuda">Antes del turno, la persona escribe su cédula. Si está en la base de pacientes, ve su nombre en pantalla y sale el turno; si no está, no sale.</span></span>
+                            <span>Pide cédula en el atril <span class="form-ayuda">Antes del turno, la persona escribe su cédula y queda guardada en el turno. Si está en la base de pacientes, además ve su nombre en pantalla.</span></span>
                         </label>
                     </div>
                     <label class="form-campo">Descripción
@@ -216,8 +216,8 @@
                                     <p class="form-ayuda">Revisa que se vean bien:</p>
                                     <template x-for="e in lectura.ejemplos" :key="e.doc"><p><span x-text="e.doc"></span> <b x-text="e.nombre"></b></p></template>
                                 </div>
-                                <p class="carga-aviso" x-show="reduceMucho()" x-text="`La base actual tiene ${miles(base.total)} pacientes y este archivo trae muchos menos. Quienes no estén en él dejarán de recibir turno en los servicios que piden cédula.`"></p>
-                                <p class="form-ayuda" x-show="base.total && !reduceMucho()">Reemplaza la base actual: quien no esté en este archivo deja de recibir turno en los servicios que piden cédula.</p>
+                                <p class="carga-aviso" x-show="reduceMucho()" x-text="`La base actual tiene ${miles(base.total)} pacientes y este archivo trae muchos menos. Quienes no estén en él ya no verán su nombre en el atril.`"></p>
+                                <p class="form-ayuda" x-show="base.total && !reduceMucho()">Reemplaza la base actual: quien no esté en este archivo ya no verá su nombre en el atril (su turno sale igual).</p>
                             </div>
                         </template>
 
@@ -232,7 +232,7 @@
 
                         <!-- Eliminar -->
                         <template x-if="paso === 'eliminar'">
-                            <p class="form-texto">Se borrarán los <b x-text="miles(base.total)"></b> pacientes. Mientras no se cargue otra base, el atril pedirá la cédula pero <b>no la comprobará</b> y dará turno a cualquiera.</p>
+                            <p class="form-texto">Se borrarán los <b x-text="miles(base.total)"></b> pacientes. El atril seguirá pidiendo la cédula y dando turno, pero sin mostrar nombres hasta que se cargue otra base.</p>
                         </template>
 
                         <p class="form-error" x-show="error" x-text="error"></p>
@@ -423,7 +423,7 @@ document.addEventListener('alpine:init', () => {
                 : '<span class="texto-mudo">Visible</span>';
         },
         celdaPrioridad(s) { return s.requiere_priorizacion ? '<span title="El kiosco pregunta Normal o Alta">Normal / Alta</span>' : '<span class="texto-mudo">—</span>'; },
-        celdaCedula(s) { return s.requiere_cedula ? '<span title="El atril pide la cédula y solo da turno a quien esté en la base de pacientes">Pide</span>' : '<span class="texto-mudo">—</span>'; },
+        celdaCedula(s) { return s.requiere_cedula ? '<span title="El atril pide la cédula; a quien esté en la base de pacientes le muestra su nombre">Pide</span>' : '<span class="texto-mudo">—</span>'; },
     }));
 
     function enviar(url, datos, metodo) {
@@ -487,14 +487,14 @@ document.addEventListener('alpine:init', () => {
         archivo: '', avance: 0, lectura: null, enviados: 0, cancelador: null, cerrando: false,
 
         sinRestringir() { return !this.base.restringido; },
-        alerta() { return this.sinRestringir() || (!this.base.total && serviciosConCedula() > 0); },
+        alerta() { return this.sinRestringir(); },
         detalle() {
             const b = this.base;
             if (!b.total) {
                 const n = serviciosConCedula();
                 return n > 0
-                    ? `Sin cargar: ${n === 1 ? 'el servicio que pide' : `los ${n} servicios que piden`} cédula la guardan sin comprobarla y dan turno a cualquiera.`
-                    : 'Sin cargar. Con ella, los servicios que piden cédula solo dan turno a quien esté en la base y le muestran su nombre.';
+                    ? `Sin cargar: ${n === 1 ? 'el servicio que pide' : `los ${n} servicios que piden`} cédula la guardan y dan el turno, pero sin mostrar nombres.`
+                    : 'Sin cargar. Con ella, el atril saluda por su nombre a quien esté en la base.';
             }
             const f = b.fecha ? new Date(b.fecha) : null;
             const cuando = f ? ` · Actualizada el ${f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}, ${f.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}` : '';

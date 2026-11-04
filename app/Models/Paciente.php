@@ -9,7 +9,8 @@ use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
  * Base de pacientes del atril: documento y nombre, nada más. Se carga desde Servicios (PacienteController).
- * En un servicio que pide cédula, solo se da turno a quien esté aquí; su nombre se muestra en pantalla y no se imprime.
+ * En un servicio que pide cédula, a quien esté aquí el atril lo saluda por su nombre (solo en pantalla, no se imprime);
+ * quien no esté recibe su turno igual, sin nombre.
  */
 class Paciente extends Model
 {
@@ -40,7 +41,7 @@ class Paciente extends Model
     }
 
     /**
-     * Si hay base cargada. Sin base, el atril pide la cédula y la guarda sin comprobarla.
+     * Si hay base cargada. Sin base, el atril pide la cédula y la guarda, pero no muestra nombres.
      */
     public static function hayBase(): bool
     {
