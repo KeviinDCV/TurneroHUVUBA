@@ -538,6 +538,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
         // ============================================
         function procesarRespuestaTurno(data) {
             reintentoAutomatico = false; // Reset flag en respuesta exitosa
+            reintentoPorToken = false;
             const eraReintento = esReintento;
             esReintento = false;
             if (data.success) {
@@ -592,6 +593,36 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
                 olvidarCedula();
                 mostrarModal(data.message || 'Error al procesar la solicitud');
             }
+        }
+
+        // 419: el token de esta página ya no vale porque la sesión de este navegador se cerró (salir del panel en otra
+        // pestaña, un cierre forzado, o más de 2 horas con el equipo suspendido). El servidor rechazó la petición sin crear
+        // nada, así que se pide un token nuevo y se reintenta una vez, sin mostrarle nada al paciente.
+        let reintentoPorToken = false;
+        function renovarTokenYReintentar() {
+            if (reintentoPorToken || !ultimaSolicitud) {
+                reintentoPorToken = false;
+                ocultarLoading();
+                mostrarError('La sesión expiró. Reintente por favor.');
+                return;
+            }
+            reintentoPorToken = true;
+            fetch('/turnos/menu', { method: 'GET', headers: { 'Accept': 'text/html' }, cache: 'no-store' })
+                .then(r => r.text())
+                .then(html => {
+                    const m = html.match(/meta name="csrf-token" content="([^"]+)"/);
+                    if (!m) throw new Error('Sin token');
+                    currentCsrfToken = m[1];
+                    const metaTag = document.querySelector('meta[name="csrf-token"]');
+                    if (metaTag) metaTag.setAttribute('content', m[1]);
+                    procesandoSolicitud = false;   // si no, ultimaSolicitud() sale de inmediato
+                    ultimaSolicitud();
+                })
+                .catch(() => {
+                    reintentoPorToken = false;
+                    ocultarLoading();
+                    mostrarError('Error de conexión con el servidor. ¿Desea intentar de nuevo?');
+                });
         }
 
         function manejarErrorFetch(error) {
@@ -657,15 +688,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             .then(data => procesarRespuestaTurno(data))
             .catch(error => {
                 if (error.message === 'CSRF_EXPIRED') {
-                    ocultarLoading();
-                    mostrarError('La sesión expiró. Reintente por favor.');
-                    // Intentar renovar CSRF para el siguiente intento
-                    fetch('/turnos/menu', { method: 'GET', headers: { 'Accept': 'text/html' } })
-                        .then(r => r.text())
-                        .then(html => {
-                            const m = html.match(/meta name="csrf-token" content="([^"]+)"/);
-                            if (m && m[1]) currentCsrfToken = m[1];
-                        }).catch(() => {});
+                    renovarTokenYReintentar();
                     return;
                 }
                 manejarErrorFetch(error);
@@ -697,14 +720,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             .then(data => procesarRespuestaTurno(data))
             .catch(error => {
                 if (error.message === 'CSRF_EXPIRED') {
-                    ocultarLoading();
-                    mostrarError('La sesión expiró. Reintente por favor.');
-                    fetch('/turnos/menu', { method: 'GET', headers: { 'Accept': 'text/html' } })
-                        .then(r => r.text())
-                        .then(html => {
-                            const m = html.match(/meta name="csrf-token" content="([^"]+)"/);
-                            if (m && m[1]) currentCsrfToken = m[1];
-                        }).catch(() => {});
+                    renovarTokenYReintentar();
                     return;
                 }
                 manejarErrorFetch(error);
@@ -770,14 +786,7 @@ ${turnoData.prioridad && turnoData.prioridad === 'Prioritario' ? '<div style="ma
             .then(data => procesarRespuestaTurno(data))
             .catch(error => {
                 if (error.message === 'CSRF_EXPIRED') {
-                    ocultarLoading();
-                    mostrarError('La sesión expiró. Reintente por favor.');
-                    fetch('/turnos/menu', { method: 'GET', headers: { 'Accept': 'text/html' } })
-                        .then(r => r.text())
-                        .then(html => {
-                            const m = html.match(/meta name="csrf-token" content="([^"]+)"/);
-                            if (m && m[1]) currentCsrfToken = m[1];
-                        }).catch(() => {});
+                    renovarTokenYReintentar();
                     return;
                 }
                 manejarErrorFetch(error);
