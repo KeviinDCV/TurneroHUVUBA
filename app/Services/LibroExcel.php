@@ -29,6 +29,7 @@ class LibroExcel
     public const NOTA = 9;                // 9 pt cursiva gris, ajustada y arriba
     public const NOTA_SIMPLE = 10;        // 9 pt cursiva gris
     public const CLARO_BORDE_NEGRITA = 11;
+    public const ENCABEZADO_AMBAR = 12;   // negrita blanca sobre ámbar (canales no presenciales), con bordes
 
     /** Filas por hoja que admite Excel (incluido el encabezado). */
     public const MAX_FILAS = 1048576;
@@ -367,6 +368,7 @@ class LibroExcel
             $relleno('064B9E'),                 // 2 azul institucional
             $relleno('E6F0FF'),                 // 3 azul claro
             $relleno('FFFFFF'),                 // 4 blanco
+            $relleno('F59E0B'),                 // 5 ámbar
         ];
         $bordes = [
             '<border><left/><right/><top/><bottom/><diagonal/></border>',
@@ -390,6 +392,7 @@ class LibroExcel
             self::NOTA => $xf(6, 0, 0, 'vertical="top" wrapText="1"'),
             self::NOTA_SIMPLE => $xf(6),
             self::CLARO_BORDE_NEGRITA => $xf(4, 3, 1),
+            self::ENCABEZADO_AMBAR => $xf(1, 5, 1),
         ];
         ksort($celdas);
 
