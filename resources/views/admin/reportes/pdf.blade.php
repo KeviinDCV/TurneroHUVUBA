@@ -352,7 +352,7 @@
     @endif
 
     <!-- Detalle de Turnos (Solo primeros 50 para evitar PDF muy largo) -->
-    @if($turnos->count() > 0)
+    @if($total_turnos > 0)
     <div class="section page-break">
         <div class="section-title">DETALLE DE TURNOS (los 50 más recientes; el Excel trae todos)</div>
         <table class="tabla-detalle">
@@ -370,7 +370,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($turnos->take(50) as $turno)
+                @foreach($turnos as $turno)
                 <tr>
                     <td>{{ $turno->codigo_completo }}</td>
                     {{-- La que la persona escribió en el atril; «-» si el servicio no la pide --}}
@@ -409,9 +409,9 @@
             </tbody>
         </table>
 
-        @if($turnos->count() > 50)
+        @if($total_turnos > 50)
         <p style="font-style: italic; color: #666; text-align: center; margin-top: 10px;">
-            Mostrando los primeros 50 de {{ $turnos->count() }} turnos totales. 
+            Mostrando los primeros 50 de {{ number_format($total_turnos, 0, ',', '.') }} turnos totales. 
             Para ver todos los registros, exporte en formato Excel.
         </p>
         @endif

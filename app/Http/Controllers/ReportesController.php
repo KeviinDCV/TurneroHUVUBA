@@ -5,14 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use App\Models\Turno;
 use App\Models\TurnoHistorial;
 use App\Models\Servicio;
+use App\Models\Caja;
+use App\Services\LibroExcel;
 use App\Services\MetricasTurnos;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -21,6 +23,23 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportesController extends Controller
 {
+    /**
+     * Columnas que necesitan las cuentas del informe. Se cargan sin modelos de Eloquent: un periodo largo (todo el año)
+     * son cientos de miles de turnos, y como modelos con sus relaciones pasaban del límite de memoria del servidor.
+     */
+    private const COLUMNAS_CUENTAS = ['id', 'servicio_id', 'asesor_id', 'estado', 'created_at', 'fecha_llamado', 'fecha_atencion', 'duracion_atencion', 'observaciones'];
+
+    /** Columnas del detalle de turnos del Excel, que se lee por bloques mientras se escribe. */
+    private const COLUMNAS_DETALLE = ['id', 'codigo', 'numero', 'cedula', 'servicio_id', 'asesor_id', 'caja_id', 'estado', 'prioridad', 'created_at', 'fecha_llamado', 'fecha_atencion', 'fecha_finalizacion', 'duracion_atencion', 'observaciones'];
+
+    private const TURNOS_POR_BLOQUE = 2000;
+
+    /** Servicios, usuarios y nombres de cajas por id: tablas pequeñas que reemplazan las relaciones de cada turno. */
+    private $servicios;
+    private $usuarios;
+    private $cajas;
+    private ?array $columnasDetalle = null;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -97,8 +116,37 @@ class ReportesController extends Controller
             )));
         }
 
+        // Un periodo largo (todo el año) es mucho más trabajo que un mes: más tiempo y, por si acaso, más memoria.
+        $this->darMargenParaInformesLargos();
+
+        // Todo el informe se lee en una sola transacción (solo lectura, se deshace al final): las cuentas y el detalle, que se
+        // lee por bloques segundos después, ven la misma foto de la base aunque mientras tanto se atiendan turnos.
+        DB::beginTransaction();
+        try {
+            $respuesta = $this->armarInforme($request, $fechaInicio, $fechaFin, $alcance, $servicios, $usuarios);
+        } finally {
+            DB::rollBack();
+        }
+
+        // Reportes descarga por URL (GET) en un iframe para que los gestores de descarga (Chrono, IDM…) puedan tomarla;
+        // la página no ve el archivo, así que esta cookie le avisa que ya salió. Legible por JS y sin Secure: el sitio va por http.
+        $aviso = (string) $request->query('aviso', '');
+        if (preg_match('/^[a-z0-9]{8,40}$/i', $aviso)) {
+            $respuesta->headers->setCookie(new \Symfony\Component\HttpFoundation\Cookie('informe_listo_' . $aviso, '1', time() + 120, '/', null, false, false, false, 'lax'));
+        }
+
+        return $respuesta;
+    }
+
+    /**
+     * Consultas, cuentas y archivo del informe.
+     */
+    private function armarInforme(Request $request, $fechaInicio, $fechaFin, string $alcance, array $servicios, array $usuarios)
+    {
         // Periodo por la hora real de llegada (created_at): fecha_creacion se reescribe en cada cambio del turno.
-        $query = Turno::with(['servicio', 'asesor', 'caja'])
+        // Sin modelos ni relaciones (ver COLUMNAS_CUENTAS): los nombres salen de $this->servicios, usuarios y cajas.
+        $query = Turno::query()->toBase()
+            ->select(self::COLUMNAS_CUENTAS)
             ->whereBetween('created_at', [$fechaInicio, $fechaFin]);
 
         if ($alcance === 'asesores') {
@@ -107,7 +155,10 @@ class ReportesController extends Controller
             $query->whereIn('servicio_id', $servicios);
         }
 
-        $turnos = $query->orderBy('created_at', 'desc')->get();
+        $turnos = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->get();
+        $this->servicios = Servicio::all()->keyBy('id');
+        $this->usuarios = User::all()->keyBy('id');
+        $this->cajas = Caja::pluck('nombre', 'id');
 
         // Generar estadísticas
         $estadisticas = $this->generarEstadisticas($turnos, $fechaInicio, $fechaFin, $alcance, $usuarios);
@@ -120,18 +171,9 @@ class ReportesController extends Controller
             'generado_por' => Auth::user()?->nombre_completo ?: (Auth::user()?->nombre_usuario ?? ''),
         ];
 
-        $respuesta = $request->formato === 'excel'
+        return $request->formato === 'excel'
             ? $this->exportarExcel($turnos, $estadisticas, $fechaInicio, $fechaFin, $contexto)
             : $this->exportarPDF($turnos, $estadisticas, $fechaInicio, $fechaFin, $contexto);
-
-        // Reportes descarga por URL (GET) en un iframe para que los gestores de descarga (Chrono, IDM…) puedan tomarla;
-        // la página no ve el archivo, así que esta cookie le avisa que ya salió. Legible por JS y sin Secure: el sitio va por http.
-        $aviso = (string) $request->query('aviso', '');
-        if (preg_match('/^[a-z0-9]{8,40}$/i', $aviso)) {
-            $respuesta->headers->setCookie(new \Symfony\Component\HttpFoundation\Cookie('informe_listo_' . $aviso, '1', time() + 120, '/', null, false, false, false, 'lax'));
-        }
-
-        return $respuesta;
     }
 
     /**
@@ -190,10 +232,10 @@ class ReportesController extends Controller
         ];
 
         // Por servicio (por id: dos servicios pueden llamarse igual)
-        $porServicio = $turnos->groupBy('servicio_id')->map(function ($grupo) use ($conteos) {
+        $porServicio = $turnos->groupBy('servicio_id')->map(function ($grupo, $servicioId) use ($conteos) {
             $atencion = MetricasTurnos::atencion($grupo);
 
-            return ['nombre' => $grupo->first()->servicio->nombre ?? 'Servicio eliminado'] + $conteos($grupo) + [
+            return ['nombre' => $this->servicios[$servicioId]->nombre ?? 'Servicio eliminado'] + $conteos($grupo) + [
                 'tiempo_promedio' => $atencion['promedio'],
                 'tiempo_total' => $atencion['total'],
                 'atipicas' => $atencion['atipicas'],
@@ -208,7 +250,7 @@ class ReportesController extends Controller
         // Con alcance por servicios, $turnos trae solo esos servicios: el tiempo entre turnos se mide con TODAS las atenciones
         // del asesor en el periodo; si no, lo que atendió de otros servicios contaría como tiempo muerto.
         $atencionesDelAsesor = $alcance === 'servicios'
-            ? Turno::whereIn('asesor_id', $asesorIds)->where('estado', 'atendido')->whereBetween('created_at', [$fechaInicio, $fechaFin])
+            ? Turno::query()->toBase()->whereIn('asesor_id', $asesorIds)->where('estado', 'atendido')->whereBetween('created_at', [$fechaInicio, $fechaFin])
                 ->get(['asesor_id', 'estado', 'fecha_llamado', 'fecha_atencion', 'duracion_atencion'])->groupBy('asesor_id')
             : null;
         // Con alcance por asesores, los aplazamientos se buscan en todos los turnos del periodo: el turno aplazado casi
@@ -217,7 +259,7 @@ class ReportesController extends Controller
             ? Turno::whereBetween('created_at', [$fechaInicio, $fechaFin])->pluck('id')
             : $turnos->pluck('id'));
         $filaAsesor = function ($grupo, $asesorId) use ($conteos, $aplazamientos, $atencionesDelAsesor, $fechaInicio, $fechaFin) {
-            $asesor = $grupo->first()?->asesor ?? User::find($asesorId);
+            $asesor = $this->usuarios[$asesorId] ?? null;
             $atencion = MetricasTurnos::atencion($grupo);
             $canales = \App\Models\CanalNoPresencialHistorial::where('user_id', $asesorId)
                 ->whereBetween('inicio', [$fechaInicio, $fechaFin])->get(['inicio', 'fin']);
@@ -237,22 +279,8 @@ class ReportesController extends Controller
                 'entre_turnos_intervalos' => $entre['intervalos'],
                 'pausas_largas' => $entre['pausas'],
                 'pausas_largas_total' => $entre['pausas_total'],
-                // Detalle de turnos atendidos (hoja propia del asesor en el Excel)
-                'turnos_detalle' => $grupo->where('estado', 'atendido')->sortBy('fecha_atencion')->map(function ($turno) {
-                    $segundos = MetricasTurnos::duracion($turno);
-
-                    return [
-                        'codigo' => $turno->codigo_completo,
-                        'cedula' => $turno->cedula,
-                        'servicio' => $turno->servicio->nombre ?? 'N/A',
-                        'fecha_llamado' => $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A',
-                        'fecha_atencion' => $turno->fecha_atencion ? Carbon::parse($turno->fecha_atencion)->format('d/m/Y H:i:s') : 'N/A',
-                        'fecha_finalizacion' => $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A',
-                        'duracion_atencion' => MetricasTurnos::texto($segundos) . (MetricasTurnos::esAtipica($segundos) ? ' (quedó abierto, no se promedia)' : ''),
-                        'caja' => $turno->caja->nombre ?? 'N/A',
-                        'observaciones' => $turno->observaciones ?? '-'
-                    ];
-                })->values()->toArray()
+                // Turnos atendidos, en el orden de su hoja en el Excel; la hoja los lee completos por bloques al escribirse.
+                'ids_atendidos' => $grupo->where('estado', 'atendido')->sortBy('fecha_atencion')->pluck('id')->all(),
             ];
         };
         $porAsesor = $turnos->whereNotNull('asesor_id')->groupBy('asesor_id')->map($filaAsesor);
@@ -311,34 +339,48 @@ class ReportesController extends Controller
      */
     private function exportarExcel($turnos, $estadisticas, $fechaInicio, $fechaFin, array $contexto = [])
     {
-        $spreadsheet = new Spreadsheet();
+        // Fila por fila a un archivo temporal (LibroExcel): con PhpSpreadsheet, un año de turnos no cabía en memoria.
+        $libro = new LibroExcel();
 
         // Hoja 1: Resumen
-        $this->crearHojaResumen($spreadsheet, $estadisticas, $fechaInicio, $fechaFin, $contexto);
+        $this->crearHojaResumen($libro, $estadisticas, $fechaInicio, $fechaFin, $contexto);
 
         // Hoja 2: Detalle de turnos
-        $this->crearHojaDetalle($spreadsheet, $turnos);
+        $this->crearHojaDetalle($libro, $turnos->pluck('id')->all());
 
         // Hoja 3: Estadísticas por servicio
-        $this->crearHojaServicios($spreadsheet, $estadisticas['por_servicio']);
+        $this->crearHojaServicios($libro, $estadisticas['por_servicio']);
 
         // Hoja 4: Estadísticas por asesor
-        $this->crearHojaAsesores($spreadsheet, $estadisticas['por_asesor']);
+        $this->crearHojaAsesores($libro, $estadisticas['por_asesor']);
 
         // Hojas 5+: Detalle de turnos por cada asesor
-        foreach ($estadisticas['por_asesor'] as $asesorId => $datosAsesor) {
-            // Hoja de turnos detallados
-            $this->crearHojaDetalleTurnosAsesor($spreadsheet, $datosAsesor);
+        foreach ($estadisticas['por_asesor'] as $datosAsesor) {
+            $this->crearHojaDetalleTurnosAsesor($libro, $datosAsesor);
         }
 
-        $filename = $this->nombreArchivo($contexto, $fechaInicio, $fechaFin, 'xlsx');
+        $ruta = $this->archivoTemporal('xlsx');
+        try {
+            $libro->guardar($ruta);
+        } catch (\Throwable $e) {
+            @unlink($ruta);
+            throw $e;
+        }
 
-        $writer = new Xlsx($spreadsheet);
-
-        return response()->streamDownload(function() use ($writer) {
-            $writer->save('php://output');
-        }, $filename, [
+        // El archivo ya está completo antes de enviar nada: si algo falla, la página recibe un error y no un Excel a medias.
+        // Se envía de una pieza y sin aceptar rangos (Accept-Ranges: none): cada petición a esta URL arma un informe nuevo,
+        // así que un gestor de descargas que la pidiera por partes (IDM abre varias conexiones) juntaría trozos de archivos
+        // distintos, y de paso armaría el informe varias veces a la vez.
+        return response()->streamDownload(function () use ($ruta) {
+            try {
+                readfile($ruta);
+            } finally {
+                @unlink($ruta);
+            }
+        }, $this->nombreArchivo($contexto, $fechaInicio, $fechaFin, 'xlsx'), [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Length' => (string) filesize($ruta),
+            'Accept-Ranges' => 'none',
         ]);
     }
 
@@ -347,9 +389,15 @@ class ReportesController extends Controller
      */
     private function exportarPDF($turnos, $estadisticas, $fechaInicio, $fechaFin, array $contexto = [])
     {
+        // El PDF solo muestra los 50 más recientes: esos sí se cargan completos, con sus relaciones.
+        $orden = array_flip($turnos->take(50)->pluck('id')->all());
+        $recientes = Turno::with(['servicio', 'asesor', 'caja'])->whereIn('id', array_keys($orden))->get()
+            ->sortBy(fn ($turno) => $orden[$turno->id])->values();
+
         $data = [
             'contexto' => $contexto,
-            'turnos' => $turnos,
+            'turnos' => $recientes,
+            'total_turnos' => $turnos->count(),
             'estadisticas' => $estadisticas,
             'notas' => $this->notasTiempos(),
             'fecha_inicio' => $fechaInicio,
@@ -700,63 +748,23 @@ class ReportesController extends Controller
     /**
      * Crear hoja de resumen en Excel
      */
-    private function crearHojaResumen($spreadsheet, $estadisticas, $fechaInicio, $fechaFin, array $contexto = [])
+    private function crearHojaResumen(LibroExcel $libro, $estadisticas, $fechaInicio, $fechaFin, array $contexto = [])
     {
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Resumen');
+        $libro->hoja('Resumen')->ancho(1, 30)->ancho(2, 25)->ancho(3, 20)->ancho(4, 20);
 
-        // Color institucional del Hospital Universitario del Valle
-        $colorInstitucional = '064b9e';
-        $colorInstitucionalClaro = 'e6f0ff';
+        // Encabezado principal con el color institucional del Hospital Universitario del Valle
+        $libro->fila(['INFORME DE TURNOS - ' . mb_strtoupper($contexto['unidad'] ?? '', 'UTF-8') . ' - HOSPITAL UNIVERSITARIO DEL VALLE', null, null, null], LibroExcel::TITULO, 35)
+            ->combinar('A1:D1');
+        $libro->fila([]);
 
-        // Encabezado principal con estilo institucional
-        $sheet->setCellValue('A1', 'INFORME DE TURNOS - ' . mb_strtoupper($contexto['unidad'] ?? '', 'UTF-8') . ' - HOSPITAL UNIVERSITARIO DEL VALLE');
-        $sheet->mergeCells('A1:D1');
-        $sheet->getStyle('A1:D1')->applyFromArray([
-            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorInstitucional]],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(35);
-
-        // Período
-        $sheet->setCellValue('A3', 'Período:');
-        $sheet->setCellValue('B3', $fechaInicio->format('d/m/Y') . ' - ' . $fechaFin->format('d/m/Y'));
-        $sheet->getStyle('A3')->getFont()->setBold(true);
-        $sheet->getStyle('B3')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($colorInstitucional));
-
-        // Fecha de generación
-        $sheet->setCellValue('A4', 'Fecha de generación:');
-        $sheet->setCellValue('B4', Carbon::now()->format('d/m/Y H:i:s') . (!empty($contexto['generado_por']) ? ' · ' . $contexto['generado_por'] : ''));
-        $sheet->getStyle('A4')->getFont()->setBold(true);
-
+        $libro->fila([['Período:', LibroExcel::NEGRITA], [$fechaInicio->format('d/m/Y') . ' - ' . $fechaFin->format('d/m/Y'), LibroExcel::AZUL]]);
+        $libro->fila([['Fecha de generación:', LibroExcel::NEGRITA], Carbon::now()->format('d/m/Y H:i:s') . (!empty($contexto['generado_por']) ? ' · ' . $contexto['generado_por'] : '')]);
         // Alcance: qué turnos entran en este informe
-        $sheet->setCellValue('A5', 'Alcance:');
-        $sheet->setCellValue('B5', $contexto['alcance'] ?? 'Todo el turnero');
-        $sheet->getStyle('A5')->getFont()->setBold(true);
+        $libro->fila([['Alcance:', LibroExcel::NEGRITA], $contexto['alcance'] ?? 'Todo el turnero']);
 
-        // Resumen general - Título
-        $row = 6;
-        $sheet->setCellValue('A' . $row, 'RESUMEN GENERAL');
-        $sheet->mergeCells('A' . $row . ':B' . $row);
-        $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
-            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorInstitucional]],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-        ]);
-        $sheet->getRowDimension($row)->setRowHeight(25);
+        $libro->fila(['RESUMEN GENERAL', null], LibroExcel::SECCION, 25)->combinar('A6:B6');
+        $libro->fila(['Concepto', 'Valor'], LibroExcel::ENCABEZADO);
 
-        // Encabezados de tabla
-        $row++;
-        $sheet->setCellValue('A' . $row, 'Concepto');
-        $sheet->setCellValue('B' . $row, 'Valor');
-        $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $colorInstitucional]],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-        ]);
-
-        // Datos del resumen
         $resumen = $estadisticas['resumen'];
         $datos = [
             ['Total de Turnos', $resumen['total_turnos']],
@@ -771,334 +779,234 @@ class ReportesController extends Controller
             ['Tiempo Promedio entre Turnos', MetricasTurnos::texto($resumen['entre_turnos_promedio'])],
             ['Atenciones de más de 1 hora (no se promedian)', $resumen['atenciones_atipicas']],
         ];
-
-        $startRow = $row + 1;
         foreach ($datos as $index => $dato) {
-            $row++;
-            $sheet->setCellValue('A' . $row, $dato[0]);
-            $sheet->setCellValue('B' . $row, $dato[1]);
-            
-            // Alternar colores de fondo
-            $bgColor = $index % 2 === 0 ? $colorInstitucionalClaro : 'FFFFFF';
-            $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray([
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-            ]);
+            // Filas alternas; la primera (Total de Turnos) resaltada
+            $libro->fila($dato, $index === 0 ? LibroExcel::CLARO_BORDE_NEGRITA : ($index % 2 === 0 ? LibroExcel::CLARO_BORDE : LibroExcel::BLANCO_BORDE));
         }
-
-        // Resaltar primera fila de datos (Total de Turnos)
-        $sheet->getStyle('A' . $startRow . ':B' . $startRow)->applyFromArray([
-            'font' => ['bold' => true],
-        ]);
 
         // Cómo se miden los tiempos: sin esto, quien lee el informe no puede saber qué entra en cada promedio.
-        $row += 2;
+        $libro->fila([]);
         foreach ($this->notasTiempos() as $nota) {
-            $sheet->setCellValue('A' . $row, $nota);
-            $sheet->mergeCells('A' . $row . ':D' . $row);
-            $sheet->getStyle('A' . $row)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
-            $sheet->getStyle('A' . $row)->getFont()->setSize(9)->setItalic(true)->getColor()->setRGB('555555');
-            $sheet->getRowDimension($row)->setRowHeight(38);
-            $row++;
+            $libro->fila([$nota], LibroExcel::NOTA, 38, false);
+            $libro->combinar('A' . $libro->filas() . ':D' . $libro->filas());
         }
-
-        // Ajustar ancho de columnas
-        $sheet->getColumnDimension('A')->setWidth(30);
-        $sheet->getColumnDimension('B')->setWidth(25);
-        $sheet->getColumnDimension('C')->setWidth(20);
-        $sheet->getColumnDimension('D')->setWidth(20);
     }
 
     /**
-     * Crear hoja de detalle en Excel
+     * Crear hoja de detalle en Excel. Los turnos se leen completos por bloques, en el orden de $ids.
      */
-    private function crearHojaDetalle($spreadsheet, $turnos)
+    private function crearHojaDetalle(LibroExcel $libro, array $ids)
     {
-        $sheet = $spreadsheet->createSheet();
-        $sheet->setTitle('Detalle de Turnos');
+        $encabezados = ['Código', 'Número', 'Cédula', 'Servicio', 'Asesor', 'Caja', 'Estado', 'Prioridad', 'Fecha Creación',
+            'Hora Llamado', 'Hora Finalización', 'Duración de la Atención', 'Observaciones/Transferencia'];
+        $abrirHoja = function (int $parte) use ($libro, $encabezados) {
+            // Excel admite 1.048.576 filas por hoja: lo que no cabe sigue en «Detalle de Turnos (2)», …
+            $libro->hoja($parte === 1 ? 'Detalle de Turnos' : 'Detalle de Turnos (' . $parte . ')')->fijarEncabezado();
+            $libro->fila($encabezados, LibroExcel::ENCABEZADO);
+        };
+        $parte = 1;
+        $abrirHoja($parte);
 
-        // Encabezados
-        $headers = [
-            'A1' => 'Código',
-            'B1' => 'Número',
-            'C1' => 'Cédula',
-            'D1' => 'Servicio',
-            'E1' => 'Asesor',
-            'F1' => 'Caja',
-            'G1' => 'Estado',
-            'H1' => 'Prioridad',
-            'I1' => 'Fecha Creación',
-            'J1' => 'Hora Llamado',
-            'K1' => 'Hora Finalización',
-            'L1' => 'Duración de la Atención',
-            'M1' => 'Observaciones/Transferencia'
-        ];
-
-        foreach ($headers as $cell => $header) {
-            $sheet->setCellValue($cell, $header);
-        }
-
-        // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:M1')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '064b9e']
-            ],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                ],
-            ],
-        ]);
-
-        // Datos
-        $row = 2;
-        foreach ($turnos as $turno) {
+        foreach ($this->turnosEnBloques($ids) as $turno) {
+            if ($libro->filas() >= LibroExcel::MAX_FILAS) {
+                $abrirHoja(++$parte);
+            }
             // Solo los atendidos tienen una atención que medir (en un aplazado, duracion_atencion es lo que alcanzó a durar el llamado).
             $segundos = $turno->estado === 'atendido' ? MetricasTurnos::duracion($turno) : null;
-            $duracionFormato = MetricasTurnos::texto($segundos) . (MetricasTurnos::esAtipica($segundos) ? ' (quedó abierto, no se promedia)' : '');
+            $asesor = $this->usuarios[$turno->asesor_id] ?? null;
 
-            $sheet->setCellValue('A' . $row, $turno->codigo);
-            $sheet->setCellValue('B' . $row, $turno->numero);
-            $this->celdaCedula($sheet, 'C' . $row, $turno->cedula);
-            $sheet->setCellValue('D' . $row, $turno->servicio->nombre ?? 'N/A');
-            $sheet->setCellValue('E' . $row, $turno->asesor->nombre_completo ?? ($turno->asesor->nombre_usuario ?? 'N/A'));
-            $sheet->setCellValue('F' . $row, $turno->caja->nombre ?? 'N/A');
-            $sheet->setCellValue('G' . $row, strtoupper($turno->estado));
-            $sheet->setCellValue('H' . $row, $turno->prioridad >= 4 ? 'Prioritario' : 'Normal');
-            $sheet->setCellValue('I' . $row, $turno->created_at ? Carbon::parse($turno->created_at)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('J' . $row, $turno->fecha_llamado ? Carbon::parse($turno->fecha_llamado)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('K' . $row, $turno->fecha_finalizacion ? Carbon::parse($turno->fecha_finalizacion)->format('d/m/Y H:i:s') : 'N/A');
-            $sheet->setCellValue('L' . $row, $duracionFormato);
-            $sheet->setCellValue('M' . $row, $turno->observaciones ?? '-');
-            $row++;
-        }
-
-        // Aplicar bordes a todos los datos
-        if ($row > 2) {
-            $sheet->getStyle('A1:M' . ($row - 1))->applyFromArray([
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                    ],
-                ],
-            ]);
-        }
-
-        // Ajustar ancho de columnas
-        foreach (range('A', 'M') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
+            $libro->fila([
+                $turno->codigo,
+                is_numeric($turno->numero) ? (int) $turno->numero : $turno->numero,
+                $this->textoCedula($turno->cedula ?? null),
+                $this->servicios[$turno->servicio_id]->nombre ?? 'N/A',
+                $asesor->nombre_completo ?? ($asesor->nombre_usuario ?? 'N/A'),
+                $this->cajas[$turno->caja_id] ?? 'N/A',
+                strtoupper($turno->estado),
+                $turno->prioridad >= 4 ? 'Prioritario' : 'Normal',
+                $this->fechaHora($turno->created_at),
+                $this->fechaHora($turno->fecha_llamado),
+                $this->fechaHora($turno->fecha_finalizacion),
+                MetricasTurnos::texto($segundos) . (MetricasTurnos::esAtipica($segundos) ? ' (quedó abierto, no se promedia)' : ''),
+                $turno->observaciones ?? '-',
+            ], LibroExcel::BORDE);
         }
     }
 
     /**
-     * La cédula que la persona escribió en el atril, como texto: como número, Excel la mostraría en notación científica o
-     * le quitaría los ceros de la izquierda. «-» si no la escribió (servicio que no la pide o turno anterior a la función).
+     * Los turnos completos (COLUMNAS_DETALLE), por bloques y en el orden de $ids: nunca hay más de un bloque en memoria.
      */
-    private function celdaCedula($sheet, string $celda, ?string $cedula): void
+    private function turnosEnBloques(array $ids): \Generator
+    {
+        foreach (array_chunk($ids, self::TURNOS_POR_BLOQUE) as $bloque) {
+            $filas = Turno::query()->toBase()->whereIn('id', $bloque)->get($this->columnasDetalle())->keyBy('id');
+            foreach ($bloque as $id) {
+                if ($fila = $filas->get($id)) {
+                    yield $fila;
+                }
+            }
+        }
+    }
+
+    /**
+     * turnos.cedula llega con la migración del atril (2026_10_29_090000): sin ella, el informe sale igual, con «-».
+     */
+    private function columnasDetalle(): array
+    {
+        return $this->columnasDetalle ??= Schema::hasColumn('turnos', 'cedula')
+            ? self::COLUMNAS_DETALLE
+            : array_values(array_diff(self::COLUMNAS_DETALLE, ['cedula']));
+    }
+
+    /**
+     * La cédula que la persona escribió en el atril (el Excel la guarda como texto: como número la mostraría en notación
+     * científica o le quitaría los ceros de la izquierda). «-» si no la escribió (servicio que no la pide o turno anterior).
+     */
+    private function textoCedula(?string $cedula): string
     {
         $cedula = trim((string) $cedula);
-        $sheet->setCellValueExplicit($celda, $cedula !== '' ? $cedula : '-', DataType::TYPE_STRING);
+
+        return $cedula !== '' ? $cedula : '-';
+    }
+
+    /** 'Y-m-d H:i:s' de la base → 'd/m/Y H:i:s'; 'N/A' si no hay. Sin Carbon: son cientos de miles de fechas. */
+    private function fechaHora($valor): string
+    {
+        if ($valor === null || $valor === '') {
+            return 'N/A';
+        }
+        $valor = (string) $valor;
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2}:\d{2})/', $valor, $m)) {
+            return $m[3] . '/' . $m[2] . '/' . $m[1] . ' ' . $m[4];
+        }
+
+        return Carbon::parse($valor)->format('d/m/Y H:i:s');
     }
 
     /**
      * Crear hoja de estadísticas por servicio
      */
-    private function crearHojaServicios($spreadsheet, $porServicio)
+    private function crearHojaServicios(LibroExcel $libro, $porServicio)
     {
-        $sheet = $spreadsheet->createSheet();
-        $sheet->setTitle('Por Servicio');
+        $libro->hoja('Por Servicio')->fijarEncabezado();
+        $libro->fila(['Servicio', 'Total', 'Atendidos', 'Pendientes (en espera + aplazados)', 'Llamados sin Cerrar', 'Cancelados',
+            'Transferidos', 'Tiempo Promedio de Atención', 'Atenciones de más de 1 h'], LibroExcel::ENCABEZADO);
 
-        // Encabezados
-        $headers = [
-            'A1' => 'Servicio',
-            'B1' => 'Total',
-            'C1' => 'Atendidos',
-            'D1' => 'Pendientes (en espera + aplazados)',
-            'E1' => 'Llamados sin Cerrar',
-            'F1' => 'Cancelados',
-            'G1' => 'Transferidos',
-            'H1' => 'Tiempo Promedio de Atención',
-            'I1' => 'Atenciones de más de 1 h'
-        ];
-
-        foreach ($headers as $cell => $header) {
-            $sheet->setCellValue($cell, $header);
-        }
-
-        // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:I1')->applyFromArray([
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '064b9e']
-            ],
-            'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                ],
-            ],
-        ]);
-
-        // Datos
-        $row = 2;
         foreach ($porServicio as $servicio => $datos) {
-            $sheet->setCellValue('A' . $row, $servicio);
-            $sheet->setCellValue('B' . $row, $datos['total']);
-            $sheet->setCellValue('C' . $row, $datos['atendidos']);
-            $sheet->setCellValue('D' . $row, $datos['pendientes']);
-            $sheet->setCellValue('E' . $row, $datos['sin_cerrar']);
-            $sheet->setCellValue('F' . $row, $datos['cancelados']);
-            $sheet->setCellValue('G' . $row, $datos['transferidos'] ?? 0);
-            $sheet->setCellValue('H' . $row, MetricasTurnos::texto($datos['tiempo_promedio']));
-            $sheet->setCellValue('I' . $row, $datos['atipicas']);
-            $row++;
-        }
-
-        // Aplicar bordes
-        if ($row > 2) {
-            $sheet->getStyle('A1:I' . ($row - 1))->applyFromArray([
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                    ],
-                ],
-            ]);
-        }
-
-        // Ajustar ancho de columnas
-        foreach (range('A', 'I') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
+            $libro->fila([
+                (string) $servicio,
+                $datos['total'],
+                $datos['atendidos'],
+                $datos['pendientes'],
+                $datos['sin_cerrar'],
+                $datos['cancelados'],
+                $datos['transferidos'] ?? 0,
+                MetricasTurnos::texto($datos['tiempo_promedio']),
+                $datos['atipicas'],
+            ], LibroExcel::BORDE);
         }
     }
 
     /**
      * Crear hoja de estadísticas por asesor
      */
-    private function crearHojaAsesores($spreadsheet, $porAsesor)
+    private function crearHojaAsesores(LibroExcel $libro, $porAsesor)
     {
-        $sheet = $spreadsheet->createSheet();
-        $sheet->setTitle('Por Asesor');
+        $libro->hoja('Por Asesor')->fijarEncabezado();
+        $libro->fila(['Asesor', 'Usuario', 'Total Turnos', 'Atendidos', 'Veces que Aplazó un Turno', 'Llamados sin Cerrar', 'Transferidos',
+            'Tiempo Promedio de Atención', 'Tiempo Total de Atención', 'Atenciones de más de 1 h (no se promedian)',
+            'Tiempo Promedio entre Turnos', 'Tiempo Total entre Turnos', 'Pausas de más de 1 h', 'Tiempo en Pausas de más de 1 h'],
+            LibroExcel::ENCABEZADO, 20);
 
-        // Encabezados
-        $sheet->setCellValue('A1', 'Asesor');
-        $sheet->setCellValue('B1', 'Usuario');
-        $sheet->setCellValue('C1', 'Total Turnos');
-        $sheet->setCellValue('D1', 'Atendidos');
-        $sheet->setCellValue('E1', 'Veces que Aplazó un Turno');
-        $sheet->setCellValue('F1', 'Llamados sin Cerrar');
-        $sheet->setCellValue('G1', 'Transferidos');
-        $sheet->setCellValue('H1', 'Tiempo Promedio de Atención');
-        $sheet->setCellValue('I1', 'Tiempo Total de Atención');
-        $sheet->setCellValue('J1', 'Atenciones de más de 1 h (no se promedian)');
-        $sheet->setCellValue('K1', 'Tiempo Promedio entre Turnos');
-        $sheet->setCellValue('L1', 'Tiempo Total entre Turnos');
-        $sheet->setCellValue('M1', 'Pausas de más de 1 h');
-        $sheet->setCellValue('N1', 'Tiempo en Pausas de más de 1 h');
-
-        // Aplicar estilo a encabezados
-        $sheet->getStyle('A1:N1')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '064b9e']
-            ],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                ],
-            ],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(20);
-
-        // Datos
-        $row = 2;
-        foreach ($porAsesor as $asesorId => $datos) {
-            $sheet->setCellValue('A' . $row, $datos['nombre_completo']);
-            $sheet->setCellValue('B' . $row, $datos['nombre_usuario']);
-            $sheet->setCellValue('C' . $row, $datos['total']);
-            $sheet->setCellValue('D' . $row, $datos['atendidos']);
-            $sheet->setCellValue('E' . $row, $datos['aplazados']);
-            $sheet->setCellValue('F' . $row, $datos['sin_cerrar']);
-            $sheet->setCellValue('G' . $row, $datos['transferidos'] ?? 0);
-            $sheet->setCellValue('H' . $row, MetricasTurnos::texto($datos['tiempo_promedio_atencion']));
-            $sheet->setCellValue('I' . $row, MetricasTurnos::texto($datos['tiempo_total_atencion']));
-            $sheet->setCellValue('J' . $row, $datos['atipicas']);
-            $sheet->setCellValue('K' . $row, MetricasTurnos::texto($datos['entre_turnos_promedio']));
-            $sheet->setCellValue('L' . $row, MetricasTurnos::texto($datos['entre_turnos_total']));
-            $sheet->setCellValue('M' . $row, $datos['pausas_largas']);
-            $sheet->setCellValue('N' . $row, MetricasTurnos::texto($datos['pausas_largas_total']));
-
-            // Alternar colores de fondo
-            $bgColor = $row % 2 === 0 ? 'e6f0ff' : 'FFFFFF';
-            $sheet->getStyle('A' . $row . ':N' . $row)->applyFromArray([
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-            ]);
-
-            $row++;
+        foreach ($porAsesor as $datos) {
+            // Filas alternas: la primera en azul claro
+            $libro->fila([
+                (string) $datos['nombre_completo'],
+                (string) $datos['nombre_usuario'],
+                $datos['total'],
+                $datos['atendidos'],
+                $datos['aplazados'],
+                $datos['sin_cerrar'],
+                $datos['transferidos'] ?? 0,
+                MetricasTurnos::texto($datos['tiempo_promedio_atencion']),
+                MetricasTurnos::texto($datos['tiempo_total_atencion']),
+                $datos['atipicas'],
+                MetricasTurnos::texto($datos['entre_turnos_promedio']),
+                MetricasTurnos::texto($datos['entre_turnos_total']),
+                $datos['pausas_largas'],
+                MetricasTurnos::texto($datos['pausas_largas_total']),
+            ], $libro->filas() % 2 === 1 ? LibroExcel::CLARO_BORDE : LibroExcel::BLANCO_BORDE);
         }
 
-        // Ajustar ancho de columnas
-        foreach (range('A', 'N') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
-        }
-
-        // Cómo se miden los tiempos (celdas combinadas: así no ensanchan la columna A al autoajustar)
-        $row++;
+        // Cómo se miden los tiempos (celdas combinadas: no ensanchan la columna A)
+        $libro->fila([]);
         foreach ($this->notasTiempos() as $nota) {
-            $sheet->setCellValue('A' . $row, $nota);
-            $sheet->mergeCells('A' . $row . ':N' . $row);
-            $sheet->getStyle('A' . $row)->getFont()->setSize(9)->setItalic(true)->getColor()->setRGB('555555');
-            $row++;
+            $libro->fila([$nota], LibroExcel::NOTA_SIMPLE, null, false);
+            $libro->combinar('A' . $libro->filas() . ':N' . $libro->filas());
         }
     }
 
     /**
      * Crear hoja de detalle de turnos por asesor
      */
-    private function crearHojaDetalleTurnosAsesor($spreadsheet, $datosAsesor)
+    private function crearHojaDetalleTurnosAsesor(LibroExcel $libro, $datosAsesor)
     {
-        $sheet = $spreadsheet->createSheet();
-        $nombreHoja = substr('Turnos_' . $datosAsesor['nombre_usuario'], 0, 31);
-        $sheet->setTitle($nombreHoja);
+        $libro->hoja('Turnos_' . $datosAsesor['nombre_usuario'])->fijarEncabezado();
+        // Sin Hora Atención porque es redundante con Hora Finalización
+        $libro->fila(['Código', 'Cédula', 'Servicio', 'Hora Llamado', 'Hora Finalización', 'Duración de la Atención', 'Caja', 'Observaciones'],
+            LibroExcel::ENCABEZADO);
 
-        // Encabezados (sin Hora Atención porque es redundante con Hora Finalización)
-        $sheet->setCellValue('A1', 'Código');
-        $sheet->setCellValue('B1', 'Cédula');
-        $sheet->setCellValue('C1', 'Servicio');
-        $sheet->setCellValue('D1', 'Hora Llamado');
-        $sheet->setCellValue('E1', 'Hora Finalización');
-        $sheet->setCellValue('F1', 'Duración de la Atención');
-        $sheet->setCellValue('G1', 'Caja');
-        $sheet->setCellValue('H1', 'Observaciones');
+        foreach ($this->turnosEnBloques($datosAsesor['ids_atendidos'] ?? []) as $turno) {
+            $segundos = MetricasTurnos::duracion($turno);
 
-        // Estilo encabezado
-        $sheet->getStyle('A1:H1')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '064b9e']],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-        ]);
+            $libro->fila([
+                $turno->codigo . '-' . str_pad((string) $turno->numero, 3, '0', STR_PAD_LEFT),
+                $this->textoCedula($turno->cedula ?? null),
+                $this->servicios[$turno->servicio_id]->nombre ?? 'N/A',
+                $this->fechaHora($turno->fecha_llamado),
+                $this->fechaHora($turno->fecha_finalizacion),
+                MetricasTurnos::texto($segundos) . (MetricasTurnos::esAtipica($segundos) ? ' (quedó abierto, no se promedia)' : ''),
+                $this->cajas[$turno->caja_id] ?? 'N/A',
+                $turno->observaciones ?? '-',
+            ]);
+        }
+    }
 
-        // Datos
-        $row = 2;
-        foreach ($datosAsesor['turnos_detalle'] as $turno) {
-            $sheet->setCellValue('A' . $row, $turno['codigo']);
-            $this->celdaCedula($sheet, 'B' . $row, $turno['cedula'] ?? null);
-            $sheet->setCellValue('C' . $row, $turno['servicio']);
-            $sheet->setCellValue('D' . $row, $turno['fecha_llamado']);
-            $sheet->setCellValue('E' . $row, $turno['fecha_finalizacion']);
-            $sheet->setCellValue('F' . $row, $turno['duracion_atencion']);
-            $sheet->setCellValue('G' . $row, $turno['caja']);
-            $sheet->setCellValue('H' . $row, $turno['observaciones'] ?? '-');
-            $row++;
+    /**
+     * Archivo temporal para un informe. Los que quedaron de envíos cortados (más de una hora) se borran aquí.
+     */
+    private function archivoTemporal(string $extension): string
+    {
+        $carpeta = storage_path('app/informes');
+        if (!is_dir($carpeta) && !@mkdir($carpeta, 0775, true) && !is_dir($carpeta)) {
+            throw new \RuntimeException('No se pudo crear la carpeta de informes en storage/app.');
+        }
+        foreach (glob($carpeta . '/informe_*') ?: [] as $viejo) {
+            if (@filemtime($viejo) < time() - 3600) {
+                @unlink($viejo);
+            }
         }
 
-        // Ajustar columnas
-        foreach (range('A', 'H') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
+        return $carpeta . '/informe_' . bin2hex(random_bytes(8)) . '.' . $extension;
+    }
+
+    /**
+     * Un informe de un año o más tarda y ocupa más que uno de un mes: más tiempo de ejecución y, si el servidor lo
+     * permite, más memoria (con lo de arriba un año entero cabe de sobra en 512 MB; esto es por si acaso).
+     */
+    private function darMargenParaInformesLargos(): void
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(600);
+        }
+
+        $limite = trim((string) ini_get('memory_limit'));
+        if ($limite === '' || $limite === '-1') {
+            return;
+        }
+        $bytes = (int) $limite * (['g' => 1073741824, 'm' => 1048576, 'k' => 1024][strtolower(substr($limite, -1))] ?? 1);
+        if ($bytes < 1073741824) {
+            @ini_set('memory_limit', '1024M');
         }
     }
 
