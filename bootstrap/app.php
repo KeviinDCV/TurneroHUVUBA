@@ -45,9 +45,10 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($request->isMethod('POST') && $request->is('admin', 'login') && !$request->expectsJson()) {
-                $respuesta = redirect()->route('login', ['caducada' => 1])   // el aviso no depende de que el navegador guarde la sesión
-                    ->withInput($request->only('usuario'))
-                    ->withErrors(['usuario' => 'La página había caducado. Escribe de nuevo tu contraseña para entrar.']);
+                // El aviso lo pone la vista por ?caducada=1 (no depende de que el navegador guarde la sesión) y es informativo,
+                // no un error: no es culpa de quien entra.
+                $respuesta = redirect()->route('login', ['caducada' => 1])
+                    ->withInput($request->only('usuario'));
             } elseif ($request->expectsJson() || $request->isJson()) {
                 $respuesta = response()->json(['message' => 'La sesión expiró. Recarga la página e inténtalo de nuevo.'], 419);
             } else {

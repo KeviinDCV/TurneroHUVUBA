@@ -60,6 +60,9 @@ class AuthController extends Controller
             $request->validate([
                 'usuario' => 'required|string',
                 'password' => 'required|string',
+            ], [
+                'usuario.required' => 'Escriba su usuario.',
+                'password.required' => 'Escriba su contraseña.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Error de validación en login', [
@@ -69,15 +72,27 @@ class AuthController extends Controller
             throw $e;
         }
 
+        // Límite de intentos fallidos por usuario y equipo: frena a quien prueba contraseñas sin estorbar al que se equivoca.
+        $claveIntentos = 'login:' . mb_strtolower((string) $request->usuario) . '|' . $request->ip();
+        if ($this->intentosAgotados($claveIntentos)) {
+            $segundos = max(1, \Illuminate\Support\Facades\RateLimiter::availableIn($claveIntentos));
+
+            return back()->withErrors([
+                'acceso' => "Demasiados intentos seguidos. Espere {$segundos} segundos e inténtelo de nuevo.",
+            ])->withInput($request->only('usuario'));
+        }
+
         // Buscar usuario por nombre_usuario
         $user = User::where('nombre_usuario', $request->usuario)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
+            $this->limpiarIntentos($claveIntentos);
+
             // Cuenta desactivada: se avisa solo con la contraseña correcta (sus turnos e historial se conservan).
             if ($user->estaDesactivada()) {
                 return back()->withErrors([
-                    'usuario' => 'Esta cuenta está desactivada. Si necesitas entrar, habla con un administrador.',
-                ])->withInput();
+                    'acceso' => 'Esta cuenta está desactivada. Si necesita entrar, hable con un administrador.',
+                ])->withInput($request->only('usuario'));
             }
 
             $currentSessionId = session()->getId();
@@ -122,14 +137,48 @@ class AuthController extends Controller
                 }
             } else {
                 return back()->withErrors([
-                    'usuario' => 'Error al iniciar sesión. Inténtalo de nuevo.',
-                ])->withInput();
+                    'acceso' => 'No se pudo iniciar la sesión. Inténtelo de nuevo.',
+                ])->withInput($request->only('usuario'));
             }
         }
 
+        $this->contarIntento($claveIntentos);
+
         return back()->withErrors([
-            'usuario' => 'Las credenciales proporcionadas no coinciden con nuestros registros.',
-        ])->withInput();
+            'usuario' => "Usuario o contraseña incorrectos. Revise que Bloq\u{00A0}Mayús esté desactivado e inténtelo de nuevo.",
+        ])->withInput($request->only('usuario'));
+    }
+
+    // 6 intentos fallidos por minuto. Si la caché fallara, el login sigue funcionando sin límite: nunca deja a nadie afuera.
+    private const MAX_INTENTOS = 6;
+
+    private function intentosAgotados(string $clave): bool
+    {
+        try {
+            return \Illuminate\Support\Facades\RateLimiter::tooManyAttempts($clave, self::MAX_INTENTOS);
+        } catch (\Throwable $e) {
+            \Log::warning('Login: no se pudo consultar el límite de intentos', ['error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    private function contarIntento(string $clave): void
+    {
+        try {
+            \Illuminate\Support\Facades\RateLimiter::hit($clave, 60);
+        } catch (\Throwable $e) {
+            \Log::warning('Login: no se pudo contar el intento', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function limpiarIntentos(string $clave): void
+    {
+        try {
+            \Illuminate\Support\Facades\RateLimiter::clear($clave);
+        } catch (\Throwable $e) {
+            // sin caché no hay nada que limpiar
+        }
     }
 
     /**

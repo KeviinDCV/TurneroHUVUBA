@@ -34,7 +34,7 @@ class CheckAdminRole
                 return response()->json(['success' => false, 'message' => 'Esta cuenta fue desactivada.'], 401);
             }
             return redirect()->route('admin.login')
-                ->with('info', 'Esta cuenta fue desactivada. Si necesitas entrar, habla con un administrador.');
+                ->with('info', 'Esta cuenta fue desactivada. Si necesita entrar, hable con un administrador.');
         }
 
         // Verificar que el usuario sea administrador
