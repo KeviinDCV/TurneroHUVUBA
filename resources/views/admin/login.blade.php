@@ -45,14 +45,14 @@
             --tinta-tenue: #56698a;
             --borde: #7d91ad;
             --borde-hover: #5f7698;
-            --corte: #c9d5e6;
+            --corte: #a7b8d0;
             --foco: rgba(6, 75, 158, 0.18);
             --error: #b42318;
             --muesca: 12px;   /* radio de las muescas del corte del ticket */
         }
 
         *, *::before, *::after { box-sizing: border-box; }
-        html { -webkit-text-size-adjust: 100%; }
+        html { -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         body {
             margin: 0;
             min-height: 100vh;
@@ -62,7 +62,6 @@
             font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif;
             font-feature-settings: 'cv11', 'ss01';
             color: var(--tinta);
-            -webkit-font-smoothing: antialiased;
             background:
                 radial-gradient(1200px 620px at 50% -14%, #ffffff 0%, rgba(255, 255, 255, 0) 62%),
                 linear-gradient(180deg, #eef3fa 0%, #e6edf6 100%);
@@ -87,7 +86,7 @@
            Dos piezas blancas (talón y cuerpo) con media muesca en las esquinas donde se tocan: juntas forman el corte del
            ticket. La sombra va en el contenedor con drop-shadow, para que siga la forma recortada. */
         .ticket {
-            filter: drop-shadow(0 1px 1px rgba(15, 39, 71, 0.07)) drop-shadow(0 22px 28px rgba(15, 39, 71, 0.13));
+            filter: drop-shadow(0 0 0.6px rgba(15, 39, 71, 0.35)) drop-shadow(0 1px 1px rgba(15, 39, 71, 0.07)) drop-shadow(0 22px 28px rgba(15, 39, 71, 0.13));
             animation: imprimir 0.55s cubic-bezier(0.16, 1, 0.3, 1);
         }
         /* Solo un leve ascenso, como el ticket que sale del atril; el contenido nunca depende de la animación para verse. */
@@ -225,7 +224,7 @@
             place-items: center;
             padding: 0;
             border: 0;
-            border-radius: 8px;
+            border-radius: 6px;
             background: transparent;
             color: #5b6f8c;
             cursor: pointer;
@@ -233,8 +232,15 @@
         }
         .campo__ver:hover { color: var(--azul); background: #eef3fa; }
         .campo__ver:focus-visible { outline: 2px solid var(--azul); outline-offset: 0; color: var(--azul); }
-        .campo__ver svg { width: 20px; height: 20px; }
-        .campo__ver svg[hidden] { display: none; }
+        .campo__ver svg {
+            grid-area: 1 / 1;
+            width: 20px;
+            height: 20px;
+            transition-property: opacity, scale, filter;
+            transition-duration: 0.3s;
+            transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+        }
+        .campo__ver svg[data-oculto] { opacity: 0; scale: 0.25; filter: blur(4px); }
 
         .campo__mayus {
             display: flex;
@@ -266,24 +272,16 @@
             font-weight: 600;
             letter-spacing: 0.005em;
             cursor: pointer;
-            box-shadow: 0 1px 2px rgba(15, 39, 71, 0.14), 0 8px 18px -10px rgba(6, 75, 158, 0.55);
-            transition: background-color 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 1px 2px rgba(15, 39, 71, 0.14);
+            transition-property: background-color, scale;
+            transition-duration: 0.15s;
+            transition-timing-function: ease-out;
         }
         .entrar:hover { background: var(--azul-hover); }
-        .entrar:active { background: var(--azul-activo); box-shadow: 0 1px 2px rgba(15, 39, 71, 0.14); }
+        .entrar:active { background: var(--azul-activo); }
+        .entrar:active:not([aria-busy="true"]) { scale: 0.96; }
         .entrar:focus-visible { outline: 3px solid rgba(6, 75, 158, 0.35); outline-offset: 3px; }
         .entrar[aria-busy="true"] { background: #2f63a6; cursor: progress; box-shadow: none; }
-        .entrar__giro {
-            display: none;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.35);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: girar 0.8s linear infinite;
-        }
-        .entrar[aria-busy="true"] .entrar__giro { display: block; }
-        @keyframes girar { to { transform: rotate(360deg); } }
 
         /* ===================== Ayuda y pie ===================== */
         .ayuda { margin-top: 24px; font-size: 13.5px; line-height: 1.55; color: var(--tinta-suave); text-align: center; }
@@ -309,8 +307,8 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .ticket, .ticket[data-entrando] .ticket__corte { animation: none; }
-            .entrar__giro { animation-duration: 2.4s; }
-            .campo__entrada, .campo__ver, .entrar { transition: none; }
+            .campo__entrada, .campo__ver, .campo__ver svg, .entrar { transition: none; }
+            .entrar:active:not([aria-busy="true"]) { scale: none; }
         }
     </style>
 </head>
@@ -364,10 +362,10 @@
                                        autocomplete="current-password" required @if ($focoEnClave) autofocus @endif
                                        aria-describedby="avisoMayus{{ $hayError ? ' avisoLogin' : '' }}" @if ($camposInvalidos) aria-invalid="true" @endif>
                                 <button type="button" class="campo__ver" id="verClave" aria-label="Mostrar contraseña" aria-pressed="false">
-                                    <svg data-icono="ver" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <svg data-icono="ver" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>
                                     </svg>
-                                    <svg data-icono="ocultar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+                                    <svg data-icono="ocultar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-oculto>
                                         <path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5C18 5.5 21.5 12 21.5 12a16.5 16.5 0 0 1-2.9 3.7M6.3 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/>
                                     </svg>
                                 </button>
@@ -379,7 +377,6 @@
                         </div>
 
                         <button type="submit" class="entrar" id="botonEntrar">
-                            <span class="entrar__giro" aria-hidden="true"></span>
                             <span class="entrar__texto">Entrar</span>
                         </button>
                     </form>
@@ -392,7 +389,7 @@
         </div>
     </main>
 
-    <footer class="pie">Hospital Universitario del Valle «Evaristo García» E.S.E. · Innovación y Desarrollo</footer>
+    <footer class="pie">Hospital Universitario del Valle «Evaristo García» E.S.E.&nbsp;·&nbsp;Innovación&nbsp;y&nbsp;Desarrollo</footer>
 
     <script>
         (function () {
@@ -411,8 +408,8 @@
                 clave.type = visible ? 'text' : 'password';
                 ver.setAttribute('aria-pressed', String(visible));
                 ver.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
-                ver.querySelector('[data-icono="ver"]').toggleAttribute('hidden', visible);
-                ver.querySelector('[data-icono="ocultar"]').toggleAttribute('hidden', !visible);
+                ver.querySelector('[data-icono="ver"]').toggleAttribute('data-oculto', visible);
+                ver.querySelector('[data-icono="ocultar"]').toggleAttribute('data-oculto', !visible);
                 clave.focus();
             });
 
