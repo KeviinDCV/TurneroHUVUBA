@@ -1,236 +1,165 @@
 @extends('layouts.admin')
 
-@section('title', 'Sistema de Voz')
+@section('title', 'Sistema de voz')
+
+@php
+    // Valores con respaldo: VoiceService::VOICE_CONFIG solo trae model, language, quality y speaker.
+    $confVoz = $systemInfo['voice_config'] ?? [];
+    $piperOk = !empty($systemInfo['piper_available']);
+    $modeloOk = !empty($systemInfo['model_available']);
+    $existentes = (int) ($fileStatus['existing'] ?? 0);
+    $revisados = (int) ($fileStatus['total_checked'] ?? 0);
+    $faltan = (int) ($fileStatus['missing'] ?? 0);
+    $porcentaje = (int) round((float) ($fileStatus['percentage'] ?? 0));
+    $faltantes = array_values($fileStatus['missing_files'] ?? []);
+    $carpetaVoz = $systemInfo['voice_directory'] ?? public_path('audio/turnero/voice');
+@endphp
+
+@section('acciones_pagina')
+    <button type="button" class="btn-secundario" onclick="checkSystemStatus()">
+        <svg class="voz-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+        Actualizar estado
+    </button>
+    <button type="button" class="btn-secundario" onclick="testAudio('complete')">
+        <svg class="voz-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        Probar llamado
+    </button>
+    <button type="button" class="btn-secundario" onclick="generateMissingFiles()">
+        <svg class="voz-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Generar faltantes
+    </button>
+@endsection
+
 @section('content')
-
-<div class="bg-white shadow-md p-4 md:p-6 max-w-7xl mx-auto">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 class="text-xl md:text-2xl font-bold text-gray-800">Sistema de Voz</h1>
-    </div>
-
-    <!-- Estado del Sistema -->
-    <div class="bg-white border border-gray-200 shadow-sm mb-6">
-        <div class="bg-hospital-blue text-white px-6 py-4">
-            <h3 class="text-lg font-semibold flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Estado del Sistema
-            </h3>
+{{-- Sistema de voz (GET /voice/admin): estado de Piper y de los archivos que dice el TV, una prueba y el generador.
+     No está en el menú; se llega por la dirección. --}}
+<div class="voz-vista">
+    <!-- Estado en cuatro piezas, como las cifras del Inicio -->
+    <div class="voz-cifras">
+        <div class="voz-cifra">
+            <span class="voz-cifra__fila"><span class="voz-cifra__nombre">Piper TTS</span>
+                <span class="estado-chip estado-chip--chico {{ $piperOk ? 'estado-chip--ok' : 'estado-chip--error' }}">{{ $piperOk ? 'Disponible' : 'No disponible' }}</span></span>
+            <span class="voz-cifra__mas">{{ $piperOk && !empty($systemInfo['piper_version']) ? \Illuminate\Support\Str::limit($systemInfo['piper_version'], 60) : 'El motor que genera la voz' }}</span>
         </div>
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Piper TTS Status -->
-                <div class="text-center">
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center {{ $systemInfo['piper_available'] ? 'bg-green-100' : 'bg-red-100' }}">
-                        <svg class="w-8 h-8 {{ $systemInfo['piper_available'] ? 'text-green-600' : 'text-red-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                        </svg>
-                    </div>
-                    <h4 class="font-semibold text-gray-900">Piper TTS</h4>
-                    <p class="text-sm {{ $systemInfo['piper_available'] ? 'text-green-600' : 'text-red-600' }}">
-                        {{ $systemInfo['piper_available'] ? 'Disponible' : 'No disponible' }}
-                    </p>
-                    @if($systemInfo['piper_version'])
-                        <p class="text-xs text-gray-500 mt-1">{{ $systemInfo['piper_version'] }}</p>
-                    @endif
-                </div>
-
-                <!-- Modelo de Voz -->
-                <div class="text-center">
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center {{ $systemInfo['model_available'] ? 'bg-green-100' : 'bg-red-100' }}">
-                        <svg class="w-8 h-8 {{ $systemInfo['model_available'] ? 'text-green-600' : 'text-red-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
-                        </svg>
-                    </div>
-                    <h4 class="font-semibold text-gray-900">Modelo Claude</h4>
-                    <p class="text-sm {{ $systemInfo['model_available'] ? 'text-green-600' : 'text-red-600' }}">
-                        {{ $systemInfo['model_available'] ? 'Disponible' : 'No disponible' }}
-                    </p>
-                    <p class="text-xs text-gray-500 mt-1">es_MX-claude-high</p>
-                </div>
-
-                <!-- Archivos de Voz -->
-                <div class="text-center">
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center bg-blue-100">
-                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
-                        </svg>
-                    </div>
-                    <h4 class="font-semibold text-gray-900">Archivos de Voz</h4>
-                    <p class="text-sm text-blue-600">{{ $fileStatus['percentage'] }}% Completo</p>
-                    <p class="text-xs text-gray-500 mt-1">{{ $fileStatus['existing'] }}/{{ $fileStatus['total_checked'] }} archivos</p>
-                </div>
-
-                <!-- Directorio -->
-                <div class="text-center">
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center bg-yellow-100">
-                        <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
-                    </div>
-                    <h4 class="font-semibold text-gray-900">Directorio</h4>
-                    <p class="text-sm text-yellow-600">Configurado</p>
-                    <p class="text-xs text-gray-500 mt-1">public/audio/turnero/voice/</p>
-                </div>
-
-                <!-- Configuración -->
-                <div class="text-center">
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center bg-purple-100">
-                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                    </div>
-                    <h4 class="font-semibold text-gray-900">Configuración</h4>
-                    <p class="text-sm text-purple-600">{{ $systemInfo['voice_config']['voice'] }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Velocidad: {{ $systemInfo['voice_config']['speed'] }}</p>
-                </div>
-            </div>
+        <div class="voz-cifra">
+            <span class="voz-cifra__fila"><span class="voz-cifra__nombre">Modelo de voz</span>
+                <span class="estado-chip estado-chip--chico {{ $modeloOk ? 'estado-chip--ok' : 'estado-chip--error' }}">{{ $modeloOk ? 'Disponible' : 'No disponible' }}</span></span>
+            <span class="voz-cifra__mas">{{ $confVoz['model'] ?? 'es_MX-claude-high' }}</span>
+        </div>
+        <div class="voz-cifra">
+            <span class="voz-cifra__fila"><span class="voz-cifra__cuenta"><b class="voz-cifra__n">{{ $existentes }}</b> de {{ $revisados }} archivos</span>
+                <span class="estado-chip estado-chip--chico {{ $faltan ? 'estado-chip--alerta' : 'estado-chip--ok' }}">{{ $faltan ? 'Incompletos' : 'Completos' }}</span></span>
+            <span class="voz-cifra__avance">
+                <span class="voz-cifra__mas">{{ $porcentaje }} % · {{ $faltan === 1 ? 'falta 1' : 'faltan ' . $faltan }}</span>
+                <span class="voz-barra" role="img" aria-label="{{ $porcentaje }} % de los archivos de voz"><i style="width: {{ max(0, min(100, $porcentaje)) }}%"></i></span>
+            </span>
+        </div>
+        <div class="voz-cifra">
+            <span class="voz-cifra__fila"><span class="voz-cifra__nombre">Carpeta</span>
+                <button type="button" class="enlace-panel voz-cifra__enlace" onclick="openFileManager()">Ver ruta</button></span>
+            <span class="voz-cifra__mas voz-cifra__ruta">public/audio/turnero/voice</span>
         </div>
     </div>
 
-    <!-- Acciones Rápidas -->
-    <div class="bg-white border border-gray-200 shadow-sm mb-6">
-        <div class="bg-hospital-blue text-white px-6 py-4">
-            <h3 class="text-lg font-semibold flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                Acciones Rápidas
-            </h3>
-        </div>
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <button onclick="testAudio('complete')" class="flex items-center justify-center p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all">
-                    <svg class="w-5 h-5 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v4a2 2 0 002 2h2a2 2 0 002-2v-4M9 10V9a2 2 0 012-2h2a2 2 0 012 2v1"></path>
-                    </svg>
-                    <span class="font-medium">Probar Turno Completo</span>
-                </button>
-
-                <button onclick="generateMissingFiles()" class="flex items-center justify-center p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all">
-                    <svg class="w-5 h-5 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    <span class="font-medium">Generar Archivos Faltantes</span>
-                </button>
-
-                <button onclick="checkSystemStatus()" class="flex items-center justify-center p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all">
-                    <svg class="w-5 h-5 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    <span class="font-medium">Actualizar Estado</span>
-                </button>
-
-                <button onclick="openFileManager()" class="flex items-center justify-center p-4 border border-gray-200 hover:border-hospital-blue hover:bg-hospital-blue-light transition-all">
-                    <svg class="w-5 h-5 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"></path>
-                    </svg>
-                    <span class="font-medium">Abrir Directorio</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Generador de Archivos -->
-    <div class="bg-white border border-gray-200 shadow-sm mb-6">
-        <div class="bg-hospital-blue text-white px-6 py-4">
-            <h3 class="text-lg font-semibold flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                </svg>
-                Generador de Archivos Personalizado
-            </h3>
-        </div>
-        <div class="p-6">
-            <form id="customAudioForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Texto a Sintetizar</label>
-                    <input type="text" id="customText" name="text" class="w-full border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue" placeholder="Ej: Hola mundo" required>
+    <div class="voz-rejilla vista-lateral">
+        <!-- Generador de un archivo -->
+        <section class="superficie voz-bloque" aria-labelledby="t-voz-generar-uno">
+            <header>
+                <h2 id="t-voz-generar-uno" class="voz-bloque__titulo">Generar un archivo</h2>
+                <p class="voz-bloque__sub">Piper lo graba en la carpeta elegida y lo reproduce aquí al terminar.</p>
+            </header>
+            <form id="customAudioForm" class="voz-form" novalidate>
+                <div class="form-campo">
+                    <label for="customText">Texto que dirá la voz</label>
+                    <input type="text" id="customText" name="text" class="campo" maxlength="100" placeholder="Ej.: Turno" required>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Archivo</label>
-                    <input type="text" id="customFilename" name="filename" class="w-full border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue" placeholder="Ej: hola-mundo.mp3" required>
+                <div class="form-panel__fila">
+                    <div class="form-campo">
+                        <label for="customFilename">Nombre del archivo</label>
+                        <input type="text" id="customFilename" name="filename" class="campo" maxlength="50" placeholder="Ej.: turno.mp3" aria-describedby="customFilename-ayuda" required>
+                        <span id="customFilename-ayuda" class="form-ayuda">Letras, números, guiones y la terminación .mp3.</span>
+                    </div>
+                    <div class="form-campo">
+                        <label for="customCategory">Categoría</label>
+                        <select id="customCategory" name="category" class="campo" required>
+                            <option value="frases">Frases</option>
+                            <option value="numeros">Números</option>
+                            <option value="letras">Letras</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
-                    <select id="customCategory" name="category" class="w-full border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue" required>
-                        <option value="frases">Frases</option>
-                        <option value="numeros">Números</option>
-                        <option value="letras">Letras</option>
-                        <option value="custom">Personalizado</option>
-                    </select>
-                </div>
-                <div class="md:col-span-3">
-                    <button type="submit" class="bg-hospital-blue hover:bg-hospital-blue-hover text-white font-medium py-2 px-6 transition-colors">
-                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                        Generar Archivo de Audio
-                    </button>
+                <p class="form-error" id="customAudioError" role="alert" hidden></p>
+                <div class="voz-form__pie">
+                    <button type="submit" class="btn-primario" id="customAudioBtn">Generar archivo</button>
                 </div>
             </form>
-        </div>
-    </div>
+        </section>
 
-    <!-- Información del Sistema -->
-    <div class="bg-white border border-gray-200 shadow-sm">
-        <div class="bg-hospital-blue text-white px-6 py-4">
-            <h3 class="text-lg font-semibold flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Información del Sistema
-            </h3>
-        </div>
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h4 class="font-semibold text-gray-900 mb-3">Configuración de Voz</h4>
-                    <dl class="space-y-2">
-                        <div class="flex justify-between">
-                            <dt class="text-sm text-gray-600">Idioma:</dt>
-                            <dd class="text-sm font-medium">{{ $systemInfo['voice_config']['voice'] }}</dd>
-                        </div>
-                        <div class="flex justify-between">
-                            <dt class="text-sm text-gray-600">Velocidad:</dt>
-                            <dd class="text-sm font-medium">{{ $systemInfo['voice_config']['speed'] }} WPM</dd>
-                        </div>
-                        <div class="flex justify-between">
-                            <dt class="text-sm text-gray-600">Tono:</dt>
-                            <dd class="text-sm font-medium">{{ $systemInfo['voice_config']['pitch'] }}</dd>
-                        </div>
-                        <div class="flex justify-between">
-                            <dt class="text-sm text-gray-600">Volumen:</dt>
-                            <dd class="text-sm font-medium">{{ $systemInfo['voice_config']['amplitude'] }}</dd>
-                        </div>
-                    </dl>
-                </div>
-                <div>
-                    <h4 class="font-semibold text-gray-900 mb-3">Archivos Faltantes</h4>
-                    @if(count($fileStatus['missing_files']) > 0)
-                        <ul class="text-sm text-gray-600 space-y-1">
-                            @foreach(array_slice($fileStatus['missing_files'], 0, 5) as $file)
-                                <li class="flex items-center">
-                                    <svg class="w-4 h-4 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                    {{ $file }}
-                                </li>
-                            @endforeach
-                            @if(count($fileStatus['missing_files']) > 5)
-                                <li class="text-gray-500 italic">... y {{ count($fileStatus['missing_files']) - 5 }} más</li>
-                            @endif
-                        </ul>
+        <!-- Configuración y lo que falta: la columna lateral, la única pieza elevada de la vista -->
+        <section class="pieza-elevada vista-lateral__lado voz-bloque" aria-labelledby="t-voz-config">
+            <header>
+                <h2 id="t-voz-config" class="voz-bloque__titulo">Configuración de la voz</h2>
+            </header>
+            <dl class="voz-datos">
+                <div><dt>Modelo</dt><dd>{{ $confVoz['model'] ?? '—' }}</dd></div>
+                <div><dt>Idioma</dt><dd>{{ $confVoz['language'] ?? '—' }}</dd></div>
+                <div><dt>Calidad</dt><dd>{{ $confVoz['quality'] ?? '—' }}</dd></div>
+                <div><dt>Voz</dt><dd>{{ $confVoz['speaker'] ?? '—' }}</dd></div>
+            </dl>
+
+            <h3 class="voz-bloque__subtitulo">Archivos que faltan</h3>
+            @if (count($faltantes) > 0)
+                <ul class="voz-faltantes">
+                    @foreach (array_slice($faltantes, 0, 5) as $archivo)
+                        <li><code>{{ $archivo }}</code></li>
+                    @endforeach
+                </ul>
+                @if ($faltan > 5)
+                    <p class="voz-bloque__sub">Y {{ $faltan - 5 }} más. «Generar faltantes» los crea todos.</p>
+                @endif
+            @else
+                <p class="voz-completos"><span class="punto punto--ok" aria-hidden="true"></span> Están todos los archivos básicos</p>
+            @endif
+        </section>
+    </div>
+</div>
+
+<!-- Modal: confirmar la generación de los archivos que faltan -->
+<div x-data="{ abierto: false, generando: false }"
+     @voz-confirmar.window="abierto = true; $nextTick(() => $refs.cancelar && $refs.cancelar.focus())">
+    <div class="modal-panel" x-show="abierto" x-cloak x-transition.opacity
+         @click.self="!generando && (abierto = false)" @keydown.escape.window="abierto && !generando && (abierto = false)">
+        <div class="modal-panel__caja modal-panel__caja--angosta" role="dialog" aria-modal="true" aria-labelledby="t-voz-generar" aria-describedby="d-voz-generar">
+            <div class="modal-panel__cabeza">
+                <h2 id="t-voz-generar">Generar archivos faltantes</h2>
+                <button type="button" class="accion-icono" aria-label="Cerrar" :disabled="generando" @click="abierto = false">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="form-panel">
+                <p id="d-voz-generar" class="form-texto">
+                    @if ($faltan)
+                        Piper genera {{ $faltan === 1 ? 'el archivo de voz que falta' : 'los ' . $faltan . ' archivos de voz que faltan' }}. Puede tardar varios minutos: no cierre esta página mientras trabaja.
                     @else
-                        <p class="text-sm text-green-600 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Todos los archivos básicos están disponibles
-                        </p>
+                        No falta ningún archivo básico: Piper solo graba los que no existen, así que no hay nada que generar.
+                    @endif
+                </p>
+                @unless ($piperOk && $modeloOk)
+                    <div class="aviso aviso--alerta" role="alert">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                        <p>{{ $piperOk ? 'El modelo de voz' : 'Piper TTS' }} no está disponible en este servidor, así que no se podrá generar ningún archivo.</p>
+                    </div>
+                @endunless
+                <div class="modal-panel__pie">
+                    @if ($faltan && $piperOk && $modeloOk)
+                        <button type="button" class="btn-secundario" x-ref="cancelar" :disabled="generando" @click="abierto = false">Cancelar</button>
+                        <button type="button" class="btn-primario" :disabled="generando" :aria-busy="generando.toString()"
+                                @click="generando = true; confirmarGeneracion().finally(() => { generando = false; abierto = false; })"
+                                x-text="generando ? 'Generando…' : 'Generar'">Generar</button>
+                    @else
+                        {{-- Nada que generar, o falta Piper o el modelo: no se ofrece una acción que no puede hacer nada --}}
+                        <button type="button" class="btn-secundario" x-ref="cancelar" @click="abierto = false">Entendido</button>
                     @endif
                 </div>
             </div>
@@ -239,28 +168,36 @@
 </div>
 
 <script>
-// Funciones JavaScript para la administración del sistema de voz
+// Funciones de la administración del sistema de voz (los nombres los usan los botones de arriba)
+const RUTAS_VOZ = {
+    prueba: @json(route('voice.test-audio')),
+    faltantes: @json(route('voice.generate-missing')),
+    especifico: @json(route('voice.generate-specific')),
+};
+const CARPETA_VOZ = @json($carpetaVoz);
+const cabecerasVoz = () => ({
+    'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+});
+const leerVoz = r => r.json().catch(() => ({})).then(datos => ({ ok: r.ok, estado: r.status, datos }));
+const errorVoz = (estado, datos, porDefecto) => estado === 419 ? 'La sesión expiró. Recargue la página e inténtelo de nuevo.'
+    : (datos && datos.errors ? Object.values(datos.errors)[0][0] : (datos && datos.message) || porDefecto);
+
 function testAudio(type, value = null) {
-    fetch('{{ route('admin.voice.test-audio') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ type: type, value: value })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.audio_files.length > 0) {
-            playAudioSequence(data.audio_files);
-        } else {
-            alert('No se encontraron archivos de audio para reproducir');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error al probar audio');
-    });
+    fetch(RUTAS_VOZ.prueba, { method: 'POST', headers: cabecerasVoz(), body: JSON.stringify({ type: type, value: value }) })
+        .then(leerVoz)
+        .then(({ ok, estado, datos }) => {
+            const archivos = Object.values((datos && datos.audio_files) || {});
+            if (ok && datos.success && archivos.length) {
+                playAudioSequence(archivos);
+                sileo.info({ title: 'Reproduciendo el llamado de prueba' });
+            } else if (ok) {
+                sileo.warning({ title: 'No hay audios para reproducir', description: 'Genere primero los archivos que faltan.' });
+            } else {
+                sileo.error({ title: 'No se pudo probar la voz', description: errorVoz(estado, datos, 'Error ' + estado + '.') });
+            }
+        })
+        .catch(() => sileo.error({ title: 'No se pudo probar la voz', description: 'No hay conexión con el servidor.' }));
 }
 
 function playAudioSequence(audioFiles) {
@@ -285,29 +222,20 @@ function playAudioSequence(audioFiles) {
     playNext();
 }
 
+// Abre la confirmación (modal); la generación la hace confirmarGeneracion()
 function generateMissingFiles() {
-    if (!confirm('¿Generar archivos de voz faltantes? Esto puede tomar varios minutos.')) {
-        return;
-    }
+    window.dispatchEvent(new CustomEvent('voz-confirmar'));
+}
 
-    fetch('{{ route('admin.voice.generate-missing') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        if (data.success) {
-            location.reload();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error generando archivos');
-    });
+function confirmarGeneracion() {
+    return fetch(RUTAS_VOZ.faltantes, { method: 'POST', headers: cabecerasVoz() })
+        .then(leerVoz)
+        .then(({ ok, estado, datos }) => {
+            if (ok && datos.success) { sileo.recargarCon({ title: 'Archivos de voz generados', description: datos.message }); return; }
+            const detalle = datos && datos.results && datos.results.errors && datos.results.errors.length ? datos.results.errors[0] : null;
+            sileo.error({ title: 'No se generaron todos los archivos', description: detalle || errorVoz(estado, datos, 'Error ' + estado + '.') });
+        })
+        .catch(() => sileo.error({ title: 'No se generaron los archivos', description: 'No hay conexión con el servidor.' }));
 }
 
 function checkSystemStatus() {
@@ -315,39 +243,93 @@ function checkSystemStatus() {
 }
 
 function openFileManager() {
-    const path = '{{ $systemInfo['voice_directory'] }}';
-    alert(`Directorio de archivos de voz:\n${path}`);
+    sileo.info({ title: 'Carpeta de los archivos de voz', description: CARPETA_VOZ });
 }
 
 // Formulario personalizado
-document.getElementById('customAudioForm').addEventListener('submit', function(e) {
+document.getElementById('customAudioForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    const boton = document.getElementById('customAudioBtn');
+    const aviso = document.getElementById('customAudioError');
+    const data = Object.fromEntries(new FormData(this));
+    aviso.hidden = true;
+    if (!data.text.trim() || !data.filename.trim()) {
+        aviso.textContent = 'Escriba el texto y el nombre del archivo.';
+        aviso.hidden = false;
+        return;
+    }
+    boton.disabled = true; boton.setAttribute('aria-busy', 'true'); boton.textContent = 'Generando…';
 
-    const formData = new FormData(this);
-    const data = Object.fromEntries(formData);
-
-    fetch('{{ route('admin.voice.generate-specific') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        if (data.success && data.audio_url) {
-            // Reproducir el archivo generado
-            const audio = new Audio(data.audio_url);
-            audio.play();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error generando archivo personalizado');
-    });
+    fetch(RUTAS_VOZ.especifico, { method: 'POST', headers: cabecerasVoz(), body: JSON.stringify(data) })
+        .then(leerVoz)
+        .then(({ ok, estado, datos }) => {
+            if (ok && datos.success) {
+                sileo.success({ title: 'Archivo generado', description: datos.message });
+                if (datos.audio_url) new Audio(datos.audio_url).play();
+                return;
+            }
+            aviso.textContent = errorVoz(estado, datos, 'No se pudo generar el archivo.');
+            aviso.hidden = false;
+        })
+        .catch(() => { aviso.textContent = 'No hay conexión con el servidor. Inténtelo de nuevo.'; aviso.hidden = false; })
+        .finally(() => { boton.disabled = false; boton.removeAttribute('aria-busy'); boton.textContent = 'Generar archivo'; });
 });
 </script>
 
+@push('estilos')
+<style>
+/* ===== Sistema de voz «La sala» (2026-11): mismo lenguaje que el Inicio. Solo medidas propias;
+   colores, avisos, chips, botones y la pieza elevada salen del layout. ===== */
+/* Cifras tabulares solo en conteos, porcentajes y archivos: en todo el bloque ensanchaban el guion de «es_MX-claude-high» */
+.voz-vista { display: flex; flex-direction: column; gap: 1.5rem; }
+.voz-ico { width: 1rem; height: 1rem; flex: none; }
+
+/* Cifras: la misma medida que las del Inicio */
+.voz-cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: .625rem; }
+/* Dos por fila antes que en el Inicio: aquí cada pieza lleva nombre y chip en la misma línea (unos 256 px por dentro) */
+@media (max-width: 1339px) { .voz-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 539px) { .voz-cifras { grid-template-columns: minmax(0, 1fr); } }
+.voz-cifra {
+    min-width: 0; display: flex; flex-direction: column; gap: .1875rem; padding: .6875rem 1rem; border-radius: .875rem;
+    background: #fff; box-shadow: var(--roce); font-size: .875rem; color: var(--tinta-suave);
+}
+/* Alto de la fila = la línea del número de 19 px del Inicio (19 × 1,5 = 28,5 px): las cuatro filas, chips y detalles
+   quedan a la misma altura y la pieza mide 72,25 px, como .sala-cifra */
+.voz-cifra__fila { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 1.78125rem; }
+.voz-cifra__fila > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voz-cifra__fila > .estado-chip, .voz-cifra__fila > .enlace-panel { flex: none; }
+.voz-cifra__nombre { font-size: .875rem; font-weight: 650; color: var(--tinta); }
+.voz-cifra__n { font-size: 1.1875rem; font-weight: 650; letter-spacing: -.01em; color: var(--tinta); }
+.voz-cifra__cuenta, .voz-cifra__n, .voz-cifra__avance .voz-cifra__mas, .voz-cifra__ruta, .voz-faltantes code { font-variant-numeric: tabular-nums; }
+.voz-cifra__mas { font-size: .78125rem; color: var(--tinta-tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voz-cifra__ruta { letter-spacing: .01em; }
+.voz-cifra__enlace { font-size: .8125rem; border-radius: .25rem; }
+/* El avance va en la línea del detalle para que la pieza mida lo mismo que las otras tres (unos 72 px, como en el Inicio) */
+.voz-cifra__avance { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.voz-cifra__avance .voz-cifra__mas { flex: none; }
+.voz-barra { display: block; flex: 1; min-width: 2.5rem; height: .25rem; border-radius: 2px; background: #e9eef5; overflow: hidden; }
+.voz-barra i { display: block; height: 100%; background: var(--azul); }
+
+/* Generar un archivo a la izquierda; la configuración es la columna lateral (.vista-lateral del layout, 20rem) */
+.voz-bloque { display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: 1.25rem 1.25rem 1.125rem; }
+.voz-bloque__titulo { margin: 0; font-size: 1rem; font-weight: 650; color: var(--tinta); }
+.voz-bloque__subtitulo { margin: .25rem 0 0; font-size: .875rem; font-weight: 650; color: var(--tinta); }
+.voz-bloque__sub { margin: .125rem 0 0; font-size: .8125rem; color: var(--tinta-suave); text-wrap: pretty; }
+.voz-form { display: flex; flex-direction: column; gap: .875rem; }
+.voz-form .form-error[hidden] { display: none; }
+.voz-form__pie { display: flex; justify-content: flex-end; padding-top: .25rem; }
+
+.voz-datos { margin: 0; display: flex; flex-direction: column; }
+.voz-datos > div { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-top: 1px solid var(--linea-suave); font-size: .875rem; }
+.voz-datos > div:first-child { border-top: 0; padding-top: 0; }
+.voz-datos dt { color: var(--tinta-suave); }
+.voz-datos dd { margin: 0; font-weight: 600; color: var(--tinta); text-align: right; overflow-wrap: anywhere; }
+.voz-faltantes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .375rem; }
+.voz-faltantes code {
+    display: inline-block; padding: .25rem .5rem; border-radius: .5rem; background: var(--error-fondo); color: var(--error-texto);
+    font-family: inherit; font-size: .75rem; letter-spacing: .01em;
+}
+.voz-completos { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: .875rem; color: var(--tinta-suave); }
+</style>
+@endpush
 @endsection

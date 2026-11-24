@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-23T16:10:00-05:00",
+  "generatedAt": "2026-11-23T19:30:00-05:00",
   "title": "Design System: Turnero HUV",
   "extensions": {
     "colorMeta": {
@@ -8,19 +8,36 @@
       "azul-hover": { "role": "primary", "displayName": "Azul institucional, hover", "canonical": "#053f87" },
       "azul-activo": { "role": "primary", "displayName": "Azul institucional, pulsado", "canonical": "#04356f" },
       "azul-ocupado": { "role": "primary", "displayName": "Azul ocupado", "canonical": "#2f63a6" },
+      "azul-claro": { "role": "primary", "displayName": "Azul claro (elegido)", "canonical": "#eaf1fb" },
       "foco": { "role": "primary", "displayName": "Halo de foco", "canonical": "rgba(6, 75, 158, 0.18)" },
       "tinta": { "role": "neutral", "displayName": "Azul noche", "canonical": "#0f2747", "tonalRamp": ["#0f2747", "#23344f", "#4a5d78", "#56698a", "#7d91ad", "#a7b8d0", "#e6edf6", "#eef3fa"] },
       "tinta-2": { "role": "neutral", "displayName": "Azul noche medio", "canonical": "#23344f" },
       "tinta-suave": { "role": "neutral", "displayName": "Pizarra azul", "canonical": "#4a5d78" },
       "tinta-tenue": { "role": "neutral", "displayName": "Pizarra tenue", "canonical": "#56698a" },
+      "tinta-apagada": { "role": "neutral", "displayName": "Pizarra apagada", "canonical": "#6d7f99" },
       "icono": { "role": "neutral", "displayName": "Pizarra de icono", "canonical": "#5b6f8c" },
       "borde": { "role": "neutral", "displayName": "Borde azul grisáceo", "canonical": "#7d91ad" },
       "borde-hover": { "role": "neutral", "displayName": "Borde azul grisáceo, hover", "canonical": "#5f7698" },
+      "linea": { "role": "neutral", "displayName": "Línea", "canonical": "#e3e9f2" },
+      "linea-suave": { "role": "neutral", "displayName": "Línea suave", "canonical": "#edf1f6" },
+      "linea-lista": { "role": "neutral", "displayName": "Línea de la lista desplegable", "canonical": "#dde6f2" },
       "corte": { "role": "neutral", "displayName": "Línea de corte", "canonical": "#a7b8d0" },
       "superficie": { "role": "neutral", "displayName": "Papel", "canonical": "#ffffff" },
+      "ficha": { "role": "neutral", "displayName": "Ficha", "canonical": "#f5f8fc" },
+      "papel-hover": { "role": "neutral", "displayName": "Papel, hover", "canonical": "#f2f6fc" },
+      "fila-hover": { "role": "neutral", "displayName": "Fila, hover", "canonical": "#f6f9fd" },
+      "campo-apagado": { "role": "neutral", "displayName": "Campo deshabilitado", "canonical": "#f3f6fa" },
+      "pista": { "role": "neutral", "displayName": "Pista de barra", "canonical": "#e9eef5" },
+      "neutro-fondo": { "role": "neutral", "displayName": "Chip neutro, fondo", "canonical": "#eef1f6" },
       "fondo-alto": { "role": "neutral", "displayName": "Fondo con tinte, arriba", "canonical": "#eef3fa" },
       "fondo-bajo": { "role": "neutral", "displayName": "Fondo con tinte, abajo", "canonical": "#e6edf6" },
+      "velo": { "role": "neutral", "displayName": "Velo", "canonical": "rgba(15, 39, 71, 0.32)" },
+      "ok": { "role": "success", "displayName": "Verde ok", "canonical": "#0b5a37", "tonalRamp": ["#03261a", "#0b5a37", "#1d7a50", "#3f9a6f", "#7cbf9c", "#bcdcc8", "#d6ece0", "#e7f4ec"] },
+      "ok-fondo": { "role": "success", "displayName": "Ok, fondo", "canonical": "#e7f4ec" },
+      "ok-borde": { "role": "success", "displayName": "Ok, borde", "canonical": "#bcdcc8" },
       "error": { "role": "error", "displayName": "Rojo de error", "canonical": "#b42318", "tonalRamp": ["#4a0f0a", "#8a1c1c", "#b42318", "#d4574c", "#e8948c", "#f1c6c2", "#f8dedb", "#fdf0ef"] },
+      "error-hover": { "role": "error", "displayName": "Peligro, hover", "canonical": "#931c13" },
+      "error-ocupado": { "role": "error", "displayName": "Peligro ocupado", "canonical": "#c9574d" },
       "error-fondo": { "role": "error", "displayName": "Aviso de error, fondo", "canonical": "#fdf0ef" },
       "error-borde": { "role": "error", "displayName": "Aviso de error, borde", "canonical": "#f1c6c2" },
       "error-texto": { "role": "error", "displayName": "Aviso de error, texto", "canonical": "#8a1c1c" },
@@ -28,23 +45,47 @@
       "info-borde": { "role": "info", "displayName": "Aviso informativo, borde", "canonical": "#c6d7f0" },
       "info-texto": { "role": "info", "displayName": "Aviso informativo, texto", "canonical": "#173a6a" },
       "alerta-fondo": { "role": "warning", "displayName": "Alerta, fondo", "canonical": "#fff6e6", "tonalRamp": ["#3d2700", "#6b4400", "#7a4b00", "#a86d10", "#d39c45", "#f0d29b", "#f8e6c4", "#fff6e6"] },
+      "alerta-fondo-panel": { "role": "warning", "displayName": "Alerta del panel, fondo", "canonical": "#fff4df" },
       "alerta-borde": { "role": "warning", "displayName": "Alerta, borde", "canonical": "#f0d29b" },
       "alerta-texto": { "role": "warning", "displayName": "Alerta, texto", "canonical": "#6b4400" },
       "alerta-tinta": { "role": "warning", "displayName": "Advertencia en línea", "canonical": "#7a4b00" }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Nombre de la unidad o título de la vista; uno por pantalla." },
+      "display": { "displayName": "Display", "purpose": "Nombre de la unidad en el Login y título de cada vista del panel; uno por pantalla." },
+      "display-compacto": { "displayName": "Display compacto", "purpose": "El título de la vista por debajo de 768 px de ancho." },
+      "modal-title": { "displayName": "Título de modal", "purpose": "El h2 de un modal." },
+      "section-title": { "displayName": "Título de sección", "purpose": "Título de un grupo de piezas (fuera) o de un panel, gráfico o formulario (dentro)." },
+      "empty-title": { "displayName": "Título de vacío", "purpose": "El título de un vacío; el único título de 15 px." },
+      "subsection-title": { "displayName": "Subtítulo interno", "purpose": "Un subtítulo dentro de un panel." },
+      "cifra-modulo": { "displayName": "Cifra del módulo", "purpose": "El número del módulo en su ficha." },
+      "cifra-modal": { "displayName": "Cifra de modal", "purpose": "Las cifras dentro de un modal de consulta." },
+      "cifra": { "displayName": "Cifra", "purpose": "El número de una cifra del momento, seguido de su palabra." },
+      "turno-codigo": { "displayName": "Código de turno", "purpose": "El código del turno en la Cola; nunca un título." },
       "subtitle": { "displayName": "Subtítulo", "purpose": "La línea que acompaña al título." },
       "input": { "displayName": "Campo", "purpose": "Texto escrito en los campos; 16px evita el zoom." },
       "button": { "displayName": "Botón", "purpose": "Texto de la acción principal." },
+      "button-panel": { "displayName": "Botón del panel", "purpose": "Botones, pastillas y opciones del segmentado." },
       "body": { "displayName": "Cuerpo", "purpose": "Avisos y texto corrido." },
-      "label": { "displayName": "Etiqueta", "purpose": "Etiquetas de campo, siempre visibles." },
-      "caption": { "displayName": "Nota", "purpose": "Fecha, hora, pie y notas técnicas; cifras tabulares." }
+      "label": { "displayName": "Etiqueta", "purpose": "Etiquetas de campo del Login, siempre visibles." },
+      "rotulo": { "displayName": "Rótulo", "purpose": "Etiquetas de campo del panel y rótulos en línea de la barra." },
+      "panel-subtitle": { "displayName": "Subtítulo de panel", "purpose": "La línea bajo el título de un panel." },
+      "caption": { "displayName": "Nota", "purpose": "Fecha, hora, pie, metadatos y notas técnicas; cifras tabulares." },
+      "table-head": { "displayName": "Cabecera de tabla", "purpose": "Cabeceras de tabla en tinta tenue, sin mayúsculas." },
+      "status": { "displayName": "Estado", "purpose": "La palabra de un chip de estado." },
+      "help": { "displayName": "Ayuda", "purpose": "Ayuda bajo un campo del panel." },
+      "status-small": { "displayName": "Estado chico", "purpose": "Chip de estado en filas compactas." },
+      "rail": { "displayName": "Riel", "purpose": "Nombre corto bajo cada icono del riel." }
     },
     "shadows": [
-      { "name": "pieza-elevada", "value": "drop-shadow(0 0 0.6px rgba(15, 39, 71, 0.35)) drop-shadow(0 1px 1px rgba(15, 39, 71, 0.07)) drop-shadow(0 22px 28px rgba(15, 39, 71, 0.13))", "purpose": "Filtro del ticket: filo fino que sigue la forma (muescas incluidas), contacto y ambiente; una sola pieza elevada por vista." },
+      { "name": "pieza-elevada-login", "value": "drop-shadow(0 0 0.6px rgba(15, 39, 71, 0.35)) drop-shadow(0 1px 1px rgba(15, 39, 71, 0.07)) drop-shadow(0 22px 28px rgba(15, 39, 71, 0.13))", "purpose": "Filtro del ticket: filo fino que sigue la forma (muescas incluidas), contacto y ambiente; una sola pieza elevada por vista." },
+      { "name": "pieza-elevada", "value": "drop-shadow(0 0 .6px rgba(15, 39, 71, .3)) drop-shadow(0 16px 22px rgba(15, 39, 71, .09))", "purpose": "Filtro de la única pieza que flota en una vista del panel (Cola, hoja del informe, Solicitudes, Configuración de la voz, Turnos por hora, lista de reproducción)." },
+      { "name": "riel", "value": "drop-shadow(0 0 .6px rgba(15, 39, 71, .3)) drop-shadow(0 12px 18px rgba(15, 39, 71, .07))", "purpose": "El riel flotante; marco del panel, no cuenta como pieza elevada." },
+      { "name": "modal", "value": "0 0 0 1px rgba(15, 39, 71, .06), 0 24px 48px -16px rgba(15, 39, 71, .32)", "purpose": "Caja del modal sobre el velo." },
+      { "name": "desplegable", "value": "0 16px 36px -12px rgba(15, 39, 71, .28), 0 2px 6px rgba(15, 39, 71, .06)", "purpose": "Lista abierta de un desplegable propio." },
       { "name": "accion", "value": "0 1px 2px rgba(15, 39, 71, 0.14)", "purpose": "Botón principal: solo contacto, igual en hover y al pulsar; ocupado sin sombra." },
-      { "name": "roce", "value": "0 1px 2px rgba(15, 39, 71, 0.06)", "purpose": "Campos de texto." },
+      { "name": "roce", "value": "0 1px 2px rgba(15, 39, 71, 0.06)", "purpose": "Campos del Login, superficies, cifras, fichas de módulo, pastillas sobre el fondo y botones secundarios." },
+      { "name": "segmento-elegido", "value": "0 1px 2px rgba(15, 39, 71, .12), 0 0 0 1px rgba(15, 39, 71, .06)", "purpose": "Opción elegida del control segmentado." },
+      { "name": "contorno-elegido", "value": "inset 0 0 0 1.5px #064b9e", "purpose": "Pastilla, tarjeta-opción u opción elegida, sobre azul claro." },
       { "name": "halo-foco", "value": "0 0 0 3px rgba(6, 75, 158, 0.18)", "purpose": "Campo enfocado." },
       { "name": "halo-foco-error", "value": "0 0 0 3px rgba(180, 35, 24, 0.16)", "purpose": "Campo inválido enfocado." }
     ],
@@ -53,11 +94,23 @@
       { "name": "imprimir", "value": "translateY(8px) a 0, 0.55s, ease-salida", "purpose": "Entrada del ticket, sin opacidad." },
       { "name": "rasgar", "value": "stroke-dashoffset 0 a -13, 0.5s linear infinite", "purpose": "La línea de corte corre mientras la acción trabaja." },
       { "name": "estado", "value": "0.15s ease", "purpose": "Color de fondo, borde y halo en hover, foco y pulsado." },
-      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "Sin entrada, sin corte que corre, sin transiciones de estado." }
+      { "name": "modal-entra", "value": "translateY(8px) scale(.985) a 0, 0.2s, cubic-bezier(.2, 0, 0, 1)", "purpose": "La única entrada de todos los modales, sin opacidad." },
+      { "name": "riel-abre", "value": "transform 0.24s cubic-bezier(.16, 1, .3, 1)", "purpose": "El riel se desliza desde la izquierda en el celular." },
+      { "name": "desplegable-entra", "value": "opacity 0 y translateY(-4px) a 0, 0.12s ease-out", "purpose": "Apertura de la lista de un desplegable propio." },
+      { "name": "esqueleto-pulso", "value": "opacity a .45 a mitad, 1.6s ease-in-out infinite", "purpose": "Pulso lento de los esqueletos de carga." },
+      { "name": "pulsar", "value": "scale .96 (botones) y .98 (ficha de módulo), 0.15s ease-out", "purpose": "Respuesta al pulsar." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "Sin entradas (ticket, modal, desplegable, riel), sin corte que corre, sin pulso de esqueleto y sin transiciones de estado." }
     ],
     "breakpoints": [
       { "name": "bajo", "value": "max-height: 700px" },
-      { "name": "estrecho", "value": "max-width: 420px" }
+      { "name": "estrecho", "value": "max-width: 420px" },
+      { "name": "riel-compacto", "value": "min-width: 768px and max-height: 820px" },
+      { "name": "riel-minimo", "value": "min-width: 768px and max-height: 700px" },
+      { "name": "celular", "value": "max-width: 767px" },
+      { "name": "formulario-una-columna", "value": "max-width: 639px" },
+      { "name": "cifras-dos", "value": "max-width: 1023px" },
+      { "name": "lateral-apilada", "value": "max-width: 1099px" },
+      { "name": "sala-apilada", "value": "max-width: 1279px" }
     ]
   },
   "components": [
@@ -65,7 +118,7 @@
       "name": "Botón principal",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "La única acción principal de la vista; plano, sin degradado ni elevación al pasar el cursor.",
+      "description": "La acción principal del Login y la acción única de la pieza elevada del panel; plano, sin degradado ni elevación al pasar el cursor.",
       "html": "<button class=\"ds-entrar\" type=\"button\">Entrar</button>",
       "css": ".ds-entrar { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 48px; border: 0; border-radius: 10px; background: #064b9e; color: #fff; font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; font-size: 15.5px; font-weight: 600; letter-spacing: 0.005em; cursor: pointer; box-shadow: 0 1px 2px rgba(15, 39, 71, 0.14); transition-property: background-color, scale; transition-duration: 0.15s; transition-timing-function: ease-out; } .ds-entrar:hover { background: #053f87; } .ds-entrar:active { background: #04356f; scale: 0.96; } .ds-entrar:focus-visible { outline: 3px solid rgba(6, 75, 158, 0.35); outline-offset: 3px; }"
     },
@@ -124,42 +177,127 @@
       "description": "Pieza firma: talón y cuerpo unidos por un corte con muescas y línea punteada, con un filo fino que sigue la forma. Solo para un turno o la entrada al turnero; nunca como tarjeta general.",
       "html": "<div class=\"ds-ticket\"><div class=\"ds-talon\"><h1 class=\"ds-unidad\">Fisiatría</h1><p class=\"ds-turnero\">Turnero del Hospital Universitario del Valle</p><p class=\"ds-sello\"><span>Lunes 23 de noviembre</span><span>3:30 p. m.</span></p></div><div class=\"ds-cuerpo\"><svg class=\"ds-corte\" aria-hidden=\"true\"><line x1=\"0\" y1=\"1\" x2=\"100%\" y2=\"1\"/></svg><p class=\"ds-turnero\">Contenido del cuerpo</p></div></div>",
       "css": ".ds-ticket { --muesca: 12px; max-width: 400px; font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; filter: drop-shadow(0 0 0.6px rgba(15, 39, 71, 0.35)) drop-shadow(0 1px 1px rgba(15, 39, 71, 0.07)) drop-shadow(0 22px 28px rgba(15, 39, 71, 0.13)); animation: ds-imprimir 0.55s cubic-bezier(0.16, 1, 0.3, 1); } @keyframes ds-imprimir { from { transform: translateY(8px); } } .ds-talon, .ds-cuerpo { position: relative; background: #fff; } .ds-talon { padding: 30px 34px 22px; border-radius: 18px 18px 0 0; text-align: center; -webkit-mask: radial-gradient(circle var(--muesca) at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--muesca) at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle var(--muesca) at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--muesca) at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat; } .ds-cuerpo { padding: 28px 34px 32px; border-radius: 0 0 18px 18px; -webkit-mask: radial-gradient(circle var(--muesca) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--muesca) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle var(--muesca) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--muesca) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat; } .ds-corte { position: absolute; top: -1px; left: calc(var(--muesca) + 10px); width: calc(100% - 2 * (var(--muesca) + 10px)); height: 2px; overflow: visible; stroke: #a7b8d0; stroke-width: 2; stroke-dasharray: 7 6; } .ds-unidad { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 650; letter-spacing: -0.02em; color: #0f2747; } .ds-turnero { margin: 6px 0 0; font-size: 14.5px; line-height: 1.45; color: #4a5d78; } .ds-sello { display: flex; justify-content: space-between; gap: 12px; margin: 18px 0 0; font-size: 12.5px; color: #56698a; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; } @media (prefers-reduced-motion: reduce) { .ds-ticket { animation: none; } }"
+    },
+    {
+      "name": "Botones del panel",
+      "kind": "button",
+      "refersTo": "button-panel-primary",
+      "description": "Primario (uno por vista), secundario, peligro (solo en el pie de un modal irreversible), ocupado y deshabilitado; 40 px.",
+      "html": "<div class=\"ds-fila\"><button class=\"ds-btn ds-btn-primario\" type=\"button\">Guardar</button><button class=\"ds-btn ds-btn-secundario\" type=\"button\">Cancelar</button><button class=\"ds-btn ds-btn-peligro\" type=\"button\">Eliminar</button><button class=\"ds-btn ds-btn-primario\" type=\"button\" aria-busy=\"true\">Guardando…</button><button class=\"ds-btn ds-btn-primario\" type=\"button\" disabled>Guardar</button></div>",
+      "css": ".ds-fila { display: flex; flex-wrap: wrap; gap: 8px; } .ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; height: 40px; padding: 0 16px; border: 0; border-radius: 10px; font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition-property: background-color, scale; transition-duration: .15s; transition-timing-function: ease-out; } .ds-btn:active:not(:disabled) { scale: .96; } .ds-btn:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; } .ds-btn-primario { background: #064b9e; color: #fff; box-shadow: 0 1px 2px rgba(15, 39, 71, .14); } .ds-btn-primario:hover { background: #053f87; } .ds-btn-primario:active { background: #04356f; } .ds-btn-secundario { background: #fff; color: #23344f; box-shadow: 0 1px 2px rgba(15, 39, 71, .06), inset 0 0 0 1px #e3e9f2; } .ds-btn-secundario:hover { background: #f2f6fc; } .ds-btn-peligro { background: #b42318; color: #fff; } .ds-btn-peligro:hover { background: #931c13; } .ds-btn-primario[aria-busy=\"true\"] { background: #2f63a6; box-shadow: none; cursor: progress; } .ds-btn-primario:disabled:not([aria-busy=\"true\"]) { background: #eef3fa; color: #56698a; box-shadow: inset 0 0 0 1px #e3e9f2; cursor: default; }"
+    },
+    {
+      "name": "Pastillas de filtro",
+      "kind": "chip",
+      "refersTo": "filter-chip",
+      "description": "Filtros de la barra de la vista con conteo; la elegida en azul claro con contorno azul, nunca rellena.",
+      "html": "<div class=\"ds-filtros\"><button class=\"ds-filtro\" type=\"button\" aria-pressed=\"true\">Todos <span class=\"ds-n\">48</span></button><button class=\"ds-filtro\" type=\"button\" aria-pressed=\"false\">En espera <span class=\"ds-n\">11</span></button><button class=\"ds-filtro ds-is-alerta\" type=\"button\" aria-pressed=\"false\">Sin servicios <span class=\"ds-n\">2</span></button></div>",
+      "css": ".ds-filtros { display: flex; flex-wrap: wrap; gap: 6px; } .ds-filtro { display: inline-flex; align-items: center; gap: .4rem; height: 40px; padding: 0 .9rem; border: 0; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(15, 39, 71, .06); font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: 600; color: #23344f; cursor: pointer; transition: background-color .15s ease-out, color .15s ease-out; } .ds-filtro:hover { color: #064b9e; } .ds-filtro:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; } .ds-filtro[aria-pressed=\"true\"] { background: #eaf1fb; color: #064b9e; box-shadow: inset 0 0 0 1.5px #064b9e; } .ds-n { font-weight: 500; opacity: .75; font-variant-numeric: tabular-nums; } .ds-filtro[aria-pressed=\"true\"] .ds-n { opacity: 1; } .ds-is-alerta:not([aria-pressed=\"true\"]) .ds-n { color: #8a1c1c; opacity: 1; font-weight: 650; }"
+    },
+    {
+      "name": "Chips de estado",
+      "kind": "chip",
+      "refersTo": "status-chip-ok",
+      "description": "Punto y palabra; un color por familia en todo el panel. La etiqueta «Asignar» es cuadrada y sin punto.",
+      "html": "<div class=\"ds-chips\"><span class=\"ds-chip ds-chip-ok\">Atendiendo</span><span class=\"ds-chip ds-chip-info\">En espera</span><span class=\"ds-chip ds-chip-alerta\">Aplazado</span><span class=\"ds-chip ds-chip-error\">Cancelado</span><span class=\"ds-chip ds-chip-neutro\">Atendido</span><a class=\"ds-asignar\" href=\"#\">Sin servicios · Asignar</a></div>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; } .ds-chip { display: inline-flex; align-items: center; gap: .375rem; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 550; line-height: 1.3; white-space: nowrap; } .ds-chip::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-chip-ok { color: #0b5a37; background: #e7f4ec; } .ds-chip-info { color: #173a6a; background: #eaf1fb; } .ds-chip-alerta { color: #6b4400; background: #fff4df; } .ds-chip-error { color: #8a1c1c; background: #fdf0ef; } .ds-chip-neutro { color: #4a5d78; background: #eef1f6; } .ds-asignar { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 8px; background: #fdf0ef; color: #8a1c1c; font-size: 12px; font-weight: 650; text-decoration: none; } .ds-asignar:hover { text-decoration: underline; text-underline-offset: 2px; } .ds-asignar:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo del panel",
+      "kind": "input",
+      "refersTo": "input-panel",
+      "description": "Campo de 40 px con rótulo de 13 px encima y ayuda debajo; foco con borde azul y halo.",
+      "html": "<label class=\"ds-campo-panel\">Nombre del servicio <span class=\"ds-opcional\">(opcional)</span><input class=\"ds-entrada-panel\" type=\"text\" value=\"Citas Medicina General\"><span class=\"ds-ayuda\">Así lo verá el paciente en el atril.</span></label>",
+      "css": ".ds-campo-panel { display: flex; flex-direction: column; gap: .375rem; font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #23344f; } .ds-opcional { font-weight: 400; color: #56698a; } .ds-entrada-panel { width: 100%; height: 40px; padding: 0 12px; border: 1px solid #7d91ad; border-radius: 10px; background: #fff; font: inherit; font-size: 14px; font-weight: 400; color: #0f2747; caret-color: #064b9e; transition: border-color .15s ease-out, box-shadow .15s ease-out; } .ds-entrada-panel:hover { border-color: #5f7698; } .ds-entrada-panel:focus { outline: none; border-color: #064b9e; box-shadow: 0 0 0 3px rgba(6, 75, 158, .18); } .ds-ayuda { font-size: 12px; font-weight: 400; line-height: 1.45; color: #56698a; }"
+    },
+    {
+      "name": "Cifra del momento",
+      "kind": "card",
+      "refersTo": "stat",
+      "description": "Número en 19 px seguido de su palabra, y el detalle debajo; superficie plana con roce.",
+      "html": "<p class=\"ds-cifra\"><span><b class=\"ds-cifra-n\">11</b> en espera</span><span class=\"ds-cifra-mas\">2 prioritarios · 1 aplazado</span></p>",
+      "css": ".ds-cifra { margin: 0; max-width: 240px; display: flex; flex-direction: column; gap: .1875rem; padding: .6875rem 1rem; border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(15, 39, 71, .06); font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; font-size: 14px; color: #4a5d78; } .ds-cifra-n { font-size: 19px; font-weight: 650; letter-spacing: -.01em; color: #0f2747; font-variant-numeric: tabular-nums; } .ds-cifra-mas { font-size: 12.5px; color: #56698a; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Ficha de módulo",
+      "kind": "card",
+      "refersTo": "surface",
+      "description": "Un módulo visto desde arriba: número, estado, asesor y, tras el corte punteado, el turno que atiende.",
+      "html": "<button class=\"ds-modulo\" type=\"button\"><span class=\"ds-modulo-cabeza\"><span class=\"ds-modulo-num\">01</span><span class=\"ds-chip-mini\">Atendiendo</span></span><span class=\"ds-modulo-asesor\">Karen Meneses</span><span class=\"ds-modulo-hoy\">5 atendidos hoy</span><span class=\"ds-modulo-pie\"><span class=\"ds-modulo-turno\">A-901</span><span class=\"ds-modulo-min\">12 min</span></span></button>",
+      "css": ".ds-modulo { display: flex; flex-direction: column; gap: .375rem; width: 220px; min-height: 136px; padding: 14px 16px 12px; border: 0; text-align: left; background: #fff; border-radius: 14px; box-shadow: 0 1px 2px rgba(15, 39, 71, .06); font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; color: #0f2747; cursor: pointer; transition: box-shadow .15s ease-out, scale .15s ease-out; } .ds-modulo:hover { box-shadow: 0 1px 2px rgba(15, 39, 71, .06), 0 0 0 1px #c6d7f0; } .ds-modulo:active { scale: .98; } .ds-modulo:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; } .ds-modulo-cabeza { display: flex; align-items: center; justify-content: space-between; } .ds-modulo-num { font-size: 24px; line-height: 1; font-weight: 650; letter-spacing: -.02em; color: #064b9e; font-variant-numeric: tabular-nums; } .ds-chip-mini { display: inline-flex; align-items: center; gap: .375rem; padding: 3px 9px; border-radius: 999px; background: #e7f4ec; color: #0b5a37; font-size: 12.5px; font-weight: 550; } .ds-chip-mini::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-modulo-asesor { font-size: 14px; font-weight: 600; } .ds-modulo-hoy { font-size: 12px; color: #56698a; } .ds-modulo-pie { margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; padding-top: .5rem; border-top: 1px dashed #a7b8d0; } .ds-modulo-turno { font-size: 15px; font-weight: 650; letter-spacing: .01em; font-variant-numeric: tabular-nums; } .ds-modulo-min { font-size: 13px; color: #4a5d78; font-variant-numeric: tabular-nums; } @media (prefers-reduced-motion: reduce) { .ds-modulo { transition: none; } .ds-modulo:active { scale: none; } }"
+    },
+    {
+      "name": "Pieza elevada: la Cola",
+      "kind": "card",
+      "refersTo": "piece-elevated",
+      "description": "La única pieza que flota en el Inicio: filas grises de los turnos que más esperan; una fila que pasó el límite va en papel con contorno rojo.",
+      "html": "<section class=\"ds-cola\"><h2 class=\"ds-cola-titulo\">Cola</h2><p class=\"ds-cola-sub\">Los que más llevan esperando</p><ol class=\"ds-cola-lista\"><li class=\"ds-turno ds-turno-alerta\"><span class=\"ds-turno-codigo\">C-001</span><span class=\"ds-turno-min\">32 min</span><span class=\"ds-turno-servicio\">Citas Medicina General</span></li><li class=\"ds-turno\"><span class=\"ds-turno-codigo\">C-002</span><span class=\"ds-turno-min\">8 min</span><span class=\"ds-turno-servicio\">Citas Especialidades</span></li></ol></section>",
+      "css": ".ds-cola { width: 320px; padding: 20px 18px 16px; background: #fff; border-radius: 18px; filter: drop-shadow(0 0 .6px rgba(15, 39, 71, .3)) drop-shadow(0 16px 22px rgba(15, 39, 71, .09)); font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; } .ds-cola-titulo { margin: 0; font-size: 16px; font-weight: 650; color: #0f2747; } .ds-cola-sub { margin: 2px 0 14px; font-size: 13px; color: #4a5d78; } .ds-cola-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; } .ds-turno { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: baseline; padding: 11px 14px; border-radius: 12px; background: #f5f8fc; } .ds-turno-codigo { font-size: 17px; font-weight: 650; letter-spacing: .01em; color: #0f2747; font-variant-numeric: tabular-nums; } .ds-turno-min { font-size: 14px; font-weight: 650; color: #23344f; font-variant-numeric: tabular-nums; } .ds-turno-servicio { grid-column: 1 / -1; font-size: 12.5px; color: #4a5d78; } .ds-turno-alerta { background: #fff; box-shadow: inset 0 0 0 1px #f1c6c2; } .ds-turno-alerta .ds-turno-min { color: #b42318; }"
+    },
+    {
+      "name": "Ítem del riel",
+      "kind": "nav",
+      "refersTo": "rail-item",
+      "description": "Icono de 20 px y nombre corto; activo en azul claro con texto azul; contador azul con aro blanco.",
+      "html": "<nav class=\"ds-riel\"><a class=\"ds-riel-item ds-activo\" href=\"#\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\"/><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg><span>Inicio</span></a><a class=\"ds-riel-item\" href=\"#\"><span class=\"ds-riel-icono\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z\"/><path d=\"M13 5v2\"/><path d=\"M13 17v2\"/><path d=\"M13 11v2\"/></svg><span class=\"ds-cuenta\">11</span></span><span>Turnos</span></a></nav>",
+      "css": ".ds-riel { width: 88px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 6px 12px; background: #fff; border-radius: 18px; filter: drop-shadow(0 0 .6px rgba(15, 39, 71, .3)) drop-shadow(0 12px 18px rgba(15, 39, 71, .07)); font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; } .ds-riel-item { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 7px; border-radius: 12px; color: #4a5d78; text-decoration: none; font-size: 11px; font-weight: 550; line-height: 1.15; transition: background-color .15s ease-out, color .15s ease-out; } .ds-riel-item svg { width: 20px; height: 20px; color: #5b6f8c; } .ds-riel-item:hover { background: #f2f6fc; color: #0f2747; } .ds-riel-item:focus-visible { outline: 2px solid #064b9e; outline-offset: 1px; } .ds-activo { background: #eaf1fb; color: #064b9e; font-weight: 650; } .ds-activo svg { color: #064b9e; } .ds-riel-icono { position: relative; display: grid; place-items: center; } .ds-cuenta { position: absolute; top: -7px; left: calc(100% - 7px); min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; background: #064b9e; color: #fff; box-shadow: 0 0 0 2px #fff; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }"
+    },
+    {
+      "name": "Modal de confirmación",
+      "kind": "custom",
+      "refersTo": "modal-narrow",
+      "description": "Caja de 28rem con cabeza, aviso de error junto al peligro y pie a la derecha; la entrada es la única del layout.",
+      "html": "<div class=\"ds-modal\" role=\"dialog\" aria-labelledby=\"ds-m-t\"><div class=\"ds-modal-cabeza\"><h2 id=\"ds-m-t\">¿Eliminar el servicio?</h2><button class=\"ds-cerrar\" type=\"button\" aria-label=\"Cerrar\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg></button></div><div class=\"ds-modal-cuerpo\"><p class=\"ds-aviso-panel\"><b>No se puede deshacer.</b> Los turnos de hoy de este servicio quedan sin servicio.</p><div class=\"ds-modal-pie\"><button class=\"ds-b ds-b-sec\" type=\"button\">Cancelar</button><button class=\"ds-b ds-b-pel\" type=\"button\">Eliminar</button></div></div></div>",
+      "css": ".ds-modal { width: 100%; max-width: 28rem; background: #fff; border-radius: 18px; box-shadow: 0 0 0 1px rgba(15, 39, 71, .06), 0 24px 48px -16px rgba(15, 39, 71, .32); font-family: 'InterVariable', 'Segoe UI', system-ui, sans-serif; animation: ds-modal-entra .2s cubic-bezier(.2, 0, 0, 1); } @keyframes ds-modal-entra { from { transform: translateY(8px) scale(.985); } } .ds-modal-cabeza { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 20px 24px 4px; } .ds-modal-cabeza h2 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 650; letter-spacing: -.01em; color: #0f2747; } .ds-cerrar { width: 32px; height: 32px; margin: -4px -8px 0 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #5b6f8c; cursor: pointer; } .ds-cerrar svg { width: 18px; height: 18px; } .ds-cerrar:hover { background: #eef3fa; color: #064b9e; } .ds-modal-cuerpo { display: flex; flex-direction: column; gap: 14px; padding: 12px 24px 24px; } .ds-aviso-panel { margin: 0; padding: 12px 14px; border: 1px solid #f1c6c2; border-radius: 10px; background: #fdf0ef; color: #8a1c1c; font-size: 14px; line-height: 1.5; } .ds-aviso-panel b { font-weight: 600; } .ds-modal-pie { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; } .ds-b { height: 40px; padding: 0 16px; border: 0; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-b-sec { background: #fff; color: #23344f; box-shadow: 0 1px 2px rgba(15, 39, 71, .06), inset 0 0 0 1px #e3e9f2; } .ds-b-pel { background: #b42318; color: #fff; } .ds-b-pel:hover { background: #931c13; } @media (prefers-reduced-motion: reduce) { .ds-modal { animation: none; } }"
     }
   ],
   "narrative": {
     "northStar": "El turno impreso",
-    "overview": "El turnero ordena una fila; su interfaz tiene el aplomo del papel que imprime el atril. Fondo claro con un leve tinte azul y una luz suave desde arriba, superficies blancas, texto en azul noche y el azul institucional reservado para la acción principal y el foco. Lo bello sale del oficio (proporción, espacio, tipografía y detalle), no de añadir cosas: no hay ilustraciones, metáforas decorativas ni degradados en los controles.\n\nEl sistema nació en el Login y se lleva a todas las vistas internas: el panel del administrador y el del asesor. Esas son pantallas de trabajo (modo Operate), usadas en PC compartidos con pacientes esperando; la densidad puede subir, pero el vocabulario no cambia: mismos colores con los mismos papeles, misma tipografía, mismas esquinas, el mismo foco, la misma sobriedad en movimiento. El logo del HUV está siempre presente y cada pantalla dice en qué unidad se está.\n\nSe rechazan, por decisión del usuario: la plantilla con eslogan y adornos (círculos decorativos, botón con degradado que se eleva, píldoras), la ilustración del edificio, la señalética, la escala gris tipo SaaS y la tarjeta genérica.",
+    "overview": "El turnero ordena una fila; su interfaz tiene el aplomo del papel que imprime el atril. Fondo claro con un leve tinte azul y una luz suave desde arriba, superficies blancas, texto en azul noche y el azul institucional reservado para la acción principal y el foco. Lo bello sale del oficio (proporción, espacio, tipografía y detalle), no de añadir cosas: no hay ilustraciones, metáforas decorativas ni degradados en los controles.\n\nEl sistema nació en el Login y se llevó al panel del administrador, «La sala» (2026-11), con el Inicio como referencia: cifras del momento, los módulos vistos desde arriba, la cola por servicio y, al lado, la cola de turnos que más esperan. Son pantallas de trabajo (modo Operate), usadas en PC compartidos con pacientes esperando; la densidad sube, pero el vocabulario no cambia: mismos colores con los mismos papeles, misma tipografía, mismas esquinas, el mismo foco, la misma sobriedad en movimiento. El logo del HUV está siempre presente (en el Login y en la cabeza del riel) y cada pantalla dice en qué unidad se está.\n\nCada pieza del panel tiene una sola receta y vive en el layout del administrador; las vistas solo fijan las medidas de su contenido (anchos, rejillas), nunca colores, sombras, radios, pesos ni animaciones de una pieza compartida.\n\nSe rechazan, por decisión del usuario: la plantilla con eslogan y adornos (círculos decorativos, botón con degradado que se eleva, píldoras en botones), la ilustración del edificio, la señalética, la escala gris tipo SaaS, la tarjeta genérica y los mundos llamativos.",
     "keyCharacteristics": [
       "Claro y con tinte azul: fondo `fondo-alto` a `fondo-bajo` con luz blanca radial desde arriba.",
-      "Un solo acento: el azul institucional, solo en la acción principal, el foco y el cursor de texto.",
-      "InterVariable propia, sin dependencias externas; cifras tabulares en fechas y horas.",
-      "Esquinas de 10 px en controles; 18 px solo en el ticket.",
-      "Profundidad corta y azulada; una sola pieza elevada por pantalla.",
-      "Un solo movimiento de entrada, y nada con movimiento reducido."
+      "Un solo acento: el azul institucional relleno solo en la acción principal; lo elegido y lo activo van en azul claro con texto azul.",
+      "InterVariable propia, sin dependencias externas; cifras tabulares en todo número, fecha y hora.",
+      "Esquinas de 10 px en controles, 14 px en superficies del panel, 18 px en el ticket, el riel, la pieza elevada y los modales. Lo que va dentro de un control es concéntrico: radio interior = radio exterior − separación.",
+      "Profundidad corta y azulada; una sola pieza elevada por vista.",
+      "Estados siempre con palabra y un significado por familia en todo el panel.",
+      "Un solo movimiento de entrada por pieza, y nada con movimiento reducido."
     ],
     "rules": [
-      { "name": "La Regla de Una Sola Voz", "body": "El azul institucional marca una sola acción principal por vista y el foco. Las acciones secundarias van en azul noche o como botón de icono; nunca dos botones azules rellenos compitiendo.", "section": "colors" },
-      { "name": "La Regla del Estado con Palabras", "body": "Un aviso nunca es solo color: lleva texto que nombra el problema y la salida, y role=\"alert\" o role=\"status\".", "section": "colors" },
-      { "name": "La Regla de la Etiqueta Visible", "body": "Todo campo lleva su etiqueta escrita encima; el placeholder nunca la sustituye.", "section": "typography" },
-      { "name": "La Regla de la Cifra Quieta", "body": "Horas, fechas, números de turno y conteos usan cifras tabulares, para que no bailen al cambiar.", "section": "typography" },
-      { "name": "La Regla de la Pieza Única", "body": "Una sola superficie por vista lleva la sombra elevada. Las tarjetas y filas del panel son planas o con roce; si todo flota, nada flota.", "section": "elevation" }
+      { "name": "La Regla de Una Sola Voz", "body": "El único azul relleno de una vista es su acción principal; el resto del azul es texto, borde, foco o dato. Lo elegido (pastilla de filtro, ítem del riel, tarjeta-opción, opción del segmentado) va en azul claro o blanco con texto azul y, si hace falta, un contorno azul de 1.5 px; nunca relleno, para que «Todos» no compita con «+ Nuevo X». Las acciones secundarias van en papel con texto azul noche o como botón de icono.", "section": "colors" },
+      { "name": "La Regla del Estado con Palabras", "body": "Un estado o un aviso nunca es solo color: lleva la palabra («En espera», «Sin servicios · Asignar») o el texto que nombra el problema y la salida, y los avisos llevan role=\"alert\" o role=\"status\". El punto de color acompaña a la palabra; no la reemplaza.", "section": "colors" },
+      { "name": "La Regla de la Familia", "body": "Un estado tiene un solo color en todo el panel, en cualquier pieza que lo muestre. Si una vista necesita un tono nuevo, es un estado nuevo y entra aquí primero.", "section": "colors" },
+      { "name": "La Regla de la Etiqueta Visible", "body": "Todo campo lleva su etiqueta escrita encima; el placeholder nunca la sustituye. En la barra de la vista, el buscador es la excepción: icono y `aria-label`, sin rótulo visible.", "section": "typography" },
+      { "name": "La Regla de la Cifra Quieta", "body": "Horas, fechas, números de turno, conteos y tablas usan cifras tabulares, para que no bailen al cambiar.", "section": "typography" },
+      { "name": "La Regla de los Títulos Pares", "body": "Los títulos del panel viven en 28, 18, 16 y 14 px; 15 px solo para el título de un vacío. Nunca 17 px en un título: 17 px es el código de un turno.", "section": "typography" },
+      { "name": "La Regla del Arranque Común", "body": "Todas las vistas empiezan en el mismo punto (x=128, y=103 a 1440 × 900) y el texto de toda tabla cae en la misma columna. Una vista no centra su contenido ni le pone ancho máximo.", "section": "layout" },
+      { "name": "La Regla de la Pieza Única", "body": "Una sola superficie por vista lleva la sombra elevada; si todo flota, nada flota. Si la vista tiene columna lateral, es esa columna (Inicio: la Cola; Reportes: la hoja del informe; Soporte: Solicitudes; Voz: Configuración de la voz). Si son dos paneles hermanos, es el producto de la vista (Gráficos: Turnos por hora; Config TV: la lista de reproducción). Las vistas de lista de una sola superficie (Turnos, Módulos, Servicios, Usuarios, Asignación) no llevan ninguna: van planas. Al imprimir, la pieza elevada pierde la sombra y lleva un borde de 1 px.", "section": "elevation" },
+      { "name": "La Regla de la Receta Única", "body": "Cada pieza compartida tiene una receta y vive en el layout del panel; una vista fija anchos y rejillas de su contenido, nunca colores, sombras, radios, pesos ni animaciones de una pieza compartida. Todo en CSS propio: ninguna clase nueva de Tailwind.", "section": "components" }
     ],
     "dos": [
-      "**Do** reservar `azul` para una sola acción principal por vista y para el foco.",
-      "**Do** usar InterVariable propia con `cv11` y `ss01`, y cifras tabulares en horas, fechas y números de turno.",
-      "**Do** mantener esquinas de 10px en controles y avisos, y 48px de alto en los controles de un formulario.",
-      "**Do** dar a todo campo una etiqueta visible en Label (600, 13.5px) y foco con borde azul y halo de 3px.",
-      "**Do** escribir los avisos con el problema y la salida, con `role=\"alert\"` o `role=\"status\"`.",
-      "**Do** limitar el movimiento a una entrada corta con salida exponencial y transiciones de estado de 0.15s, y quitarlo todo con `prefers-reduced-motion`.",
+      "**Do** reservar el azul relleno para una sola acción principal por vista; lo elegido va en `azul-claro` con texto azul y contorno de 1.5 px.",
+      "**Do** usar InterVariable propia con `cv11` y `ss01`, y cifras tabulares en horas, fechas, números de turno, conteos y tablas.",
+      "**Do** mantener esquinas de 10px en controles y avisos, 14 px en superficies y 18 px en el ticket, el riel, la pieza elevada y los modales.",
+      "**Do** usar 48 px de alto en los controles del Login y 40 px en los del panel; las acciones de fila, 32 px.",
+      "**Do** dar a todo campo una etiqueta visible encima (13.5px en el Login, 13 px en el panel) y foco con borde azul y halo de 3px.",
+      "**Do** escribir los avisos con el problema y la salida, con `role=\"alert\"` o `role=\"status\"`, y los estados siempre con su palabra.",
+      "**Do** dar a cada estado el color de su familia en todas las piezas que lo muestren.",
+      "**Do** empezar todas las vistas en el mismo punto, con la cabecera de página del layout y 20 px hasta la primera fila.",
+      "**Do** pintar con esqueletos, del mismo alto que lo real, todo lo que llega del servidor después de pintar.",
+      "**Do** limitar el movimiento a una entrada corta por pieza (ticket, modal, desplegable, riel en el celular) y transiciones de estado de 0.15s, y quitarlo todo con `prefers-reduced-motion`.",
       "**Do** mostrar el logo del HUV y el nombre de la unidad en cada pantalla."
     ],
     "donts": [
       "**Don't** usar ilustraciones, círculos decorativos, metáforas visuales, señalética o fotos del edificio.",
       "**Don't** poner degradados en botones ni hacer que se eleven al pasar el cursor.",
-      "**Don't** usar píldoras ni formas totalmente redondas en botones, etiquetas o avisos.",
+      "**Don't** usar píldoras en botones, pastillas de filtro, etiquetas que son enlace ni avisos; la forma de pastilla (999 px) es solo para chips de estado, el contador del riel, el avatar y las barras de datos.",
+      "**Don't** rellenar de azul una pastilla, una pestaña o un ítem elegido; compite con la acción principal.",
       "**Don't** escribir el nombre del hospital en varias líneas apiladas como adorno; el nombre oficial va una vez, en el pie.",
       "**Don't** convertir el ticket en la tarjeta de todo el panel; es para un turno o para la entrada.",
       "**Don't** usar sombras negras ni más de una pieza elevada por vista.",
+      "**Don't** poner un aviso como barra lateral de color o con solo un contorno interior; es una caja completa con borde.",
+      "**Don't** usar la línea punteada de corte para separar filas, secciones o tablas.",
+      "**Don't** usar 17 px en un título del panel (15 px solo en el título de un vacío), ni iconos con trazo 1.6.",
       "**Don't** cargar fuentes, scripts ni imágenes de fuera del servidor."
     ]
   }

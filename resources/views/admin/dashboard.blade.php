@@ -1,6 +1,21 @@
 @extends('layouts.admin')
 
 @section('title', 'Inicio')
+@section('titulo_pagina', config('panel.unidad_nombre', 'Inicio'))
+@section('guia_pagina')
+    Así está la sala · <span id="sala-hora">{{ now()->locale('es')->isoFormat('dddd D [de] MMMM, h:mm a') }}</span>
+@endsection
+@section('acciones_pagina')
+    {{-- Herramientas del sistema: en voz baja, arriba a la derecha; el rojo vive solo en la confirmación --}}
+    <button type="button" onclick="showCleanSessionsOptions()" id="cleanSessionsBtn" class="btn-secundario">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+        Limpiar sesiones
+    </button>
+    <button type="button" onclick="showEmergencyTurnosOptions()" id="emergencyTurnosBtn" class="btn-secundario">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        Emergencia de turnos
+    </button>
+@endsection
 @section('content')
 @php
     // Todo sale de App\Services\TableroService (el mismo cálculo que refresca GET /api/admin/tablero).
@@ -8,386 +23,189 @@
     $esperaMax = $r['espera_max'];
 @endphp
 
-                <div class="dashboard-container max-w-7xl mx-auto space-y-5">
-                    <h1 class="sr-only">Inicio</h1>
+                {{-- «La sala» (2026-11): los módulos vistos desde arriba y, al lado, la cola de los que más llevan esperando.
+                     Todo sale de App\Services\TableroService; la primera pintura usa $tablero y cada 15 s se refresca. --}}
+                <div class="sala">
+                    <div class="sala__principal">
+                        <div class="sala-cifras">
+                            <p class="sala-cifra"><span><b id="cifra-espera" class="sala-cifra__n">{{ $r['en_espera'] }}</b> en espera</span><span id="cifra-espera-mas" class="sala-cifra__mas"></span></p>
+                            <p class="sala-cifra"><span><b id="cifra-larga" class="sala-cifra__n {{ ($esperaMax['supera_umbral'] ?? false) ? 'is-alerta' : '' }}">{{ $esperaMax ? $esperaMax['minutos'] . ' min' : '—' }}</b> espera máx.</span><span id="cifra-larga-mas" class="sala-cifra__mas"></span></p>
+                            <p class="sala-cifra"><span><b id="cifra-atendidos" class="sala-cifra__n">{{ $r['atendidos_hoy'] }}</b> atendidos hoy</span><span id="cifra-atendidos-mas" class="sala-cifra__mas"></span></p>
+                            <p class="sala-cifra"><span><b id="cifra-modulos" class="sala-cifra__n">{{ $r['modulos']['atendiendo'] ?? 0 }} de {{ $r['modulos']['abiertos'] ?? 0 }}</b> atendiendo</span><span id="cifra-modulos-mas" class="sala-cifra__mas"></span></p>
+                        </div>
 
-                    <!-- Cifras del momento -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">En espera</p>
-                                    <div id="metric-en-espera" class="metric-value text-3xl font-bold mt-2">{{ $r['en_espera'] }}</div>
-                                </div>
-                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                                </div>
-                            </div>
-                            <p id="metric-en-espera-detalle" class="text-xs text-gray-500 mt-1.5"><span class="font-semibold text-gray-700">{{ $r['prioritarios'] }}</span> prioritarios · <span class="font-semibold text-gray-700">{{ $r['aplazados'] }}</span> aplazados</p>
-                        </div>
-                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Espera más larga</p>
-                                    <div id="metric-espera-max" class="metric-value text-3xl font-bold mt-2 {{ ($esperaMax['supera_umbral'] ?? false) ? 'is-alerta' : '' }}">@if($esperaMax){{ $esperaMax['minutos'] }}<span class="metric-unit">min</span>@else — @endif</div>
-                                </div>
-                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                </div>
-                            </div>
-                            <p id="metric-espera-detalle" class="text-xs text-gray-500 mt-1.5">@if($esperaMax)<span class="font-semibold text-gray-700">{{ $esperaMax['turno'] }}</span>{{ $esperaMax['prioritario'] ? ' prioritario' : '' }} · {{ $esperaMax['servicio'] }}@else Nadie en espera @endif</p>
-                        </div>
-                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Atendidos hoy</p>
-                                    <div id="metric-atendidos" class="metric-value text-3xl font-bold mt-2">{{ $r['atendidos_hoy'] }}</div>
-                                </div>
-                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                </div>
-                            </div>
-                            <p id="metric-atendidos-detalle" class="text-xs text-gray-500 mt-1.5"><span class="font-semibold text-gray-700">{{ $r['transferidos_hoy'] }}</span> transferidos</p>
-                        </div>
-                        <div class="metric-card bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Asesores conectados</p>
-                                    <div id="metric-asesores" class="metric-value text-3xl font-bold mt-2">{{ $r['asesores']['conectados'] }}</div>
-                                </div>
-                                <div class="metric-icon w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                                </div>
-                            </div>
-                            <p id="metric-asesores-detalle" class="text-xs text-gray-500 mt-1.5"><span class="font-semibold text-gray-700">{{ $r['asesores']['atendiendo'] }}</span> atendiendo · <span class="font-semibold text-gray-700">{{ $r['asesores']['libres'] }}</span> {{ $r['asesores']['libres'] === 1 ? 'libre' : 'libres' }} · <span class="font-semibold text-gray-700">{{ $r['asesores']['descanso'] }}</span> en descanso</p>
-                        </div>
+                        <section class="sala-seccion" aria-labelledby="titulo-modulos">
+                            <h2 id="titulo-modulos" class="sala-titulo">Módulos</h2>
+                            <div id="sala-modulos" class="sala-modulos"></div>
+                            <p id="sala-cerrados" class="sala-nota" hidden></p>
+                            <p id="sala-sin-modulo" class="sala-nota" hidden></p>
+                        </section>
+
+                        <section class="sala-seccion" aria-labelledby="titulo-servicios">
+                            <h2 id="titulo-servicios" class="sala-titulo">Por servicio</h2>
+                            <div id="sala-servicios" class="sala-servicios superficie"></div>
+                        </section>
                     </div>
 
-                    <div class="inicio-cuerpo">
-                    <!-- Turnos en cola por servicio: es lo primero que se mira -->
-                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
-                        <div class="panel-cabeza flex justify-between items-center mb-4">
-                            <h2 class="dashboard-title text-lg font-semibold text-gray-800">Cola por servicio</h2>
-                        </div>
-                        <table class="dashboard-table tabla-cifras w-full divide-y divide-gray-200">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Servicio</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">En cola</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Espera máx.</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Cubren</th>
-                                </tr>
-                            </thead>
-                            <tbody id="turnos-cola-container" class="divide-y divide-gray-200 bg-white"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Asesores conectados (sin administradores) -->
-                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 overflow-x-auto">
-                        <div class="panel-cabeza flex justify-between items-center mb-4">
-                            <h2 class="dashboard-title text-lg font-semibold text-gray-800">Asesores conectados</h2>
-                        </div>
-                        <table class="dashboard-table tabla-cifras w-full divide-y divide-gray-200">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-600">
-                                    <th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Mód.</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Asesor</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Estado</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Turno</th><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide">Atend.</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usuarios-activos-container" class="divide-y divide-gray-200 bg-white"></tbody>
-                        </table>
-                    </div>
-
-                    </div>
-
-                    <!-- Herramientas del sistema: al final y en estilo secundario; el rojo vive solo en la confirmación -->
-                    <div class="herramientas flex flex-wrap items-center gap-3">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Herramientas del sistema</p>
-                        <button type="button" onclick="showCleanSessionsOptions()" id="cleanSessionsBtn"
-                            class="herramienta-btn text-gray-700 text-sm font-medium px-3 py-2 rounded-lg flex items-center gap-2">
-                            <svg class="w-4 h-4 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                            Limpiar sesiones
-                        </button>
-                        <button type="button" onclick="showEmergencyTurnosOptions()" id="emergencyTurnosBtn"
-                            class="herramienta-btn text-gray-700 text-sm font-medium px-3 py-2 rounded-lg flex items-center gap-2">
-                            <svg class="w-4 h-4 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
-                            Emergencia de turnos
-                        </button>
-                    </div>
+                    <aside class="sala-cola" aria-labelledby="titulo-cola">
+                        <h2 id="titulo-cola" class="sala-cola__titulo">Cola</h2>
+                        <p class="sala-cola__sub">Los que más llevan esperando</p>
+                        <ol id="sala-cola-lista" class="sala-cola__lista"></ol>
+                        <a id="sala-cola-todos" href="{{ route('admin.turnos') }}" class="enlace-panel sala-cola__todos">Ver los turnos</a>
+                    </aside>
                 </div>
 
-<!-- Modal de opciones para limpiar sesiones -->
-<div id="cleanSessionsModal" class="fixed inset-0 modal-overlay hidden z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex items-center mb-6">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-lg font-medium text-gray-900">Opciones de Limpieza de Sesiones</h3>
-                        <p class="text-sm text-gray-500">Selecciona cómo deseas limpiar las sesiones</p>
+{{-- Modales del Inicio (2026-11): mismo lenguaje del panel (.modal-panel del layout). Las opciones son tarjetas
+     con su radio; la elegida se marca en azul (:has) y la acción que borra es la única en rojo. --}}
+@php
+    $iconoCerrar = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+@endphp
+
+<!-- Modal: limpiar sesiones -->
+<div id="cleanSessionsModal" class="modal-panel hidden" role="dialog" aria-modal="true" aria-labelledby="cleanSessionsTitle"
+     onclick="if (event.target === this) closeCleanSessionsModal()">
+    <div class="modal-panel__caja inicio-modal" tabindex="-1">
+        <div class="modal-panel__cabeza">
+            <h2 id="cleanSessionsTitle">Limpiar sesiones</h2>
+            <button type="button" class="accion-icono" onclick="closeCleanSessionsModal()" aria-label="Cerrar">{!! $iconoCerrar !!}</button>
+        </div>
+        <div class="form-panel">
+            <p class="form-texto">Elija qué sesiones cerrar. Los módulos de esas personas quedan libres para que otro asesor los tome.</p>
+
+            <fieldset class="opciones">
+                <legend class="sr-only">Qué sesiones cerrar</legend>
+                <label class="opcion" for="cleanExpired">
+                    <input type="radio" name="cleanOption" value="expired" id="cleanExpired" onchange="selectCleanOption('expired')">
+                    <span class="opcion__texto">
+                        <span class="opcion__titulo">Solo las vencidas</span>
+                        <span class="opcion__ayuda">Las que llevan más de 15 minutos sin actividad o ya no existen.</span>
+                    </span>
+                </label>
+                <label class="opcion" for="cleanAll">
+                    <input type="radio" name="cleanOption" value="all" id="cleanAll" onchange="selectCleanOption('all')">
+                    <span class="opcion__texto">
+                        <span class="opcion__titulo">Todas</span>
+                        <span class="opcion__ayuda"><b class="opcion__cuidado">Cierra también la de los asesores que estén atendiendo.</b> La suya se mantiene.</span>
+                    </span>
+                </label>
+                <div class="opcion-grupo">
+                    <label class="opcion" for="cleanSpecific">
+                        <input type="radio" name="cleanOption" value="specific" id="cleanSpecific" onchange="selectCleanOption('specific')">
+                        <span class="opcion__texto">
+                            <span class="opcion__titulo">La de una persona</span>
+                            <span class="opcion__ayuda">Elíjala en la lista de conectados.</span>
+                        </span>
+                    </label>
+
+                    <!-- Personas conectadas (se cargan al elegir la opción) -->
+                    <div id="usersList" class="personas hidden">
+                        <div id="usersListContent" class="personas__lista" role="radiogroup" aria-label="Personas conectadas">
+                            @foreach ([[45, 30], [38, 26], [52, 34]] as [$a, $b])
+                                <div class="usuario-esqueleto" aria-hidden="true"><span class="esqueleto" style="width: {{ $a }}%"></span><span class="esqueleto" style="width: {{ $b }}%"></span></div>
+                            @endforeach
+                        </div>
+                        <p id="selectedUserIndicator" class="personas__elegida hidden" aria-live="polite">Se cerrará la sesión de <b id="selectedUserName"></b>.</p>
                     </div>
                 </div>
+            </fieldset>
 
-                <!-- Opciones de limpieza -->
-                <div class="space-y-4 mb-6">
-                    <!-- Opción 1: Limpiar todas las sesiones expiradas -->
-                    <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="selectCleanOption('expired')">
-                        <div class="flex items-center">
-                            <input type="radio" name="cleanOption" value="expired" id="cleanExpired" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                            <label for="cleanExpired" class="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
-                                Limpiar solo sesiones expiradas
-                            </label>
-                        </div>
-                        <p class="ml-7 text-sm text-gray-500 mt-1">
-                            Elimina únicamente las sesiones que han expirado (más de 15 minutos) o que ya no existen en la base de datos. <strong>También libera las cajas asignadas</strong> a estos usuarios.
-                        </p>
-                    </div>
-
-                    <!-- Opción 2: Limpiar todas las sesiones -->
-                    <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="selectCleanOption('all')">
-                        <div class="flex items-center">
-                            <input type="radio" name="cleanOption" value="all" id="cleanAll" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300">
-                            <label for="cleanAll" class="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
-                                Limpiar todas las sesiones
-                            </label>
-                        </div>
-                        <p class="ml-7 text-sm text-gray-500 mt-1">
-                            <span class="text-red-600 font-medium">¡Cuidado!</span> Esto cerrará la sesión de todos los usuarios activos, incluyendo asesores que estén trabajando (la tuya se mantiene). <strong>También liberará todas las cajas asignadas</strong>.
-                        </p>
-                    </div>
-
-                    <!-- Opción 3: Limpiar sesión de usuario específico -->
-                    <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="selectCleanOption('specific')">
-                        <div class="flex items-center">
-                            <input type="radio" name="cleanOption" value="specific" id="cleanSpecific" class="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300">
-                            <label for="cleanSpecific" class="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
-                                Limpiar sesión de usuario específico
-                            </label>
-                        </div>
-                        <p class="ml-7 text-sm text-gray-500 mt-1">
-                            Selecciona un usuario específico para cerrar su sesión y liberar su caja asignada.
-                        </p>
-
-                        <!-- Lista de usuarios activos -->
-                        <div id="usersList" class="ml-7 mt-3 hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Seleccionar usuario:</label>
-
-                            <!-- Indicador de selección actual -->
-                            <div id="selectedUserIndicator" class="hidden mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    <span class="text-sm text-blue-800 font-medium">Usuario seleccionado: <span id="selectedUserName"></span></span>
-                                </div>
-                            </div>
-
-                            <div class="max-h-40 overflow-y-auto border rounded-md">
-                                <div id="usersListContent" class="divide-y divide-gray-200">
-                                    <!-- Los usuarios se cargan aquí; mientras tanto, la forma de la lista -->
-                                    @foreach ([[45, 30], [38, 26], [52, 34]] as [$a, $b])
-                                        <div class="usuario-esqueleto" aria-hidden="true"><span class="esqueleto" style="width: {{ $a }}%"></span><span class="esqueleto" style="width: {{ $b }}%"></span></div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Botones de acción -->
-                <div class="flex justify-end space-x-3">
-                    <button
-                        onclick="closeCleanSessionsModal()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                        Cancelar
-                    </button>
-                    <button
-                        onclick="confirmCleanSessions()"
-                        id="confirmCleanBtn"
-                        disabled
-                        class="px-4 py-2 text-sm font-medium text-white bg-gray-400 border border-transparent rounded-md cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Limpiar Sesiones
-                    </button>
-                </div>
+            <div class="modal-panel__pie">
+                <button type="button" onclick="closeCleanSessionsModal()" class="btn-secundario">Cancelar</button>
+                <button type="button" onclick="confirmCleanSessions()" id="confirmCleanBtn" disabled class="btn-peligro">Limpiar sesiones</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de opciones para emergencia de turnos -->
-<div id="emergencyTurnosModal" class="fixed inset-0 modal-overlay hidden z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex items-center mb-6">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-lg font-medium text-gray-900">Emergencia - Gestión de Turnos</h3>
-                        <p class="text-sm text-gray-500">Opciones de emergencia para reestablecer o eliminar turnos del sistema</p>
-                    </div>
-                </div>
+<!-- Modal: emergencia de turnos -->
+<div id="emergencyTurnosModal" class="modal-panel hidden" role="dialog" aria-modal="true" aria-labelledby="emergencyTurnosTitle"
+     onclick="if (event.target === this) closeEmergencyTurnosModal()">
+    <div class="modal-panel__caja inicio-modal" tabindex="-1">
+        <div class="modal-panel__cabeza">
+            <h2 id="emergencyTurnosTitle">Emergencia de turnos</h2>
+            <button type="button" class="accion-icono" onclick="closeEmergencyTurnosModal()" aria-label="Cerrar">{!! $iconoCerrar !!}</button>
+        </div>
+        <div class="form-panel">
+            <div class="aviso aviso--error" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                <p>Úselo solo ante un error grave del sistema. Los turnos que se eliminan <b>no se pueden recuperar</b>.</p>
+            </div>
 
-                <!-- Opciones de emergencia -->
-                <div class="space-y-4 mb-6">
-                    <!-- Opción 1: Eliminar turnos pendientes y aplazados -->
-                    <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="selectTurnosOption('pending')">
-                        <div class="flex items-center">
-                            <input type="radio" name="turnosOption" value="pending" id="deletePending" class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300">
-                            <label for="deletePending" class="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
-                                Eliminar turnos pendientes y aplazados
-                            </label>
-                        </div>
-                        <p class="ml-7 text-sm text-gray-500 mt-1">
-                            Elimina únicamente los turnos que están <strong>pendientes</strong> o <strong>aplazados</strong> del día actual. Los turnos atendidos se mantienen para estadísticas.
-                        </p>
-                    </div>
-
-                    <!-- Opción 2: Eliminar todos los turnos del día -->
-                    <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="selectTurnosOption('today')">
-                        <div class="flex items-center">
-                            <input type="radio" name="turnosOption" value="today" id="deleteToday" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300">
-                            <label for="deleteToday" class="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
-                                Eliminar todos los turnos del día actual
-                            </label>
-                        </div>
-                        <p class="ml-7 text-sm text-gray-500 mt-1">
-                            <span class="text-red-600 font-medium">¡Cuidado!</span> Esto eliminará <strong>todos los turnos</strong> del día actual, incluyendo los atendidos. Se perderán las estadísticas del día.
-                        </p>
-                    </div>
-
-                    <!-- Opción 3: Eliminar turnos por servicio específico -->
-                    <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="selectTurnosOption('service')">
-                        <div class="flex items-center">
-                            <input type="radio" name="turnosOption" value="service" id="deleteService" class="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300">
-                            <label for="deleteService" class="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
-                                Eliminar turnos de un servicio específico
-                            </label>
-                        </div>
-                        <p class="ml-7 text-sm text-gray-500 mt-1">
-                            Selecciona un servicio específico para eliminar todos sus turnos del día actual (pendientes, aplazados y atendidos).
-                        </p>
-
-                        <!-- Selector de servicio (se muestra cuando se selecciona esta opción) -->
-                        <div id="serviceSelector" class="ml-7 mt-3 hidden">
-                            <label for="servicioSelect" class="block text-sm font-medium text-gray-700 mb-2">Seleccionar servicio:</label>
-                            <select id="servicioSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent">
-                                <option value="">Cargando servicios...</option>
+            <fieldset class="opciones">
+                <legend class="sr-only">Qué turnos eliminar</legend>
+                <label class="opcion" for="deletePending">
+                    <input type="radio" name="turnosOption" value="pending" id="deletePending" onchange="selectTurnosOption('pending')">
+                    <span class="opcion__texto">
+                        <span class="opcion__titulo">Los que esperan hoy</span>
+                        <span class="opcion__ayuda">Pendientes y aplazados del día. Los atendidos se conservan para los informes.</span>
+                    </span>
+                </label>
+                <label class="opcion" for="deleteToday">
+                    <input type="radio" name="turnosOption" value="today" id="deleteToday" onchange="selectTurnosOption('today')">
+                    <span class="opcion__texto">
+                        <span class="opcion__titulo">Todos los de hoy</span>
+                        <span class="opcion__ayuda"><b class="opcion__cuidado">También los atendidos: se pierden las cifras del día.</b></span>
+                    </span>
+                </label>
+                <div class="opcion-grupo">
+                    <label class="opcion" for="deleteService">
+                        <input type="radio" name="turnosOption" value="service" id="deleteService" onchange="selectTurnosOption('service')">
+                        <span class="opcion__texto">
+                            <span class="opcion__titulo">Los de un servicio</span>
+                            <span class="opcion__ayuda">Todos los de hoy de ese servicio: en espera, aplazados y atendidos.</span>
+                        </span>
+                    </label>
+                    <div id="serviceSelector" class="opcion__extra hidden">
+                        <label for="servicioSelect" class="form-campo">
+                            Servicio
+                            <select id="servicioSelect" class="campo">
+                                <option value="">Cargando servicios…</option>
                             </select>
-                        </div>
+                        </label>
                     </div>
                 </div>
+            </fieldset>
 
-                <!-- Advertencia -->
-                <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-red-800">Advertencia</h3>
-                            <div class="mt-2 text-sm text-red-700">
-                                <p>Esta es una función de emergencia. Los turnos eliminados <strong>no se pueden recuperar</strong>. Use solo en caso de errores graves del sistema.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Botones de acción -->
-                <div class="flex justify-end space-x-3">
-                    <button
-                        onclick="closeEmergencyTurnosModal()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                        Cancelar
-                    </button>
-                    <button
-                        onclick="confirmEmergencyTurnos()"
-                        id="confirmTurnosBtn"
-                        disabled
-                        class="px-4 py-2 text-sm font-medium text-white bg-gray-400 border border-transparent rounded-md cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                        Eliminar Turnos
-                    </button>
-                </div>
+            <div class="modal-panel__pie">
+                <button type="button" onclick="closeEmergencyTurnosModal()" class="btn-secundario">Cancelar</button>
+                <button type="button" onclick="confirmEmergencyTurnos()" id="confirmTurnosBtn" disabled class="btn-peligro">Eliminar turnos</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de Estadísticas de Usuario (Alpine.js) -->
-<div
-    x-data="estadisticasUsuarioModal()"
-    x-cloak
-    @keydown.escape.window="isOpen = false"
->
-    <div
-        x-show="isOpen"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4"
-        style="display: none;"
-    >
-        <div
-            @click.away="isOpen = false"
-            class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh]"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 transform scale-95"
-            x-transition:enter-end="opacity-100 transform scale-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 transform scale-100"
-            x-transition:leave-end="opacity-0 transform scale-95"
-        >
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold text-gray-800">Estadísticas del Usuario</h2>
-                    <button @click="isOpen = false" class="text-gray-500 hover:text-gray-700 cursor-pointer">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+<!-- Modal: estadísticas del asesor (Alpine.js; se abre con el evento open-estadisticas-modal) -->
+<div x-data="estadisticasUsuarioModal()" x-cloak @keydown.escape.window="isOpen = false">
+    <div x-show="isOpen" x-transition.opacity class="modal-panel" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="estadisticasTitle">
+        <div @click.away="isOpen = false" class="modal-panel__caja modal-panel__caja--ancha">
+            <div class="modal-panel__cabeza">
+                <div class="est-cabeza">
+                    <h2 id="estadisticasTitle" x-text="usuarioNombre || 'Estadísticas del asesor'">Estadísticas del asesor</h2>
+                    <p class="form-ayuda">Estadísticas del asesor en el período elegido</p>
                 </div>
+                <button type="button" class="accion-icono" @click="isOpen = false" aria-label="Cerrar">{!! $iconoCerrar !!}</button>
+            </div>
 
-                <!-- Nombre del usuario -->
-                <p class="text-sm text-gray-500 mb-6" x-text="'Usuario: ' + usuarioNombre"></p>
-
-                <!-- Filtros de Fecha -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
-                        <input
-                            type="date"
-                            x-model="fechaInicio"
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                        >
+            <div class="form-panel">
+                <div class="est-periodo">
+                    <div class="filtros-rapidos filtros-rapidos--papel" role="group" aria-label="Período rápido">
+                        <button type="button" class="filtro-rapido" :aria-pressed="(rangoDe() === 'hoy').toString()" @click="setFechaRapida('hoy')">Hoy</button>
+                        <button type="button" class="filtro-rapido" :aria-pressed="(rangoDe() === 'ayer').toString()" @click="setFechaRapida('ayer')">Ayer</button>
+                        <button type="button" class="filtro-rapido" :aria-pressed="(rangoDe() === 'semana').toString()" @click="setFechaRapida('semana')">Últimos 7 días</button>
+                        <button type="button" class="filtro-rapido" :aria-pressed="(rangoDe() === 'mes').toString()" @click="setFechaRapida('mes')">Último mes</button>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
-                        <input
-                            type="date"
-                            x-model="fechaFin"
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-hospital-blue"
-                        >
-                    </div>
+                    <form class="est-fechas" @submit.prevent="cargarEstadisticas()">
+                        <label class="form-campo">Desde
+                            <input type="date" class="campo" x-model="fechaInicio" :max="fechaFin">
+                        </label>
+                        <label class="form-campo">Hasta
+                            <input type="date" class="campo" x-model="fechaFin" :min="fechaInicio">
+                        </label>
+                        <button type="submit" class="btn-secundario">Consultar</button>
+                    </form>
                 </div>
 
-                <!-- Atajos de fecha -->
-                <div class="flex flex-wrap gap-2 mb-6">
-                    <button @click="setFechaRapida('hoy')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Hoy</button>
-                    <button @click="setFechaRapida('ayer')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Ayer</button>
-                    <button @click="setFechaRapida('semana')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Última Semana</button>
-                    <button @click="setFechaRapida('mes')" class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors cursor-pointer">Último Mes</button>
-                </div>
-
-                <!-- Mientras cargan: la forma del resumen, los tiempos y la tabla de turnos -->
+                <!-- Mientras cargan: la forma de las cifras, los tiempos y la tabla de turnos -->
                 <div x-show="loading" class="est-esqueleto" role="status">
                     <span class="sr-only">Cargando estadísticas…</span>
                     <div class="est-esqueleto__fila est-esqueleto__fila--4" aria-hidden="true">
@@ -403,19 +221,8 @@
                     </div>
                 </div>
 
-                <!-- Contenido de Estadísticas -->
-                <div x-show="!loading" id="estadisticas-contenido" class="max-h-80 overflow-y-auto">
-                    <!-- El contenido se carga dinámicamente -->
-                </div>
-
-                <div class="mt-8 flex justify-end space-x-3">
-                    <button type="button" @click="isOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition-colors cursor-pointer">
-                        Cerrar
-                    </button>
-                    <button type="button" @click="cargarEstadisticas()" class="bg-hospital-blue text-white px-6 py-2 rounded hover:bg-hospital-blue-hover transition-colors cursor-pointer">
-                        Aplicar Filtro
-                    </button>
-                </div>
+                <!-- Contenido de las estadísticas (lo pinta renderizarEstadisticas) -->
+                <div x-show="!loading" id="estadisticas-contenido" class="est-contenido" aria-live="polite"></div>
             </div>
         </div>
     </div>
@@ -456,62 +263,70 @@ function mostrarSesionCerrada() {
     });
 }
 
+// Abrir y cerrar los modales del Inicio: el foco entra a la caja y vuelve al botón que lo abrió.
+let focoAntesDelModal = null;
+function abrirModalInicio(id) {
+    focoAntesDelModal = document.activeElement;
+    const modal = document.getElementById(id);
+    modal.classList.remove('hidden');
+    modal.querySelector('.modal-panel__caja')?.focus({ preventScroll: true });
+}
+function cerrarModalInicio(id) {
+    const modal = document.getElementById(id);
+    if (!modal || modal.classList.contains('hidden')) return;
+    modal.classList.add('hidden');
+    if (focoAntesDelModal && document.contains(focoAntesDelModal)) focoAntesDelModal.focus({ preventScroll: true });
+    focoAntesDelModal = null;
+}
+// Escape cierra el modal que esté abierto (el de estadísticas lo cierra Alpine)
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    cerrarModalInicio('cleanSessionsModal');
+    cerrarModalInicio('emergencyTurnosModal');
+});
+
 function showCleanSessionsOptions() {
-    document.getElementById('cleanSessionsModal').classList.remove('hidden');
     // Resetear selecciones
     selectedCleanOption = null;
     selectedUserId = null;
     const confirmBtn = document.getElementById('confirmCleanBtn');
     confirmBtn.disabled = true;
-    confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-gray-400 border border-transparent rounded-md cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
-    confirmBtn.textContent = 'Limpiar Sesiones'; // Resetear texto del botón
-
-    // Limpiar selecciones de radio
-    document.querySelectorAll('input[name="cleanOption"]').forEach(radio => {
-        radio.checked = false;
-    });
-
-    // Ocultar lista de usuarios
+    confirmBtn.textContent = 'Limpiar sesiones';
+    document.querySelectorAll('input[name="cleanOption"]').forEach(radio => { radio.checked = false; });
     document.getElementById('usersList').classList.add('hidden');
+    document.getElementById('selectedUserIndicator').classList.add('hidden');
+    abrirModalInicio('cleanSessionsModal');
 }
 
 function selectCleanOption(option) {
     selectedCleanOption = option;
     selectedUserId = null;
 
-    // Marcar el radio button correspondiente
+    // Marcar el radio correspondiente (también si se llama desde fuera del radio)
     document.getElementById('clean' + option.charAt(0).toUpperCase() + option.slice(1)).checked = true;
 
-    // Habilitar/deshabilitar botón según la opción
     const confirmBtn = document.getElementById('confirmCleanBtn');
+    document.getElementById('selectedUserIndicator').classList.add('hidden');
 
     if (option === 'specific') {
-        // Mostrar lista de usuarios y cargarlos
-        const usersList = document.getElementById('usersList');
-        usersList.classList.remove('hidden');
-
-        // Siempre cargar usuarios para asegurar datos actualizados
+        // Lista de conectados, siempre recién pedida; el botón espera a que elijan a alguien
+        document.getElementById('usersList').classList.remove('hidden');
         loadActiveUsers();
-
-        // Solo deshabilitar botón si no hay selección previa
-        if (!selectedUserId) {
-            document.getElementById('selectedUserIndicator').classList.add('hidden');
-            confirmBtn.disabled = true;
-            confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-gray-400 border border-transparent rounded-md cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500';
-        }
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Limpiar sesión';
     } else {
-        // Ocultar lista de usuarios e indicador
         document.getElementById('usersList').classList.add('hidden');
-        document.getElementById('selectedUserIndicator').classList.add('hidden');
         confirmBtn.disabled = false;
-
-        // Todos los botones de limpieza son rojos (acciones de eliminación)
-        if (option === 'expired') {
-            confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-        } else if (option === 'all') {
-            confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-        }
+        confirmBtn.textContent = option === 'all' ? 'Cerrar todas las sesiones' : 'Limpiar vencidas';
     }
+}
+
+// Estado de cada persona conectada, con palabra y color (DESIGN.md: Estado con Palabras)
+function estadoPersona(status) {
+    const s = String(status || '').toUpperCase();
+    const tono = s === 'DISPONIBLE' ? 'ok' : (s === 'OCUPADO' ? 'alerta' : 'neutro');
+    const texto = s ? s.charAt(0) + s.slice(1).toLowerCase() : 'Sin estado';
+    return '<span class="estado-chip estado-chip--' + tono + '">' + escHtml(texto) + '</span>';
 }
 
 function loadActiveUsers() {
@@ -522,105 +337,61 @@ function loadActiveUsers() {
             const container = document.getElementById('usersListContent');
 
             if (users.length === 0) {
-                container.innerHTML = '<div class="p-3 text-sm text-gray-500 text-center">No hay usuarios activos</div>';
+                container.innerHTML = '<p class="personas__vacio">No hay nadie más conectado.</p>';
                 return;
             }
 
             // Preservar la selección actual antes de regenerar
             const currentSelection = selectedUserId;
 
-            container.innerHTML = users.map((user, index) => {
+            container.innerHTML = users.map(user => {
                 const isSelected = currentSelection && currentSelection == user.id;
-                const borderClass = isSelected ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' : 'border-gray-200';
-
-                return `
-                <label class="block cursor-pointer">
-                    <div class="p-3 hover:bg-gray-50 ${borderClass} rounded-md transition-all duration-200 hover:border-blue-300" data-user-id="${user.id}">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <input type="radio" name="selectedUser" value="${user.id}" ${isSelected ? 'checked' : ''} class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                                <div>
-                                    <div class="text-sm font-medium text-gray-900">${user.name}</div>
-                                    <div class="text-sm text-gray-500">@${user.nombre_usuario} • ${user.rol}</div>
-                                    ${user.caja ? `<div class="text-xs text-blue-600">Caja: ${user.caja}</div>` : ''}
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-gray-500">${user.tiempo_sesion}</div>
-                                <div class="text-xs ${user.status === 'DISPONIBLE' ? 'text-green-600' : user.status === 'OCUPADO' ? 'text-red-600' : 'text-yellow-600'}">${user.status}</div>
-                            </div>
-                        </div>
-                    </div>
-                </label>
-            `;
+                return '<label class="persona" data-user-id="' + escHtml(user.id) + '">'
+                    + '<input type="radio" name="selectedUser" value="' + escHtml(user.id) + '"' + (isSelected ? ' checked' : '') + '>'
+                    + '<span class="persona__texto">'
+                    +   '<span class="persona__nombre">' + escHtml(user.name) + '</span>'
+                    +   '<span class="persona__detalle">@' + escHtml(user.nombre_usuario) + ' · ' + escHtml(user.rol)
+                    +     (user.caja ? ' · Módulo ' + escHtml(user.caja) : '') + '</span>'
+                    + '</span>'
+                    + '<span class="persona__estado">' + estadoPersona(user.status)
+                    +   '<span class="persona__tiempo">' + escHtml(user.tiempo_sesion) + '</span></span>'
+                    + '</label>';
             }).join('');
 
-            // Agregar event listeners para los radio buttons
             container.querySelectorAll('input[name="selectedUser"]').forEach(radio => {
-                radio.addEventListener('change', function() {
+                radio.addEventListener('change', function () {
                     if (this.checked) {
-                        const userId = parseInt(this.value);
                         const userContainer = this.closest('[data-user-id]');
-                        const userName = userContainer.querySelector('.text-gray-900').textContent;
-                        selectUser(userId, userName, userContainer);
+                        selectUser(parseInt(this.value, 10), userContainer.querySelector('.persona__nombre').textContent, userContainer);
                     }
                 });
             });
 
-            // Restaurar el indicador si había una selección
+            // Restaurar la selección si la persona sigue conectada
             if (currentSelection) {
                 const selectedUser = users.find(u => u.id == currentSelection);
-                if (selectedUser) {
-                    const indicator = document.getElementById('selectedUserIndicator');
-                    const selectedNameSpan = document.getElementById('selectedUserName');
-                    selectedNameSpan.textContent = selectedUser.name;
-                    indicator.classList.remove('hidden');
-
-                    // Actualizar botón con color rojo
-                    const confirmBtn = document.getElementById('confirmCleanBtn');
-                    confirmBtn.disabled = false;
-                    confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-                    confirmBtn.textContent = `Limpiar sesión de ${selectedUser.name}`;
-                }
+                if (selectedUser) selectUser(Number(selectedUser.id), selectedUser.name);
             }
         })
         .catch(error => {
             if (error instanceof SesionCerrada) { closeCleanSessionsModal(); mostrarSesionCerrada(); return; }
             console.error('Error cargando usuarios:', error);
-            document.getElementById('usersListContent').innerHTML = '<div class="p-3 text-sm text-red-500 text-center">Error cargando usuarios</div>';
+            document.getElementById('usersListContent').innerHTML = '<p class="personas__vacio texto-error">No se pudo cargar la lista. Elija la opción otra vez para reintentar.</p>';
         });
 }
 
+// La persona elegida se marca sola (CSS :has en el radio); aquí se habilita el botón y se nombra a quién se cierra.
 function selectUser(userId, userName, element) {
     selectedUserId = userId;
-
-    // Limpiar selecciones previas
-    document.querySelectorAll('#usersListContent [data-user-id]').forEach(div => {
-        div.classList.remove('bg-blue-50', 'border-blue-500', 'ring-2', 'ring-blue-200');
-        div.classList.add('border-gray-200');
-    });
-
-    // Marcar el elemento seleccionado con estilo más visible
-    element.classList.remove('border-gray-200');
-    element.classList.add('bg-blue-50', 'border-blue-500', 'ring-2', 'ring-blue-200');
-
-    // Habilitar botón de confirmación con color rojo (acción de eliminación)
     const confirmBtn = document.getElementById('confirmCleanBtn');
     confirmBtn.disabled = false;
-    confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-
-    // Actualizar texto del botón para mostrar qué usuario se va a limpiar
-    confirmBtn.textContent = `Limpiar sesión de ${userName}`;
-
-    // Mostrar indicador de selección
-    const indicator = document.getElementById('selectedUserIndicator');
-    const selectedNameSpan = document.getElementById('selectedUserName');
-    selectedNameSpan.textContent = userName;
-    indicator.classList.remove('hidden');
+    confirmBtn.textContent = 'Cerrar la sesión de ' + userName;
+    document.getElementById('selectedUserName').textContent = userName;
+    document.getElementById('selectedUserIndicator').classList.remove('hidden');
 }
 
 function closeCleanSessionsModal() {
-    document.getElementById('cleanSessionsModal').classList.add('hidden');
+    cerrarModalInicio('cleanSessionsModal');
 }
 
 function confirmCleanSessions() {
@@ -639,7 +410,7 @@ function confirmCleanSessions() {
 
     // Deshabilitar botón y mostrar loading
     btn.disabled = true;
-    btn.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Limpiando...';
+    btn.textContent = 'Limpiando…';
 
     // Cerrar modal de confirmación
     closeCleanSessionsModal();
@@ -719,117 +490,160 @@ function cifra(n) { return '<span class="font-semibold text-gray-700">' + escHtm
 function ponerTexto(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 function ponerHtml(id, v) { const el = document.getElementById(id); if (el) el.innerHTML = v; }
 
+function plural(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+
 function pintarCifras(t) {
     const r = t.resumen;
-    ponerTexto('metric-en-espera', r.en_espera);
-    ponerHtml('metric-en-espera-detalle', cifra(r.prioritarios) + ' prioritarios · ' + cifra(r.aplazados) + ' aplazados');
+    ponerTexto('cifra-espera', r.en_espera);
+    ponerTexto('cifra-espera-mas', [
+        plural(r.prioritarios, 'prioritario', 'prioritarios'),
+        plural(r.aplazados, 'aplazado', 'aplazados'),
+    ].join(' · '));
 
     const em = r.espera_max;
-    const esperaEl = document.getElementById('metric-espera-max');
-    if (esperaEl) {
-        if (em) {
-            esperaEl.innerHTML = escHtml(em.minutos) + '<span class="metric-unit">min</span>';
-            esperaEl.classList.toggle('is-alerta', !!em.supera_umbral);
-            esperaEl.title = em.supera_umbral
-                ? 'Pasó el límite de ' + (em.prioritario ? t.umbrales.prioritario : t.umbrales.espera) + ' min'
-                : '';
-            ponerHtml('metric-espera-detalle', cifra(em.turno) + (em.prioritario ? ' prioritario' : '') + ' · ' + escHtml(em.servicio));
-        } else {
-            esperaEl.textContent = '—';
-            esperaEl.classList.remove('is-alerta');
-            esperaEl.title = '';
-            ponerHtml('metric-espera-detalle', 'Nadie en espera');
+    const larga = document.getElementById('cifra-larga');
+    if (larga) {
+        larga.textContent = em ? em.minutos + ' min' : '—';
+        larga.classList.toggle('is-alerta', !!(em && em.supera_umbral));
+        larga.title = em && em.supera_umbral ? 'Pasó el límite de ' + (em.prioritario ? t.umbrales.prioritario : t.umbrales.espera) + ' min' : '';
+    }
+    ponerTexto('cifra-larga-mas', em ? em.turno + (em.prioritario ? ' prioritario' : '') + ' · ' + (em.servicio || '') : 'Nadie en espera');
+
+    ponerTexto('cifra-atendidos', r.atendidos_hoy);
+    ponerTexto('cifra-atendidos-mas', [(r.ultima_hora ? r.ultima_hora.finalizaron : 0) + ' en la última hora'].concat(r.transferidos_hoy ? [plural(r.transferidos_hoy, 'transferido', 'transferidos')] : []).join(' · '));
+
+    const m = r.modulos || {};
+    ponerTexto('cifra-modulos', (m.atendiendo || 0) + ' de ' + (m.abiertos || 0));
+    ponerTexto('cifra-modulos-mas', [plural(m.libres || 0, 'libre', 'libres'), (m.descanso || 0) + ' en descanso'].concat(m.canal ? [m.canal + ' en canal'] : []).join(' · '));
+
+    if (t.generado) {
+        const hora = new Date(t.generado);
+        if (!isNaN(hora)) {
+            ponerTexto('sala-hora', new Intl.DateTimeFormat('es-CO', {
+                weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota',
+            }).format(hora).replace(/^(\p{L}+),/u, '$1'));
         }
     }
-
-    ponerTexto('metric-atendidos', r.atendidos_hoy);
-    ponerHtml('metric-atendidos-detalle', cifra(r.transferidos_hoy) + ' transferidos');
-
-    const a = r.asesores;
-    ponerTexto('metric-asesores', a.conectados);
-    const partes = [cifra(a.atendiendo) + ' atendiendo', cifra(a.libres) + (a.libres === 1 ? ' libre' : ' libres'), cifra(a.descanso) + ' en descanso'];
-    if (a.canal) partes.push(cifra(a.canal) + ' en canal');
-    if (a.sin_modulo) partes.push(cifra(a.sin_modulo) + ' sin módulo');
-    ponerHtml('metric-asesores-detalle', partes.join(' · '));
 }
 
-function pintarCola(t) {
-    const cuerpo = document.getElementById('turnos-cola-container');
-    if (!cuerpo) return;
-    if (!t.servicios.length) {
-        cuerpo.innerHTML = '<tr><td colspan="4" class="py-8 px-4 text-center text-sm text-gray-500">Hoy no hay turnos en cola ni atendidos.</td></tr>';
-        return;
-    }
-    const td = 'py-3 px-4 whitespace-nowrap text-sm';
-    cuerpo.innerHTML = t.servicios.map(s => {
-        const enCola = (s.en_cola > 0
-            ? '<span class="dashboard-badge px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">' + escHtml(s.en_cola) + '</span>'
-            : '<span class="text-gray-500">0</span>')
-            + (s.prioritarios > 0 ? ' <span class="prio-mini" title="Prioritarios en espera">' + escHtml(s.prioritarios) + ' prior.</span>' : '');
-        const espera = s.espera_max_min === null || s.espera_max_min === undefined
-            ? '<span class="text-gray-500">—</span>'
-            : (s.alerta
-                ? '<span class="cifra-alerta" title="' + escHtml(s.alerta_motivo) + '">' + escHtml(s.espera_max_min) + ' min</span>'
-                : escHtml(s.espera_max_min) + ' min');
-        const cubren = s.sin_cobertura
-            ? '<a href="' + ASIGNACION_URL + '?servicio=' + encodeURIComponent(s.id) + '" class="sin-cobertura" title="Ningún asesor conectado puede atender este servicio">Nadie · Asignar</a>'
-            : escHtml(s.cubren);
-        return '<tr class="' + (s.sin_cobertura ? 'fila-sin-cobertura' : 'hover:bg-gray-50') + '">'
-            + '<td class="py-3 px-4"><span class="celda-nombre text-sm font-medium text-gray-900" title="' + escHtml(s.nombre) + '">' + escHtml(s.nombre) + '</span></td>'
-            + '<td class="py-3 px-4 whitespace-nowrap">' + enCola + '</td>'
-            + '<td class="' + td + ' text-gray-900">' + espera + '</td>'
-            + '<td class="' + td + ' text-gray-900">' + cubren + '</td>'
-            + '</tr>';
-    }).join('');
-}
-
-const ESTADOS_ASESOR = {
-    atendiendo: ['Atendiendo', 'bg-yellow-100 text-yellow-800'],
-    libre: ['Libre', 'bg-green-100 text-green-800'],
-    descanso: ['En descanso', 'bg-blue-100 text-blue-800'],
-    canal: ['Canal no presencial', 'bg-orange-100 text-orange-800'],
-    sin_modulo: ['Sin módulo', 'bg-gray-100 text-gray-700'],
+// Estado de cada módulo: texto, color del chip y del número
+const ESTADOS_MODULO = {
+    atendiendo: ['Atendiendo', 'ok'],
+    libre: ['Libre', 'info'],
+    descanso: ['En descanso', 'alerta'],
+    canal: ['Canal no presencial', 'neutro'],
 };
 
-function pintarAsesores(t) {
-    const cuerpo = document.getElementById('usuarios-activos-container');
-    if (!cuerpo) return;
-    if (!t.asesores.length) {
-        cuerpo.innerHTML = '<tr><td colspan="5" class="py-8 px-4 text-center text-sm text-gray-500">No hay asesores conectados.</td></tr>';
-        return;
-    }
-    const td = 'py-3 px-4 whitespace-nowrap text-sm text-gray-900';
-    cuerpo.innerHTML = t.asesores.map(a => {
-        const [texto, colores] = ESTADOS_ASESOR[a.estado] || [a.estado, 'bg-gray-100 text-gray-700'];
-        let enCurso = '<span class="text-gray-500">—</span>';
-        if (a.turno) {
-            enCurso = '<span class="font-semibold">' + escHtml(a.turno.codigo) + '</span>'
-                + (a.turno.minutos !== null ? ' <span class="text-gray-500">· ' + escHtml(a.turno.minutos) + ' min</span>' : '');
-        } else if (a.canal) {
-            enCurso = escHtml(a.canal.actividad || 'Canal no presencial')
-                + (a.canal.minutos !== null ? ' <span class="text-gray-500">· ' + escHtml(a.canal.minutos) + ' min</span>' : '');
+function pintarModulos(t) {
+    const caja = document.getElementById('sala-modulos');
+    if (!caja) return;
+    const abiertos = t.modulos.filter(m => m.asesor);
+    const cerrados = t.modulos.filter(m => !m.asesor && m.estado === 'cerrado');
+    const limite = t.umbrales.atencion;
+
+    caja.innerHTML = abiertos.length ? abiertos.map(m => {
+        const [texto, tono] = ESTADOS_MODULO[m.estado] || [m.estado, 'neutro'];
+        let pie;
+        if (m.turno) {
+            const larga = m.turno.minutos !== null && m.turno.minutos > limite;
+            pie = '<b class="sala-modulo__turno">' + escHtml(m.turno.codigo) + '</b>'
+                + '<span class="sala-modulo__min' + (larga ? ' is-alerta' : '') + '"' + (larga ? ' title="Pasó el límite de atención de ' + limite + ' min"' : '') + '>'
+                + (m.turno.minutos !== null ? escHtml(m.turno.minutos) + ' min' : '') + '</span>';
+        } else {
+            pie = '<span class="sala-modulo__vacio">' + (m.estado === 'descanso' ? 'En descanso' : (m.estado === 'canal' ? 'En canal no presencial' : 'Sin turno')) + '</span>';
         }
-        return '<tr class="hover:bg-blue-50/70 cursor-pointer transition-colors" data-asesor-id="' + escHtml(a.id) + '" data-asesor-nombre="' + escHtml(a.nombre) + '" title="Ver estadísticas de ' + escHtml(a.nombre) + '">'
-            + '<td class="' + td + ' font-semibold">' + (a.modulo !== null ? escHtml(a.modulo) : '<span class="text-gray-500">—</span>') + '</td>'
-            + '<td class="py-3 px-4"><button type="button" class="asesor-nombre celda-nombre text-sm font-medium text-gray-900">' + escHtml(a.nombre) + '</button></td>'
-            + '<td class="py-3 px-4 whitespace-nowrap"><span class="dashboard-badge px-2 py-1 rounded-md text-xs font-medium ' + colores + '">' + texto + '</span></td>'
-            + '<td class="' + td + '">' + enCurso + '</td>'
-            + '<td class="' + td + '">' + escHtml(a.atendidos_hoy) + '</td>'
-            + '</tr>';
-    }).join('');
+        return '<button type="button" class="sala-modulo sala-modulo--' + tono + '" data-asesor-id="' + escHtml(m.asesor.id) + '" data-asesor-nombre="' + escHtml(m.asesor.nombre) + '"'
+            + ' title="Ver estadísticas de ' + escHtml(m.asesor.nombre) + (m.ubicacion ? ' · ' + escHtml(m.ubicacion) : '') + '">'
+            + '<span class="sala-modulo__cabeza"><span class="sala-modulo__num">' + escHtml(String(m.numero).padStart(2, '0')) + '</span>'
+            + '<span class="estado-chip estado-chip--' + tono + '">' + texto + '</span></span>'
+            + '<span class="sala-modulo__asesor">' + escHtml(m.asesor.nombre) + '</span>'
+            + '<span class="sala-modulo__hoy">' + plural(m.atendidos_hoy || 0, 'atendido hoy', 'atendidos hoy') + '</span>'
+            + '<span class="sala-modulo__pie">' + pie + '</span>'
+            + '</button>';
+    }).join('') : '<p class="sala-vacio">Ningún módulo tiene asesor en este momento.</p>';
+
+    const nota = document.getElementById('sala-cerrados');
+    if (nota) {
+        nota.hidden = !cerrados.length;
+        nota.innerHTML = cerrados.length
+            ? '<span class="sala-nota__titulo">Sin asesor</span> ' + cerrados.map(m => '<span class="sala-nota__num" title="' + escHtml(m.nombre || '') + '">' + escHtml(m.numero) + '</span>').join('')
+            : '';
+    }
+
+    // Asesores conectados que no ocupan ningún módulo (o que están en canal sin módulo)
+    const sinModulo = t.asesores.filter(a => a.modulo === null);
+    const otra = document.getElementById('sala-sin-modulo');
+    if (otra) {
+        otra.hidden = !sinModulo.length;
+        otra.innerHTML = sinModulo.length
+            ? '<span class="sala-nota__titulo">Conectados sin módulo</span> ' + sinModulo.map(a =>
+                '<button type="button" class="sala-nota__persona" data-asesor-id="' + escHtml(a.id) + '" data-asesor-nombre="' + escHtml(a.nombre) + '">'
+                + escHtml(a.nombre) + (a.estado === 'canal' ? ' · canal' : '') + '</button>').join('')
+            : '';
+    }
 }
 
-// Clic en la fila o en el nombre: estadísticas del asesor. Delegado y con data-*, sin interpolar el
-// nombre dentro de JavaScript en línea (un apóstrofo en el nombre ya no rompe nada).
-document.getElementById('usuarios-activos-container')?.addEventListener('click', e => {
-    const fila = e.target.closest('tr[data-asesor-id]');
-    if (fila) abrirModalEstadisticas(parseInt(fila.dataset.asesorId, 10), fila.dataset.asesorNombre);
+function pintarServicios(t) {
+    const caja = document.getElementById('sala-servicios');
+    if (!caja) return;
+    if (!t.servicios.length) {
+        caja.innerHTML = '<p class="sala-vacio">Hoy no hay turnos en cola ni atendidos.</p>';
+        return;
+    }
+    const tope = Math.max(1, ...t.servicios.map(s => s.en_cola));
+    caja.innerHTML = '<div class="sala-servicio sala-servicio--cabeza" aria-hidden="true"><span>Servicio</span><span></span><span>En cola</span><span>Espera máx.</span><span>Cubren</span></div>'
+        + t.servicios.map(s => {
+            const espera = s.espera_max_min === null || s.espera_max_min === undefined ? '—' : s.espera_max_min + ' min';
+            const cubren = s.sin_cobertura
+                ? '<a href="' + ASIGNACION_URL + '?servicio=' + encodeURIComponent(s.id) + '" class="etiqueta-asignar" title="Ningún asesor conectado puede atender este servicio">Nadie · Asignar</a>'
+                : escHtml(s.cubren);
+            return '<div class="sala-servicio' + (s.sin_cobertura ? ' is-sin-cobertura' : '') + '">'
+                + '<span class="sala-servicio__nombre" title="' + escHtml(s.nombre) + '">' + escHtml(s.nombre)
+                + (s.prioritarios > 0 ? ' <span class="sala-servicio__prio">' + escHtml(s.prioritarios) + ' prior.</span>' : '') + '</span>'
+                + '<span class="sala-servicio__pista"><i style="width:' + Math.round(s.en_cola / tope * 100) + '%"></i></span>'
+                + '<span class="sala-servicio__n">' + escHtml(s.en_cola) + '</span>'
+                + '<span class="sala-servicio__espera' + (s.alerta ? ' is-alerta' : '') + '"' + (s.alerta ? ' title="' + escHtml(s.alerta_motivo) + '"' : '') + '>' + escHtml(espera) + '</span>'
+                + '<span class="sala-servicio__cubren">' + cubren + '</span>'
+                + '</div>';
+        }).join('');
+}
+
+function pintarColaTurnos(t) {
+    const lista = document.getElementById('sala-cola-lista');
+    if (!lista) return;
+    const cola = t.cola || [];
+    lista.innerHTML = cola.length ? cola.map(c =>
+        '<li class="sala-turno' + (c.supera_umbral ? ' is-alerta' : '') + '">'
+        + '<span class="sala-turno__codigo">' + escHtml(c.codigo) + '</span>'
+        + '<span class="sala-turno__min"' + (c.supera_umbral ? ' title="Pasó el límite de ' + (c.prioritario ? t.umbrales.prioritario : t.umbrales.espera) + ' min"' : '') + '>'
+        + (c.minutos !== null ? escHtml(c.minutos) + ' min' : '—') + '</span>'
+        + '<span class="sala-turno__servicio">' + escHtml(c.servicio || '') + '</span>'
+        + ((c.prioritario || c.aplazado) ? '<span class="sala-turno__marcas">'
+            + (c.prioritario ? '<span class="estado-chip estado-chip--alerta">Prioritario</span>' : '')
+            + (c.aplazado ? '<span class="estado-chip estado-chip--neutro">Aplazado</span>' : '') + '</span>' : '')
+        + '</li>'
+    ).join('') : '<li class="sala-cola__vacia">No hay nadie esperando.</li>';
+
+    const todos = document.getElementById('sala-cola-todos');
+    if (todos) {
+        const n = t.resumen.en_espera;
+        todos.hidden = n === 0;
+        todos.textContent = n > cola.length ? 'Ver los ' + n + ' turnos en espera' : 'Ver los turnos';
+    }
+}
+
+// Clic en un módulo o en un asesor sin módulo: estadísticas del asesor. Delegado y con data-*, sin interpolar
+// el nombre dentro de JavaScript en línea (un apóstrofo en el nombre no rompe nada).
+document.querySelector('.sala')?.addEventListener('click', e => {
+    const el = e.target.closest('[data-asesor-id]');
+    if (el) abrirModalEstadisticas(parseInt(el.dataset.asesorId, 10), el.dataset.asesorNombre);
 });
 
 function pintarTablero(t) {
     pintarCifras(t);
-    pintarCola(t);
-    pintarAsesores(t);
+    pintarModulos(t);
+    pintarServicios(t);
+    pintarColaTurnos(t);
 }
 
 function actualizarTablero() {
@@ -862,41 +676,33 @@ let selectedServiceId = null;
 
 // Funciones para el modal de emergencia de turnos
 function showEmergencyTurnosOptions() {
-    document.getElementById('emergencyTurnosModal').classList.remove('hidden');
     // Resetear selecciones
     selectedTurnosOption = null;
     selectedServiceId = null;
     const confirmBtn = document.getElementById('confirmTurnosBtn');
     confirmBtn.disabled = true;
-    confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-gray-400 border border-transparent rounded-md cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-    confirmBtn.textContent = 'Eliminar Turnos';
-
-    // Limpiar selecciones de radio
-    document.querySelectorAll('input[name="turnosOption"]').forEach(radio => {
-        radio.checked = false;
-    });
-
-    // Ocultar selector de servicio
+    confirmBtn.textContent = 'Eliminar turnos';
+    document.querySelectorAll('input[name="turnosOption"]').forEach(radio => { radio.checked = false; });
     document.getElementById('serviceSelector').classList.add('hidden');
-
-    // Cargar servicios
+    abrirModalInicio('emergencyTurnosModal');
     loadServiciosForEmergency();
 }
 
 function closeEmergencyTurnosModal() {
-    document.getElementById('emergencyTurnosModal').classList.add('hidden');
+    cerrarModalInicio('emergencyTurnosModal');
 }
 
 function selectTurnosOption(option) {
     selectedTurnosOption = option;
 
-    // Marcar el radio button correspondiente
+    // Marcar el radio correspondiente
     document.getElementById('delete' + option.charAt(0).toUpperCase() + option.slice(1)).checked = true;
 
-    // Mostrar/ocultar selector de servicio
+    // Mostrar/ocultar el selector de servicio
     const serviceSelector = document.getElementById('serviceSelector');
     if (option === 'service') {
         serviceSelector.classList.remove('hidden');
+        selectedServiceId = document.getElementById('servicioSelect').value || null;
     } else {
         serviceSelector.classList.add('hidden');
         selectedServiceId = null;
@@ -907,38 +713,20 @@ function selectTurnosOption(option) {
 
 function updateTurnosConfirmButton() {
     const confirmBtn = document.getElementById('confirmTurnosBtn');
-
-    // Verificar si se puede habilitar el botón
     const canConfirm = selectedTurnosOption && (selectedTurnosOption !== 'service' || selectedServiceId);
-
-    if (canConfirm) {
-        confirmBtn.disabled = false;
-        confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-
-        // Actualizar texto del botón según la opción
-        switch(selectedTurnosOption) {
-            case 'pending':
-                confirmBtn.textContent = 'Eliminar Turnos Pendientes/Aplazados';
-                break;
-            case 'today':
-                confirmBtn.textContent = 'Eliminar Todos los Turnos del Día';
-                break;
-            case 'service':
-                confirmBtn.textContent = 'Eliminar Turnos del Servicio';
-                break;
-        }
-    } else {
-        confirmBtn.disabled = true;
-        confirmBtn.className = 'px-4 py-2 text-sm font-medium text-white bg-gray-400 border border-transparent rounded-md cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500';
-        confirmBtn.textContent = 'Eliminar Turnos';
-    }
+    confirmBtn.disabled = !canConfirm;
+    confirmBtn.textContent = !canConfirm ? 'Eliminar turnos' : ({
+        pending: 'Eliminar los que esperan',
+        today: 'Eliminar todos los de hoy',
+        service: 'Eliminar los del servicio',
+    })[selectedTurnosOption];
 }
 
 function loadServiciosForEmergency() {
     pedirJson('/api/servicios-activos', { exigirOk: true })
         .then(servicios => {
             const select = document.getElementById('servicioSelect');
-            select.innerHTML = '<option value="">Seleccionar servicio...</option>';
+            select.innerHTML = '<option value="">Elija un servicio</option>';
 
             servicios.forEach(servicio => {
                 const option = document.createElement('option');
@@ -951,7 +739,7 @@ function loadServiciosForEmergency() {
             if (error instanceof SesionCerrada) { closeEmergencyTurnosModal(); mostrarSesionCerrada(); return; }
             console.error('Error cargando servicios:', error);
             const select = document.getElementById('servicioSelect');
-            select.innerHTML = '<option value="">Error cargando servicios</option>';
+            select.innerHTML = '<option value="">No se pudieron cargar los servicios</option>';
         });
 }
 
@@ -974,7 +762,7 @@ function confirmEmergencyTurnos() {
 
     // Deshabilitar botón y mostrar loading
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Procesando...';
+    confirmBtn.textContent = 'Eliminando…';
 
     // Preparar datos de la petición
     const requestData = {
@@ -996,7 +784,7 @@ function confirmEmergencyTurnos() {
     .then(data => {
         // Restaurar botón
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = originalText;
+        confirmBtn.textContent = originalText;
 
         // Cerrar modal
         closeEmergencyTurnosModal();
@@ -1014,7 +802,7 @@ function confirmEmergencyTurnos() {
 
         // Restaurar botón
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = originalText;
+        confirmBtn.textContent = originalText;
 
         if (error instanceof SesionCerrada) { closeEmergencyTurnosModal(); mostrarSesionCerrada(); return; }
         showResult({
@@ -1034,6 +822,21 @@ function abrirModalEstadisticas(userId, nombreUsuario) {
     }));
 }
 
+// AAAA-MM-DD en la hora local del equipo: la fecha en UTC, de noche, ya es la de mañana.
+function fechaLocalISO(d = new Date()) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Rangos rápidos del modal de estadísticas: [desde, hasta] en fechas locales
+function rangoRapido(tipo) {
+    const hoy = new Date();
+    const desde = new Date(hoy);
+    if (tipo === 'ayer') { desde.setDate(desde.getDate() - 1); return [desde, desde]; }
+    if (tipo === 'semana') { desde.setDate(desde.getDate() - 7); return [desde, hoy]; }
+    if (tipo === 'mes') { desde.setMonth(desde.getMonth() - 1); return [desde, hoy]; }
+    return [hoy, hoy];
+}
+
 // Componente Alpine.js para el modal de estadísticas
 function estadisticasUsuarioModal() {
     return {
@@ -1041,66 +844,47 @@ function estadisticasUsuarioModal() {
         loading: false,
         usuarioId: null,
         usuarioNombre: '',
-        fechaInicio: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })(),
-        fechaFin: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })(),
+        fechaInicio: fechaLocalISO(),
+        fechaFin: fechaLocalISO(),
 
         init() {
             window.addEventListener('open-estadisticas-modal', (event) => {
                 const { userId, nombreUsuario } = event.detail;
                 this.usuarioId = userId;
                 this.usuarioNombre = nombreUsuario;
-                // Usar fecha LOCAL (no UTC) para evitar desfase de zona horaria
-                const hoy = new Date();
-                const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
-                this.fechaInicio = fechaLocal;
-                this.fechaFin = fechaLocal;
+                this.fechaInicio = fechaLocalISO();
+                this.fechaFin = fechaLocalISO();
                 this.isOpen = true;
                 this.cargarEstadisticas();
             });
         },
 
+        // Qué atajo coincide con las fechas puestas (para marcarlo); null si son otras
+        rangoDe() {
+            return ['hoy', 'ayer', 'semana', 'mes'].find(tipo => {
+                const [desde, hasta] = rangoRapido(tipo);
+                return fechaLocalISO(desde) === this.fechaInicio && fechaLocalISO(hasta) === this.fechaFin;
+            }) || null;
+        },
+
         setFechaRapida(tipo) {
-            const hoy = new Date();
-            let fechaInicio, fechaFin;
-            
-            switch(tipo) {
-                case 'hoy':
-                    fechaInicio = fechaFin = hoy;
-                    break;
-                case 'ayer':
-                    const ayer = new Date(hoy);
-                    ayer.setDate(ayer.getDate() - 1);
-                    fechaInicio = fechaFin = ayer;
-                    break;
-                case 'semana':
-                    fechaFin = hoy;
-                    fechaInicio = new Date(hoy);
-                    fechaInicio.setDate(fechaInicio.getDate() - 7);
-                    break;
-                case 'mes':
-                    fechaFin = hoy;
-                    fechaInicio = new Date(hoy);
-                    fechaInicio.setMonth(fechaInicio.getMonth() - 1);
-                    break;
-            }
-            
-            // Usar fecha LOCAL (no UTC) para evitar desfase de zona horaria
-            this.fechaInicio = fechaInicio.getFullYear() + '-' + String(fechaInicio.getMonth()+1).padStart(2,'0') + '-' + String(fechaInicio.getDate()).padStart(2,'0');
-            this.fechaFin = fechaFin.getFullYear() + '-' + String(fechaFin.getMonth()+1).padStart(2,'0') + '-' + String(fechaFin.getDate()).padStart(2,'0');
+            const [desde, hasta] = rangoRapido(tipo);
+            this.fechaInicio = fechaLocalISO(desde);
+            this.fechaFin = fechaLocalISO(hasta);
             this.cargarEstadisticas();
         },
 
         cargarEstadisticas() {
             if (!this.usuarioId) return;
-            
+
             this.loading = true;
             const contenedor = document.getElementById('estadisticas-contenido');
-            
+
             let url = `/api/admin/usuario/${this.usuarioId}/estadisticas`;
             if (this.fechaInicio && this.fechaFin) {
-                url += `?fecha_inicio=${this.fechaInicio}&fecha_fin=${this.fechaFin}`;
+                url += `?fecha_inicio=${encodeURIComponent(this.fechaInicio)}&fecha_fin=${encodeURIComponent(this.fechaFin)}`;
             }
-            
+
             pedirJson(url, { exigirOk: true })
                 .then(data => {
                     this.loading = false;
@@ -1109,188 +893,73 @@ function estadisticasUsuarioModal() {
                 .catch(error => {
                     console.error('Error:', error);
                     this.loading = false;
-                    contenedor.innerHTML = `
-                        <div class="text-center py-12 text-red-600">
-                            <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <p>${error instanceof SesionCerrada ? 'Tu sesión se cerró. Recarga la página para volver a entrar.' : 'Error al cargar las estadísticas'}</p>
-                        </div>
-                    `;
+                    contenedor.innerHTML = '<p class="est-vacio texto-error">'
+                        + (error instanceof SesionCerrada ? 'Su sesión se cerró. Recargue la página para volver a entrar.' : 'No se pudieron cargar las estadísticas. Intente de nuevo.')
+                        + '</p>';
                 });
         },
 
+        // Cifras quietas (sin colores por cifra), tiempos, canal no presencial, por servicio y últimos turnos.
+        // Todo texto que viene del servidor pasa por escHtml.
         renderizarEstadisticas(data) {
             const contenedor = document.getElementById('estadisticas-contenido');
             const est = data.estadisticas;
-            const canal = data.canal_no_presencial;
-            
-            let html = `
-                <!-- Resumen General -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div class="bg-blue-50 p-3 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-blue-600">${est.total_turnos}</p>
-                        <p class="text-xs text-gray-600">Total Turnos</p>
-                    </div>
-                    <div class="bg-green-50 p-3 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-green-600">${est.turnos_atendidos}</p>
-                        <p class="text-xs text-gray-600">Atendidos</p>
-                    </div>
-                    <div class="bg-yellow-50 p-3 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-yellow-600">${est.turnos_pendientes}</p>
-                        <p class="text-xs text-gray-600">Pendientes</p>
-                    </div>
-                    <div class="bg-red-50 p-3 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-red-600">${est.turnos_cancelados}</p>
-                        <p class="text-xs text-gray-600">Cancelados</p>
-                    </div>
-                </div>
-                
-                <!-- Tiempos -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-                    <div class="bg-gray-50 p-3 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <div>
-                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_atencion}</p>
-                                ${est.atenciones_atipicas ? `<p class="text-xs text-gray-500">sin ${est.atenciones_atipicas} de más de 1 h (quedaron abiertas)</p>` : ''}
-                                <p class="text-xs text-gray-500">Tiempo Prom. Atención</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 p-3 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            <div>
-                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_total_atencion}</p>
-                                <p class="text-xs text-gray-500">Tiempo Total</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 p-3 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-hospital-blue mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                            <div>
-                                <p class="text-lg font-semibold text-gray-800">${est.tiempo_promedio_entre_turnos}</p>
-                                ${est.pausas_largas ? `<p class="text-xs text-gray-500">${est.pausas_largas} pausas de más de 1 h, aparte</p>` : ''}
-                                <p class="text-xs text-gray-500">Tiempo Entre Turnos</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Canal No Presencial -->
-                ${canal.cantidad_actividades > 0 ? `
-                <div class="mb-6">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                        <svg class="w-4 h-4 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                        </svg>
-                        Canal No Presencial
-                    </h4>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div class="bg-orange-50 p-3 rounded-lg text-center">
-                            <p class="text-xl font-bold text-orange-600">${canal.cantidad_actividades}</p>
-                            <p class="text-xs text-gray-600">Actividades</p>
-                        </div>
-                        <div class="bg-orange-50 p-3 rounded-lg text-center">
-                            <p class="text-xl font-bold text-orange-600">${canal.tiempo_total_horas} hrs</p>
-                            <p class="text-xs text-gray-600">Tiempo Total</p>
-                        </div>
-                    </div>
-                    ${canal.detalle.length > 0 ? `
-                    <div class="max-h-32 overflow-y-auto border rounded-lg">
-                        <table class="w-full text-xs">
-                            <thead class="bg-orange-100 sticky top-0">
-                                <tr>
-                                    <th class="py-2 px-2 text-left">Actividad</th>
-                                    <th class="py-2 px-2 text-left">Inicio</th>
-                                    <th class="py-2 px-2 text-left">Duración</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y">
-                                ${canal.detalle.map(a => `
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="py-2 px-2">${a.actividad}</td>
-                                        <td class="py-2 px-2">${a.inicio}</td>
-                                        <td class="py-2 px-2">${a.duracion_minutos === null ? 'Abierta de un día a otro (no se suma)' : a.duracion_minutos + ' min'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    ` : ''}
-                </div>
-                ` : ''}
-                
-                <!-- Turnos por Servicio -->
-                ${Object.keys(data.turnos_por_servicio).length > 0 ? `
-                <div class="mb-6">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                        <svg class="w-4 h-4 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                        </svg>
-                        Turnos por Servicio
-                    </h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        ${Object.entries(data.turnos_por_servicio).map(([servicio, datos]) => `
-                            <div class="bg-gray-50 p-2 rounded-lg">
-                                <p class="text-xs font-medium text-gray-700 truncate" title="${servicio}">${servicio}</p>
-                                <p class="text-sm font-bold text-hospital-blue">${datos.atendidos}/${datos.total}</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
-                
-                <!-- Detalle de Turnos -->
-                ${data.turnos_detalle.length > 0 ? `
-                <div>
-                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                        <svg class="w-4 h-4 mr-2 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                        </svg>
-                        Últimos Turnos Atendidos
-                    </h4>
-                    <div class="max-h-48 overflow-y-auto border rounded-lg">
-                        <table class="w-full text-xs">
-                            <thead class="bg-hospital-blue text-white sticky top-0">
-                                <tr>
-                                    <th class="py-2 px-2 text-left">Código</th>
-                                    <th class="py-2 px-2 text-left">Servicio</th>
-                                    <th class="py-2 px-2 text-left">Hora</th>
-                                    <th class="py-2 px-2 text-left">Duración</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y bg-white">
-                                ${data.turnos_detalle.map(t => `
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="py-2 px-2 font-medium">${t.codigo}</td>
-                                        <td class="py-2 px-2">${t.servicio}</td>
-                                        <td class="py-2 px-2">${t.fecha_atencion}</td>
-                                        <td class="py-2 px-2">${t.duracion_minutos}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                ` : `
-                <div class="text-center py-8 text-gray-500">
-                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    <p>No hay turnos atendidos en este período</p>
-                </div>
-                `}
-            `;
-            
+            const canal = data.canal_no_presencial || { cantidad_actividades: 0, detalle: [] };
+            const porServicio = Object.entries(data.turnos_por_servicio || {});
+            const detalle = data.turnos_detalle || [];
+            const e = escHtml;
+
+            const cifra = (n, texto) => '<div class="est-cifra"><b>' + e(n) + '</b><span>' + texto + '</span></div>';
+            const tiempo = (valor, texto, nota) => '<div class="est-tiempo"><span class="est-tiempo__texto">' + texto + '</span>'
+                + '<b>' + e(valor) + '</b>' + (nota ? '<span class="est-tiempo__nota">' + nota + '</span>' : '') + '</div>';
+
+            let html = '<div class="est-cifras">'
+                + cifra(est.total_turnos, 'turnos')
+                + cifra(est.turnos_atendidos, 'atendidos')
+                + cifra(est.turnos_pendientes, 'pendientes')
+                + cifra(est.turnos_cancelados, 'cancelados')
+                + '</div>'
+                + '<div class="est-tiempos">'
+                + tiempo(est.tiempo_promedio_atencion, 'Atención promedio', est.atenciones_atipicas ? 'Sin ' + e(est.atenciones_atipicas) + ' de más de 1 h (quedaron abiertas)' : '')
+                + tiempo(est.tiempo_total_atencion, 'Tiempo atendiendo', '')
+                + tiempo(est.tiempo_promedio_entre_turnos, 'Entre turnos', est.pausas_largas ? e(est.pausas_largas) + ' pausas de más de 1 h, aparte' : '')
+                + '</div>';
+
+            if (canal.cantidad_actividades > 0) {
+                html += '<section class="est-seccion"><h3>Canal no presencial</h3>'
+                    + '<div class="est-cifras est-cifras--2">'
+                    + cifra(canal.cantidad_actividades, canal.cantidad_actividades === 1 ? 'actividad' : 'actividades')
+                    + cifra(canal.tiempo_total_horas + ' h', 'en total')
+                    + '</div>'
+                    + (canal.detalle.length ? '<div class="est-tabla"><table class="tabla-panel"><thead><tr><th scope="col">Actividad</th><th scope="col">Inicio</th><th scope="col">Duración</th></tr></thead><tbody>'
+                        + canal.detalle.map(a => '<tr><td>' + e(a.actividad) + '</td><td>' + e(a.inicio) + '</td><td>'
+                            + (a.duracion_minutos === null ? '<span class="texto-mudo">Abierta de un día a otro (no se suma)</span>' : e(a.duracion_minutos) + ' min')
+                            + '</td></tr>').join('')
+                        + '</tbody></table></div>' : '')
+                    + '</section>';
+            }
+
+            if (porServicio.length) {
+                html += '<section class="est-seccion"><h3>Por servicio</h3><div class="est-servicios">'
+                    + porServicio.map(([servicio, datos]) => {
+                        const total = Number(datos.total) || 0;
+                        const atendidos = Number(datos.atendidos) || 0;
+                        const ancho = total ? Math.round(atendidos / total * 100) : 0;
+                        return '<div class="est-servicio"><span class="est-servicio__nombre" title="' + e(servicio) + '">' + e(servicio) + '</span>'
+                            + '<span class="est-servicio__pista" aria-hidden="true"><i style="width:' + ancho + '%"></i></span>'
+                            + '<span class="est-servicio__n">' + e(atendidos) + ' de ' + e(total) + '</span></div>';
+                    }).join('')
+                    + '</div></section>';
+            }
+
+            html += '<section class="est-seccion"><h3>Últimos turnos atendidos</h3>'
+                + (detalle.length
+                    ? '<div class="est-tabla"><table class="tabla-panel"><thead><tr><th scope="col">Turno</th><th scope="col">Servicio</th><th scope="col">Hora</th><th scope="col">Duración</th></tr></thead><tbody>'
+                        + detalle.map(t => '<tr><td class="est-codigo">' + e(t.codigo) + '</td><td>' + e(t.servicio) + '</td><td>' + e(t.fecha_atencion) + '</td><td>' + e(t.duracion_minutos) + '</td></tr>').join('')
+                        + '</tbody></table></div>'
+                    : '<p class="est-vacio">No atendió turnos en este período.</p>')
+                + '</section>';
+
             contenedor.innerHTML = html;
         }
     }
@@ -1331,87 +1000,221 @@ input[type="checkbox"]:focus-visible {
     outline-offset: 2px;
 }
 
-/* ===== Refresco visual del dashboard (se conserva tal cual) ===== */
-/* Chips de ícono de las métricas: azul institucional (todas iguales) */
-.metric-icon { background: #e6f1fb; color: #064b9e; }
-.metric-value { color: #0f2547; }
-.metric-card { transition: box-shadow .2s ease, border-color .2s ease; }
-.metric-card:hover { border-color: #cdd9ec; box-shadow: 0 6px 18px -10px rgba(16, 24, 40, .18); }
-/* Encabezado de tablas: tinte sobrio en lugar de gris plano */
-.dashboard-table thead tr { background: #f6f8fc; }
-.dashboard-table th { color: #5f6b80; }
+/* ===== «La sala» (2026-11): módulos vistos desde arriba y la cola al lado (ver DESIGN.md) ===== */
+.sala { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1.5rem; align-items: start; }
+@media (max-width: 1279px) { .sala { grid-template-columns: minmax(0, 1fr); } }
+.sala__principal { min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; }
 
-/* ===== EVOLUCIÓN 2026-09 ===== */
-/* Cifra en rojo SOLO cuando pasa el límite (prioritario > 15 min). */
-.metric-value.is-alerta { color: var(--color-red-700, #c10007); }
-.metric-unit { font-size: 1rem; font-weight: 600; margin-left: .25rem; }
+/* Cifras del momento: cuatro piezas en una fila, el número manda y el detalle va debajo */
+.sala-cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .625rem; }
+@media (max-width: 1023px) { .sala-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sala-cifra {
+    margin: 0; min-width: 0; display: flex; flex-direction: column; gap: .1875rem; padding: .6875rem 1rem; border-radius: .875rem;
+    background: #fff; box-shadow: var(--roce); font-size: .875rem; color: var(--tinta-suave);
+}
+.sala-cifra > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sala-cifra__n { font-size: 1.1875rem; font-weight: 650; letter-spacing: -.01em; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.sala-cifra__n.is-alerta { color: var(--error); }
+.sala-cifra__mas { color: var(--tinta-tenue); font-size: .78125rem; font-variant-numeric: tabular-nums; }
 
-/* Números alineados por columna (los dígitos no "bailan" al refrescar cada 5 s). */
-.tabla-cifras td { font-variant-numeric: tabular-nums; }
+.sala-seccion { min-width: 0; }
+.sala-titulo { margin: 0 0 .75rem; font-size: 1rem; font-weight: 650; color: var(--tinta); }
+.sala-vacio { margin: 0; padding: 1.25rem; color: var(--tinta-tenue); font-size: .875rem; }
 
-/* Servicio que nadie puede atender (0 asesores lo cubren): la fila se tiñe. */
-.fila-sin-cobertura { background: var(--color-red-50, #fef2f2); }
-.cifra-alerta { color: var(--color-red-700, #c10007); font-weight: 600; }
-.enlace-accion { color: #064b9e; font-weight: 500; }
-.enlace-accion:hover { text-decoration: underline; }
-.enlace-accion:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; border-radius: 4px; }
+/* Módulos: una tarjeta por módulo con asesor */
+.sala-modulos { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: .75rem; }
+.sala-modulo {
+    display: flex; flex-direction: column; gap: .375rem; min-height: 8.5rem; padding: .875rem 1rem .75rem; text-align: left;
+    background: #fff; border-radius: .875rem; box-shadow: var(--roce); cursor: pointer; font: inherit; color: inherit;
+    transition-property: box-shadow, scale; transition-duration: .15s; transition-timing-function: ease-out;
+}
+.sala-modulo:hover { box-shadow: var(--roce), 0 0 0 1px #c6d7f0; }
+.sala-modulo:active { scale: .98; }
+.sala-modulo:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
+.sala-modulo__cabeza { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.sala-modulo__num { font-size: 1.5rem; line-height: 1; font-weight: 650; letter-spacing: -.02em; color: var(--azul); font-variant-numeric: tabular-nums; }
+.sala-modulo--info .sala-modulo__num { color: var(--tinta-tenue); }
+.sala-modulo--alerta .sala-modulo__num { color: var(--alerta-tinta); }
+.sala-modulo--neutro .sala-modulo__num { color: #6d7f99; }
+.sala-modulo__asesor { font-size: .875rem; font-weight: 600; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sala-modulo__hoy { font-size: .75rem; color: var(--tinta-tenue); font-variant-numeric: tabular-nums; }
+.sala-modulo__pie {
+    margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: .5rem;
+    padding-top: .5rem; border-top: 1px dashed var(--corte);
+}
+.sala-modulo__turno { font-size: .9375rem; font-weight: 650; color: var(--tinta); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.sala-modulo__min { font-size: .8125rem; color: var(--tinta-suave); font-variant-numeric: tabular-nums; }
+.sala-modulo__min.is-alerta { color: var(--error); font-weight: 650; }
+.sala-modulo__vacio { font-size: .8125rem; color: var(--tinta-tenue); }
 
-/* Nombre del asesor: botón (se llega con teclado) que se ve igual que el texto de antes. */
-.asesor-nombre { cursor: pointer; text-align: left; border-radius: 4px; }
+.sala-nota { margin: .75rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; font-size: .8125rem; color: var(--tinta-tenue); }
+.sala-nota[hidden] { display: none; }
+.sala-nota__titulo { margin-right: .25rem; font-weight: 600; color: var(--tinta-suave); }
+.sala-nota__num {
+    min-width: 1.75rem; height: 1.75rem; padding: 0 .375rem; display: inline-grid; place-items: center; border-radius: .5rem;
+    background: rgba(255, 255, 255, .7); box-shadow: inset 0 0 0 1px var(--linea); font-weight: 600; color: var(--tinta-suave); font-variant-numeric: tabular-nums;
+}
+.sala-nota__persona {
+    padding: .25rem .625rem; border-radius: .5rem; background: #fff; box-shadow: var(--roce); font: inherit; font-weight: 550;
+    color: var(--tinta-2); cursor: pointer;
+}
+.sala-nota__persona:hover { color: var(--azul); }
 
-/* Herramientas del sistema: botón blanco sobre el fondo gris (mismo material que
-   las tarjetas). El gris #eef1f6 de los secundarios desaparecería sobre gray-100. */
-.herramientas { padding-top: .25rem; }
-.herramienta-btn { background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, .08); transition: background-color .15s ease; }
-.herramienta-btn:hover { background: #f6f8fc; color: #111827; }
-
-/* Densidad por altura (reemplaza las reglas .dashboard-* con !important que había
-   en layouts/admin.blade.php: solo las usaba esta vista). */
-@media (min-width: 768px) and (max-height: 799px) {
-    .dashboard-container > :not(:last-child) { margin-block-end: 1rem; }
-    .dashboard-table th,
-    .dashboard-table td { padding-top: .5rem; padding-bottom: .5rem; }
-    .panel-cabeza { margin-bottom: .75rem; }
+/* Por servicio: barras de la cola, la espera y quién lo cubre */
+.sala-servicios { padding: .5rem 1rem .25rem; }
+.sala-servicio {
+    display: grid; grid-template-columns: minmax(10rem, 1.4fr) minmax(4rem, 1fr) 3.5rem 5.5rem 6.5rem; align-items: center; gap: 1rem;
+    padding: .5625rem 0; border-top: 1px solid var(--linea-suave); font-size: .875rem; font-variant-numeric: tabular-nums;
+}
+.sala-servicio--cabeza { border-top: 0; padding-bottom: .375rem; font-size: .78125rem; font-weight: 550; color: var(--tinta-tenue); }
+.sala-servicio > span:nth-child(n+3) { text-align: right; }
+.sala-servicio__nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tinta); }
+.sala-servicio__prio { margin-left: .25rem; font-size: .75rem; font-weight: 650; color: var(--alerta-tinta); }
+.sala-servicio__pista { height: .5rem; border-radius: 999px; background: #e9eef5; overflow: hidden; }
+.sala-servicio__pista i { display: block; height: 100%; border-radius: 999px; background: var(--azul); }
+.sala-servicio__n { font-weight: 650; color: var(--tinta); }
+.sala-servicio__espera { color: var(--tinta-suave); }
+.sala-servicio__espera.is-alerta { color: var(--error); font-weight: 650; }
+.sala-servicio.is-sin-cobertura .sala-servicio__pista i { background: var(--error); }
+@media (max-width: 767px) {
+    .sala-servicio { grid-template-columns: minmax(0, 1fr) 3rem 4.5rem; }
+    .sala-servicio__pista, .sala-servicio > span:nth-child(5), .sala-servicio--cabeza > span:nth-child(2), .sala-servicio--cabeza > span:nth-child(5) { display: none; }
 }
 
-/* ===== Una sola vista (2026-09-14): cola y asesores lado a lado, todo más compacto ===== */
-.inicio-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
-@media (max-width: 1279px) { .inicio-cuerpo { grid-template-columns: minmax(0, 1fr); } }
-.inicio-cuerpo .dashboard-table th,
-.inicio-cuerpo .dashboard-table td { padding: .5rem .45rem; }
-.inicio-cuerpo .dashboard-table th:first-child,
-.inicio-cuerpo .dashboard-table td:first-child { padding-left: .75rem; }
-#turnos-cola-container .celda-nombre { max-width: 10.5rem; }
-#usuarios-activos-container .celda-nombre { max-width: 8.25rem; }
-.inicio-cuerpo .dashboard-table td { font-size: .8125rem; }
-.inicio-cuerpo .panel-cabeza { margin-bottom: .75rem; }
-.inicio-cuerpo .dashboard-title { font-size: 1rem; }
-.inicio-cuerpo .dashboard-badge.rounded-full { padding: .125rem .6rem; font-size: .8125rem; }
-.metric-card { padding: .85rem 1rem; }
-.metric-card .metric-value { font-size: 1.75rem; line-height: 2rem; margin-top: .35rem; }
-.metric-card .metric-icon { width: 2.25rem; height: 2.25rem; }
-.dashboard-container > :not(:last-child) { margin-block-end: 1rem; }   /* en vez del space-y-5 (1.25rem) */
-.celda-nombre { display: block; max-width: 13rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.inicio-cuerpo td .celda-nombre { max-width: 12rem; }
-.prio-mini { margin-left: .35rem; font-size: .75rem; font-weight: 600; color: var(--color-red-700, #c10007); white-space: nowrap; }
-.sin-cobertura { display: inline-block; padding: .2rem .5rem; border-radius: .375rem; font-size: .75rem; font-weight: 600;
-                 background: var(--color-red-100, #ffe2e2); color: var(--color-red-800, #9f0712); white-space: nowrap; }
-.sin-cobertura:hover { text-decoration: underline; }
-.sin-cobertura:focus-visible { outline: 2px solid #064b9e; outline-offset: 2px; }
+/* Cola: la única pieza elevada de la vista */
+.sala-cola {
+    position: sticky; top: 1.5rem; padding: 1.25rem 1.125rem 1rem; background: #fff; border-radius: 18px;
+    filter: var(--filo) drop-shadow(0 16px 22px rgba(15, 39, 71, .09));
+}
+@media (max-width: 1279px) { .sala-cola { position: static; } }
+.sala-cola__titulo { margin: 0; font-size: 1rem; font-weight: 650; color: var(--tinta); }
+.sala-cola__sub { margin: .125rem 0 .875rem; font-size: .8125rem; color: var(--tinta-suave); }
+.sala-cola__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.sala-turno {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; row-gap: .125rem; align-items: baseline;
+    padding: .6875rem .875rem; border-radius: .75rem; background: #f5f8fc;
+}
+.sala-turno__codigo { font-size: 1.0625rem; font-weight: 650; letter-spacing: .01em; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.sala-turno__min { font-size: .875rem; font-weight: 650; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+.sala-turno__servicio { grid-column: 1 / -1; font-size: .78125rem; color: var(--tinta-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sala-turno__marcas { grid-column: 1 / -1; display: flex; gap: .25rem; margin-top: .25rem; }
+.sala-turno__marcas .estado-chip { font-size: .6875rem; padding: .0625rem .4375rem; }
+.sala-turno.is-alerta { background: #fff; box-shadow: inset 0 0 0 1px #f1c6c2; }
+.sala-turno.is-alerta .sala-turno__min { color: var(--error); }
+.sala-cola__vacia { padding: 1rem .25rem; font-size: .875rem; color: var(--tinta-tenue); }
+.sala-cola__todos { display: inline-block; margin-top: .875rem; font-size: .875rem; }
+.sala-cola__todos[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .sala-modulo { transition: none; } .sala-modulo:active { scale: none; } }
+
+/* ===== Modales del Inicio (limpiar sesiones, emergencia, estadísticas del asesor) ===== */
+.modal-panel.hidden { display: none; }
+/* La entrada, la cabeza y el cierre son los del layout (.modal-panel__caja); la caja recibe el foco al abrir */
+.inicio-modal { outline: none; }
+
+/* Opciones: tarjetas con su radio; la elegida en azul */
+.opciones { margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: .5rem; }
+.opcion {
+    display: flex; align-items: flex-start; gap: .75rem; padding: .8125rem 1rem; border-radius: .75rem; cursor: pointer;
+    background: #fff; box-shadow: inset 0 0 0 1px var(--linea);
+    transition-property: background-color, box-shadow; transition-duration: .15s; transition-timing-function: ease-out;
+}
+.opcion:hover { background: #f5f8fc; }
+.opcion:has(input:checked) { background: var(--azul-claro); box-shadow: inset 0 0 0 1.5px var(--azul); }
+.opcion:has(input:focus-visible) { outline: 2px solid var(--azul); outline-offset: 2px; }
+.opcion input { width: 1rem; height: 1rem; margin-top: .1875rem; flex: none; accent-color: var(--azul); }
+.opcion input:focus-visible { outline: none; }
+.opcion__texto { min-width: 0; display: flex; flex-direction: column; gap: .125rem; }
+.opcion__titulo { font-size: .875rem; font-weight: 650; color: var(--tinta); }
+.opcion__ayuda { font-size: .8125rem; line-height: 1.45; color: var(--tinta-suave); text-wrap: pretty; }
+.opcion__cuidado { font-weight: 600; color: var(--error-texto); }
+.opcion-grupo { display: flex; flex-direction: column; gap: .5rem; }
+.opcion__extra { padding: 0 0 0 2.75rem; }
+.opcion__extra.hidden, .personas.hidden, .personas__elegida.hidden { display: none; }
+
+/* Personas conectadas (limpiar la sesión de una sola) */
+.personas { padding-left: 2.75rem; display: flex; flex-direction: column; gap: .5rem; }
+.personas__lista {
+    max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column;
+    border-radius: .75rem; box-shadow: inset 0 0 0 1px var(--linea); padding: .25rem;
+}
+.persona {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .75rem;
+    padding: .5625rem .75rem; border-radius: .5rem; cursor: pointer;
+    transition-property: background-color; transition-duration: .15s; transition-timing-function: ease-out;
+}
+.persona:hover { background: #f5f8fc; }
+.persona:has(input:checked) { background: var(--azul-claro); }
+.persona:has(input:focus-visible) { outline: 2px solid var(--azul); outline-offset: -2px; }
+.persona input { width: 1rem; height: 1rem; accent-color: var(--azul); }
+.persona input:focus-visible { outline: none; }
+.persona__texto { min-width: 0; display: flex; flex-direction: column; }
+.persona__nombre { font-size: .875rem; font-weight: 600; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.persona__detalle { font-size: .75rem; color: var(--tinta-tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.persona__estado { display: flex; flex-direction: column; align-items: flex-end; gap: .1875rem; }
+.persona__estado .estado-chip { font-size: .6875rem; padding: .0625rem .4375rem; }
+.persona__tiempo { font-size: .75rem; color: var(--tinta-tenue); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.personas__vacio { margin: 0; padding: .875rem .75rem; font-size: .8125rem; color: var(--tinta-tenue); }
+.personas__elegida { margin: 0; font-size: .8125rem; color: var(--tinta-2); }
+.personas__elegida b { color: var(--tinta); }
+
+
+/* Estadísticas del asesor */
+.est-cabeza { min-width: 0; display: flex; flex-direction: column; gap: .125rem; }
+.est-cabeza h2 { overflow-wrap: anywhere; }
+.est-periodo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .75rem; }
+.est-fechas { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; }
+.est-fechas .form-campo { width: 9.75rem; }
+.est-contenido { display: flex; flex-direction: column; gap: 1.25rem; padding-top: .25rem; }
+.est-cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+.est-cifras--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 22rem; }
+.est-cifra { display: flex; flex-direction: column; gap: .125rem; padding: .75rem .875rem; border-radius: .75rem; background: #f5f8fc; }
+.est-cifra b { font-size: 1.375rem; line-height: 1.15; font-weight: 650; letter-spacing: -.01em; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.est-cifra span { font-size: .8125rem; color: var(--tinta-suave); }
+.est-tiempos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: .75rem; box-shadow: inset 0 0 0 1px var(--linea); }
+.est-tiempo { min-width: 0; display: flex; flex-direction: column; gap: .125rem; padding: .75rem .875rem; }
+.est-tiempo + .est-tiempo { border-left: 1px solid var(--linea); }
+.est-tiempo__texto { font-size: .8125rem; color: var(--tinta-suave); }
+.est-tiempo b { font-size: 1rem; font-weight: 650; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.est-tiempo__nota { font-size: .75rem; line-height: 1.4; color: var(--tinta-tenue); text-wrap: pretty; }
+.est-seccion { display: flex; flex-direction: column; gap: .625rem; }
+.est-seccion h3 { margin: 0; font-size: .875rem; font-weight: 650; color: var(--tinta); }
+.est-servicios { display: flex; flex-direction: column; }
+.est-servicio {
+    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(4rem, 1fr) 4.5rem; align-items: center; gap: .875rem;
+    padding: .4375rem 0; border-top: 1px solid var(--linea-suave); font-size: .875rem;
+}
+.est-servicio:first-child { border-top: 0; }
+.est-servicio__nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tinta); }
+.est-servicio__pista { height: .4375rem; border-radius: 999px; background: #e9eef5; overflow: hidden; }
+.est-servicio__pista i { display: block; height: 100%; border-radius: 999px; background: var(--azul); }
+.est-servicio__n { text-align: right; font-weight: 600; color: var(--tinta-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.est-tabla { max-height: 16rem; overflow-y: auto; overscroll-behavior: contain; border-radius: .75rem; box-shadow: inset 0 0 0 1px var(--linea); }
+.est-tabla .tabla-panel th { position: sticky; top: 0; background: #fff; }
+.est-tabla .tabla-panel th, .est-tabla .tabla-panel td { padding-left: .875rem; padding-right: .875rem; }
+.est-codigo { font-weight: 650; letter-spacing: .01em; }
+.est-vacio { margin: 0; padding: .875rem 0; font-size: .875rem; color: var(--tinta-tenue); }
+@media (max-width: 639px) {
+    .est-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .est-tiempos { grid-template-columns: minmax(0, 1fr); }
+    .est-tiempo + .est-tiempo { border-left: 0; border-top: 1px solid var(--linea); }
+    .est-fechas .form-campo { width: auto; flex: 1 1 8rem; }
+    .personas, .opcion__extra { padding-left: 0; }
+}
 
 /* Esqueletos: modal de estadísticas del asesor y lista de sesiones del modal de limpieza */
 .est-esqueleto { display: flex; flex-direction: column; gap: 1rem; padding-block: .25rem; }
-.est-esqueleto__fila { display: grid; gap: .75rem; }
+.est-esqueleto__fila { display: grid; gap: .5rem; }
 .est-esqueleto__fila--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .est-esqueleto__fila--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 767px) {
+@media (max-width: 639px) {
     .est-esqueleto__fila--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .est-esqueleto__fila--3 { grid-template-columns: minmax(0, 1fr); }
 }
-.est-esqueleto__tabla { display: flex; flex-direction: column; gap: .8rem; padding: .85rem .75rem; border: 1px solid #eef1f6; border-radius: .5rem; }
+.est-esqueleto__tabla { display: flex; flex-direction: column; gap: .8rem; padding: .85rem .75rem; border-radius: .75rem; box-shadow: inset 0 0 0 1px var(--linea); }
 .est-esqueleto__tabla .esqueleto:nth-child(odd) { width: 92%; }
 .est-esqueleto__tabla .esqueleto:nth-child(even) { width: 74%; }
-.usuario-esqueleto { display: flex; flex-direction: column; gap: .5rem; padding: .9rem .75rem; }
+.usuario-esqueleto { display: flex; flex-direction: column; gap: .5rem; padding: .75rem; }
 </style>
 @endpush
 

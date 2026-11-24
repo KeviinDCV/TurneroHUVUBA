@@ -154,7 +154,7 @@ class ServicioController extends Controller
         if ($impacto['turnos'] > 0 || $impacto['historial'] > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tiene turnos registrados: al eliminarlo se borrarían también de Reportes y Gráficos. Desactívalo en su lugar.',
+                'message' => 'Tiene turnos registrados: al eliminarlo se borrarían también de Reportes y Gráficos. Desactívelo en su lugar.',
                 'puede_desactivar' => true,
             ], 422);
         }
@@ -222,10 +222,10 @@ class ServicioController extends Controller
             'descripcion' => 'nullable|string|max:500',
             'orden' => 'nullable|integer|min:0|max:9999',
         ], [
-            'codigo.required' => 'Escribe el código: son las letras del ticket (la C de C-001).',
+            'codigo.required' => 'Escriba el código: son las letras del ticket (la C de C-001).',
             'codigo.regex' => 'Solo letras, sin guiones ni números: la voz del TV las deletrea antes del número.',
             'codigo.unique' => 'Ya hay un servicio con ese código.',
-            'servicio_padre_id.exists' => 'Elige una sección de la lista.',
+            'servicio_padre_id.exists' => 'Elija una sección de la lista.',
         ], [
             'orden' => 'posición',
             'descripcion' => 'descripción',

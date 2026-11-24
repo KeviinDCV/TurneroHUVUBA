@@ -37,6 +37,8 @@ class TableroService
 
     /** Máximo de avisos por tipo (prioritario y atención larga). Los de sin cobertura no tienen tope. */
     private const MAX_AVISOS = 3;
+    /** Turnos que lista la columna «Cola» del Inicio. */
+    private const MAX_COLA = 8;
 
     /**
      * Estructura completa en cero. La usa el Inicio si generar() falla, para mostrarse igual (sin error 500)
@@ -57,7 +59,7 @@ class TableroService
                 'atendidos_hoy' => 0, 'transferidos_hoy' => 0,
                 'asesores' => ['conectados' => 0, 'atendiendo' => 0, 'libres' => 0, 'descanso' => 0, 'canal' => 0, 'sin_modulo' => 0],
             ],
-            'servicios' => [], 'modulos' => [], 'asesores' => [], 'avisos' => [], 'por_asesor' => [],
+            'servicios' => [], 'modulos' => [], 'asesores' => [], 'avisos' => [], 'por_asesor' => [], 'cola' => [],
         ];
     }
 
@@ -455,6 +457,29 @@ class TableroService
         }
         usort($porAsesor, fn ($a, $b) => [$b['atendidos'], $a['nombre']] <=> [$a['atendidos'], $b['nombre']]);
 
+        // ------------------------------------------------------------------ cola
+        // Los que más llevan esperando (pendientes y aplazados), para la columna «Cola» del Inicio.
+        $cola = [];
+        foreach ($vivos as $t) {
+            if ($t->esLlamado()) {
+                continue;
+            }
+            $min = $this->minutosDesde($t->created_at, $ahora);
+            $esPrio = $t->esPrioritario();
+            $cola[] = [
+                'id' => (int) $t->id,
+                'codigo' => $t->codigo_completo,
+                'servicio' => $servicioNombre($t->servicio_id),
+                'minutos' => $min,
+                'prioritario' => $esPrio,
+                'aplazado' => $t->esAplazado(),
+                // Un aplazado espera a que lo vuelvan a llamar: no cuenta contra el límite de espera.
+                'supera_umbral' => !$t->esAplazado() && $min !== null && $min > ($esPrio ? $umbrales['prioritario'] : $umbrales['espera']),
+            ];
+        }
+        usort($cola, fn ($a, $b) => [$b['minutos'] ?? -1, $a['id']] <=> [$a['minutos'] ?? -1, $b['id']]);
+        $cola = array_slice($cola, 0, self::MAX_COLA);
+
         // ------------------------------------------------------------------ resumen
         $esperaMax = null;
         if ($masAntiguo) {
@@ -493,6 +518,7 @@ class TableroService
             'asesores' => $asesores,
             'avisos' => $avisos,
             'por_asesor' => $porAsesor,
+            'cola' => $cola,
         ];
     }
 

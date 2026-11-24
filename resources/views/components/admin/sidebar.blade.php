@@ -2,10 +2,26 @@
     $user = auth()->user();
     $currentRoute = request()->route()?->getName();
     $displayName = $user->nombre_completo ?? $user->nombre_usuario ?? 'Usuario';
-    $userInitial = mb_strtoupper(mb_substr($displayName, 0, 1));
+    $iniciales = collect(preg_split('/\s+/', trim($displayName)))->filter()->take(2)
+        ->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->implode('');
     $unidad = config('panel.unidad_nombre', 'Panel administrativo');
 
-    // Íconos de trazo fino (Lucide, licencia ISC), dibujados a 16 px.
+    // Contadores del riel: turnos que esperan hoy y solicitudes de soporte nuevas. Si algo falla, el menú sale sin ellos.
+    $contadores = [];
+    try {
+        $contadores['admin.turnos'] = \App\Models\Turno::query()
+            ->where('created_at', '>=', today())
+            ->whereIn('estado', ['pendiente', 'aplazado'])
+            ->count();
+    } catch (\Throwable $e) {
+    }
+    try {
+        $contadores['admin.soporte'] = collect(app(\App\Services\SoporteService::class)->listar())
+            ->where('estado', 'nueva')->count();
+    } catch (\Throwable $e) {
+    }
+
+    // Íconos de trazo (Lucide, licencia ISC), a 20 px y trazo 1,5.
     $iconos = [
         'home' => '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
         'ticket' => '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
@@ -18,91 +34,65 @@
         'tv' => '<rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/>',
         'help' => '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
         'salir' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
-        'panel' => '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
-        'cerrar' => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     ];
-    $icono = fn ($nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $iconos[$nombre] . '</svg>';
+    $icono = fn ($nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $iconos[$nombre] . '</svg>';
 
     $navSections = [
-        [
-            'title' => null,
-            'items' => [
-                ['label' => 'Inicio', 'route' => 'admin.dashboard', 'icon' => 'home', 'hint' => 'Vista general'],
-            ],
-        ],
-        [
-            'title' => 'Operación',
-            'items' => [
-                ['label' => 'Turnos', 'route' => 'admin.turnos', 'icon' => 'ticket', 'hint' => 'Control diario'],
-                ['label' => 'Módulos', 'route' => 'admin.cajas', 'icon' => 'modulos', 'hint' => 'Puntos de atención'],
-                ['label' => 'Servicios', 'route' => 'admin.servicios', 'icon' => 'servicios', 'hint' => 'Catálogo HUV'],
-                ['label' => 'Asignación', 'route' => 'admin.asignacion-servicios', 'icon' => 'asignacion', 'hint' => 'Servicios por asesor'],
-            ],
-        ],
-        [
-            'title' => 'Análisis',
-            'items' => [
-                ['label' => 'Gráficos', 'route' => 'admin.graficos', 'icon' => 'chart', 'hint' => 'Indicadores'],
-                ['label' => 'Reportes', 'route' => 'admin.reportes', 'icon' => 'report', 'hint' => 'Exportaciones'],
-            ],
-        ],
-        [
-            'title' => 'Gestión',
-            'items' => [
-                ['label' => 'Usuarios', 'route' => 'admin.users', 'icon' => 'users', 'hint' => 'Roles y accesos'],
-                ['label' => 'Config TV', 'route' => 'admin.tv-config', 'icon' => 'tv', 'hint' => 'Pantalla pública'],
-                ['label' => 'Soporte', 'route' => 'admin.soporte', 'icon' => 'help', 'hint' => 'Asistencia'],
-            ],
-        ],
+        ['title' => null, 'items' => [
+            ['label' => 'Inicio', 'route' => 'admin.dashboard', 'icon' => 'home', 'hint' => 'La sala en este momento'],
+        ]],
+        ['title' => 'Operación', 'items' => [
+            ['label' => 'Turnos', 'route' => 'admin.turnos', 'icon' => 'ticket', 'hint' => 'Turnos de hoy'],
+            ['label' => 'Módulos', 'route' => 'admin.cajas', 'icon' => 'modulos', 'hint' => 'Puntos de atención'],
+            ['label' => 'Servicios', 'route' => 'admin.servicios', 'icon' => 'servicios', 'hint' => 'Catálogo de servicios'],
+            ['label' => 'Asignación', 'route' => 'admin.asignacion-servicios', 'icon' => 'asignacion', 'hint' => 'Servicios por asesor'],
+        ]],
+        ['title' => 'Análisis', 'items' => [
+            ['label' => 'Gráficos', 'route' => 'admin.graficos', 'icon' => 'chart', 'hint' => 'Indicadores'],
+            ['label' => 'Reportes', 'route' => 'admin.reportes', 'icon' => 'report', 'hint' => 'Informes en Excel y PDF'],
+        ]],
+        ['title' => 'Gestión', 'items' => [
+            ['label' => 'Usuarios', 'route' => 'admin.users', 'icon' => 'users', 'hint' => 'Roles y accesos'],
+            ['label' => 'Config TV', 'route' => 'admin.tv-config', 'icon' => 'tv', 'hint' => 'Pantalla pública'],
+            ['label' => 'Soporte', 'route' => 'admin.soporte', 'icon' => 'help', 'hint' => 'Solicitudes de ayuda'],
+        ]],
     ];
 @endphp
 
-{{-- Menú lateral «Limpio · Toque» (2026-10): claro, letra pequeña, el azul institucional en la opción activa.
-     Los estilos están en layouts/admin.blade.php (bloque 8). El modo compacto lo resuelve el CSS con
-     body.sidebar-is-collapsed, que se pone antes del primer pintado: el menú no salta al cargar. --}}
-<aside id="admin-sidebar" aria-label="Menú lateral" class="sidebar-responsive sidebar-full-height menu-lateral fixed inset-y-0 left-0 z-30 flex flex-col transform md:transform-none transition-transform duration-200 ease-out md:transition-none"
-       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
+{{-- Riel flotante «La sala» (2026-11): una pieza blanca separada de los bordes, con íconos y nombres cortos.
+     Estilos en layouts/admin.blade.php («Riel»). En el celular se abre encima con el botón de la cabecera. --}}
+<aside id="admin-sidebar" aria-label="Menú lateral" class="riel" :class="sidebarOpen ? 'riel--abierto' : ''">
+    <a href="{{ route('admin.dashboard') }}" class="riel__marca" title="Turnero HUV · {{ $unidad }}">
+        <img src="{{ asset('images/logo.png') }}" alt="Hospital Universitario del Valle" class="riel__logo">
+    </a>
 
-    <div class="menu-cabeza">
-        <a href="{{ route('admin.dashboard') }}" class="menu-espacio" title="Turnero HUV · {{ $unidad }}">
-            <img src="{{ asset('images/logo.png') }}" alt="Hospital Universitario del Valle" class="menu-logo">
-            <span class="menu-espacio__texto">
-                <span class="menu-espacio__nombre">Turnero HUV</span>
-                <span class="menu-espacio__unidad">{{ $unidad }}</span>
-            </span>
-        </a>
-        <button type="button" class="menu-boton menu-boton--plegar"
-                @click="sidebarCollapsed = !sidebarCollapsed; localStorage.setItem('huvSidebarCollapsed', sidebarCollapsed ? '1' : '0')"
-                :aria-expanded="!sidebarCollapsed" aria-label="Alternar menú compacto" title="Alternar menú compacto">{!! $icono('panel') !!}</button>
-        <button type="button" class="menu-boton menu-boton--cerrar" @click="sidebarOpen = false" aria-label="Cerrar menú" title="Cerrar menú">{!! $icono('cerrar') !!}</button>
-    </div>
-
-    <nav class="menu-nav" aria-label="Navegación principal">
-        @foreach($navSections as $section)
-            @if($section['title'])
-                <p class="menu-seccion">{{ $section['title'] }}</p>
+    <nav class="riel__nav" aria-label="Navegación principal">
+        @foreach($navSections as $i => $section)
+            @if($i > 0)
+                <span class="riel__separador" role="presentation"></span>
             @endif
             @foreach($section['items'] as $item)
-                @php $isActive = $currentRoute === $item['route']; @endphp
+                @php
+                    $isActive = $currentRoute === $item['route'] || ($item['route'] === 'admin.tv-config' && $currentRoute === 'voice.admin');
+                    $n = $contadores[$item['route']] ?? 0;
+                @endphp
                 <a href="{{ route($item['route']) }}" @if($isActive) aria-current="page" @endif
-                   title="{{ $item['label'] }}{{ !empty($item['hint']) ? ' — '.$item['hint'] : '' }}"
-                   class="menu-item {{ $isActive ? 'is-activo' : '' }}">
-                    {!! $icono($item['icon']) !!}
-                    <span class="menu-item__texto">{{ $item['label'] }}</span>
+                   title="{{ $item['label'] }} — {{ $item['hint'] }}"
+                   class="riel__item {{ $isActive ? 'is-activo' : '' }}">
+                    <span class="riel__icono">{!! $icono($item['icon']) !!}
+                        @if($n > 0)<span class="riel__cuenta" aria-label="{{ $n }} pendientes">{{ $n > 99 ? '99+' : $n }}</span>@endif
+                    </span>
+                    <span class="riel__texto">{{ $item['label'] }}</span>
                 </a>
             @endforeach
         @endforeach
     </nav>
 
-    <div class="menu-pie">
-        <div class="menu-usuario" title="{{ $displayName }} · {{ $user->rol ?? 'Sin rol' }}">
-            <span class="menu-avatar" aria-hidden="true">{{ $userInitial }}</span>
-            <span class="menu-usuario__nombre">{{ $displayName }}</span>
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="menu-boton" aria-label="Cerrar sesión" title="Cerrar sesión">{!! $icono('salir') !!}</button>
-            </form>
-        </div>
-        <p class="menu-firma">"Evaristo García" E.S.E · Innovación y Desarrollo</p>
+    <div class="riel__pie">
+        <span class="riel__avatar" title="{{ $displayName }} · {{ $user->rol ?? 'Sin rol' }}">{{ $iniciales ?: '·' }}</span>
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="riel__salir" aria-label="Cerrar sesión" title="Cerrar sesión">{!! $icono('salir') !!}</button>
+        </form>
     </div>
 </aside>

@@ -1180,12 +1180,14 @@ class AdminController extends Controller
                 'observaciones' => $t->observaciones,
                 'modulo' => $t->caja?->numero_caja,
                 'asesor' => $t->asesor?->nombre_completo,
-                'llego' => $t->created_at?->format('H:i'),
+                // Hora en 12 h como el resto del panel («3:29 p. m.»)
+                'llego' => $t->created_at?->locale('es')->isoFormat('h:mm a'),
                 'espera_min' => $espera,
                 'espera_alerta' => $esperando && $espera !== null && $espera > $limite,
                 'espera_limite' => $limite,
                 'en_atencion_min' => $t->estado === 'llamado' ? $minutos($t->fecha_llamado, $ahora) : null,
-                'duracion' => $duracion !== null ? sprintf('%d:%02d', intdiv($duracion, 60), $duracion % 60) : null,
+                // En minutos, como la espera («4 min», «1 h 5 min»); antes «4:00» se leía como una hora
+                'duracion' => $duracion !== null ? $this->minutosLegibles($duracion) : null,
             ];
         })->values();
 
@@ -1223,5 +1225,15 @@ class AdminController extends Controller
         return response()
             ->json($datos, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             ->header('Cache-Control', 'no-store');
+    }
+
+    /** Segundos de una atención como texto corto: «<1 min», «4 min», «1 h 5 min». */
+    private function minutosLegibles(int $segundos): string
+    {
+        $min = intdiv(max(0, $segundos) + 30, 60);
+        if ($min < 1) {
+            return '<1 min';
+        }
+        return $min < 60 ? $min . ' min' : intdiv($min, 60) . ' h' . ($min % 60 ? ' ' . ($min % 60) . ' min' : '');
     }
 }
