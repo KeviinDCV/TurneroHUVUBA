@@ -1978,7 +1978,9 @@
         let currentConfig = {
             ticker_message: @json($tvConfig->ticker_message ?? ''),
             ticker_speed: {{ $tvConfig->ticker_speed }},
-            ticker_enabled: {{ $tvConfig->ticker_enabled ? 'true' : 'false' }}
+            ticker_enabled: {{ $tvConfig->ticker_enabled ? 'true' : 'false' }},
+            // Volumen general del TV en % (Config TV): escala el pito y la voz; 100 = el de siempre
+            volumen: {{ $tvConfig->volumenTv() }}
         };
 
         // Variables globales para multimedia
@@ -2047,12 +2049,20 @@
                     return response.json();
                 })
                 .then(data => {
+                    // El volumen va aparte: cambiarlo no reinicia la cinta, y el TV suena una vez para que se escuche
+                    const volumen = Number(data.volumen);
+                    if (Number.isFinite(volumen) && volumen !== currentConfig.volumen) {
+                        currentConfig.volumen = Math.max(0, Math.min(100, volumen));
+                        console.log('🔊 Volumen del TV:', currentConfig.volumen + ' %');
+                        probarVolumenTv();
+                    }
+
                     // Verificar si la configuración ha cambiado
                     if (data.ticker_message !== currentConfig.ticker_message ||
                         data.ticker_speed !== currentConfig.ticker_speed ||
                         data.ticker_enabled !== currentConfig.ticker_enabled) {
 
-                        currentConfig = data;
+                        currentConfig = { ...data, volumen: currentConfig.volumen };
                         applyTvConfig(data);
                     }
                 })
@@ -3056,6 +3066,33 @@
         // Hacer la función disponible globalmente para el dashboard del asesor
         window.repetirUltimoTurno = repetirUltimoTurno;
 
+        // Volumen general del TV (Config TV) como factor de 0 a 1. Va al cuadrado porque el oído no es lineal:
+        // así la mitad del control suena como la mitad, y no casi igual que el máximo.
+        function nivelVolumenTv() {
+            const v = Number(currentConfig.volumen);
+            const p = Number.isFinite(v) ? Math.max(0, Math.min(100, v)) / 100 : 1;
+            return p * p;
+        }
+
+        // Muestra del volumen nuevo: el pito y «Turno», una sola vez. Si hay un llamado sonando o en cola
+        // no se toca nada (el siguiente llamado ya sale con el volumen nuevo).
+        function probarVolumenTv() {
+            if (reproduciendoAudio || colaAudio.length > 0 || nivelVolumenTv() === 0) return;
+            reproduciendoAudio = true;
+            window.ultimoInicioReproduccion = Date.now();
+            let terminado = false, guardia = null;
+            const terminar = () => {
+                if (terminado) return;
+                terminado = true;
+                clearTimeout(guardia);
+                reproduciendoAudio = false;
+                window.ultimoInicioReproduccion = null;
+                procesarColaAudio();
+            };
+            guardia = setTimeout(terminar, 15000);
+            playAudioSequence(['/audio/turnero/turno.mp3', '/audio/turnero/voice/frases/turno.mp3'], 0, terminar);
+        }
+
         // Función mejorada para reproducir audio que funciona en segundo plano
         function playAudioSequence(audioFiles, index = 0, onComplete = null) {
             if (index >= audioFiles.length) {
@@ -3086,13 +3123,11 @@
                 gainValue = 3.0;     // Amplificación adicional con Web Audio API
             }
 
-            audio.volume = targetVolume;
-            
+            // Volumen general del TV (Config TV), de 0 a 1
+            const nivel = nivelVolumenTv();
+
             // Aumentar la velocidad de reproducción para que sea más fluida
             audio.playbackRate = 1.35;
-
-            // Log para debugging del volumen
-            console.log(`🔊 Reproduciendo: ${audioFile.split('/').pop()} - Volumen: ${targetVolume}, Ganancia: ${gainValue}x, Velocidad: ${audio.playbackRate}x`);
 
             // Usar Web Audio API para amplificar el volumen de los archivos de voz
             let audioSource = null;
@@ -3102,14 +3137,21 @@
                 if (audioContext && gainValue > 1.0) {
                     audioSource = audioContext.createMediaElementSource(audio);
                     gainNode = audioContext.createGain();
-                    gainNode.gain.value = gainValue;
+                    gainNode.gain.value = gainValue * nivel;
                     audioSource.connect(gainNode);
                     gainNode.connect(audioContext.destination);
                 }
             } catch (e) {
                 // Si Web Audio API falla, usar volumen estándar
+                gainNode = null;
                 console.warn('Web Audio API no disponible para amplificación:', e);
             }
+
+            // El volumen general se aplica una sola vez: en la ganancia si la voz pasa por Web Audio; si no, en el audio
+            audio.volume = gainNode ? targetVolume : Math.min(1, targetVolume * nivel);
+
+            // Log para debugging del volumen
+            console.log(`🔊 Reproduciendo: ${audioFile.split('/').pop()} - Volumen: ${audio.volume}, Ganancia: ${gainNode ? gainNode.gain.value : 1}x, Volumen TV: ${currentConfig.volumen} %, Velocidad: ${audio.playbackRate}x`);
 
             // Asegurar que el AudioContext esté activo antes de reproducir
             if (audioContext && audioContext.state === 'suspended') {

@@ -124,6 +124,7 @@ Route::middleware(['auth', 'admin.role', 'update.user.activity', 'clean.expired.
     // Rutas de configuración del TV (incluye multimedia)
     Route::get('/tv-config', [TvConfigController::class, 'index'])->name('admin.tv-config');
     Route::post('/tv-config', [TvConfigController::class, 'update'])->name('admin.tv-config.update');
+    Route::post('/tv-config/volumen', [TvConfigController::class, 'updateVolumen'])->name('admin.tv-config.volumen');
     Route::post('/tv-config/multimedia', [TvConfigController::class, 'storeMultimedia'])->name('admin.tv-config.multimedia.store');
     Route::post('/tv-config/multimedia/order', [TvConfigController::class, 'updateMultimediaOrder'])->name('admin.tv-config.multimedia.order');
     Route::post('/tv-config/multimedia/{id}/toggle', [TvConfigController::class, 'toggleMultimedia'])->name('admin.tv-config.multimedia.toggle');

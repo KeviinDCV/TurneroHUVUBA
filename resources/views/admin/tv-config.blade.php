@@ -10,13 +10,15 @@
 @endsection
 
 @section('content')
-{{-- Config TV en una sola vista: a la izquierda la cinta de avisos (con vista previa fiel al TV), a la derecha la lista
-     de reproducción (la pieza elevada). Todo se guarda por fetch, sin recargar; los errores se ven junto a lo que falló.
+{{-- Config TV en una sola vista: a la izquierda la cinta de avisos (con vista previa fiel al TV) y el sonido, a la derecha
+     la lista de reproducción (la pieza elevada). Todo se guarda por fetch, sin recargar; los errores se ven junto a lo que falló.
      Subir un archivo y eliminarlo van en modales (.modal-panel). --}}
+@php($volumenTv = $tvConfig->volumenTv())
 <div class="tv-vista"
-     x-data="configTv(@js(['ticker_message' => $tvConfig->ticker_message, 'ticker_speed' => (int) $tvConfig->ticker_speed, 'ticker_enabled' => (bool) $tvConfig->ticker_enabled]), @js($multimedia))">
+     x-data="configTv(@js(['ticker_message' => $tvConfig->ticker_message, 'ticker_speed' => (int) $tvConfig->ticker_speed, 'ticker_enabled' => (bool) $tvConfig->ticker_enabled]), @js($multimedia), {{ $volumenTv }})">
 
     <div class="tv-rejilla">
+      <div class="tv-columna">
         <!-- Cinta de avisos -->
         <section class="superficie bloque-tv" aria-labelledby="t-cinta">
             <header class="bloque-tv__cabeza">
@@ -70,6 +72,30 @@
                 <span x-text="estadoCinta && estadoCinta.texto"></span>
             </p>
         </section>
+
+        <!-- Sonido: volumen general del TV (el pito y la voz de los llamados). Se guarda solo al soltar el control. -->
+        <section class="superficie bloque-tv" aria-labelledby="t-sonido">
+            <header class="bloque-tv__cabeza">
+                <div>
+                    <h2 id="t-sonido" class="bloque-tv__titulo">Sonido</h2>
+                    <p class="bloque-tv__resumen">El pito y la voz con que el TV llama los turnos.</p>
+                </div>
+            </header>
+
+            <div class="form-campo">
+                <span class="fila-rotulo"><label for="tv-volumen">Volumen</label> <b x-text="textoVolumen()">{{ $volumenTv === 0 ? 'Sin sonido' : $volumenTv . ' %' }}</b></span>
+                <input id="tv-volumen" type="range" class="rango" min="0" max="100" step="5" value="{{ $volumenTv }}" x-model.number="volumen" @change="guardarVolumen()"
+                       aria-describedby="tv-volumen-ayuda" :aria-valuetext="textoVolumen()">
+                <span class="rango-extremos" aria-hidden="true"><span>Sin sonido</span><span>Máximo</span></span>
+                <span id="tv-volumen-ayuda" class="form-ayuda">Se guarda solo. El TV lo aplica en menos de un minuto y suena una vez para que escuche cómo quedó. 100&nbsp;% es el máximo del turnero; si aun así se oye bajo, suba el volumen del televisor.</span>
+            </div>
+
+            <div class="aviso aviso--alerta" x-show="volumen === 0" @if ($volumenTv !== 0) style="display:none" @endif>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+                <p>El TV queda sin sonido: muestra los turnos en pantalla, pero no los llama en voz alta.</p>
+            </div>
+        </section>
+      </div>
 
         <!-- Lista de reproducción: la pieza elevada de la vista -->
         <section class="bloque-tv bloque-tv--lista pieza-elevada" aria-labelledby="t-lista">
@@ -282,6 +308,7 @@
 <script>
 document.addEventListener('alpine:init', () => {
     const URL_CINTA = @json(route('admin.tv-config.update'));
+    const URL_VOLUMEN = @json(route('admin.tv-config.volumen'));
     const URL_SUBIR = @json(route('admin.tv-config.multimedia.store'));
     const URL_ORDEN = @json(route('admin.tv-config.multimedia.order'));
     const URL_MEDIO = @json(url('tv-config/multimedia'));
@@ -297,14 +324,16 @@ document.addEventListener('alpine:init', () => {
     // Devuelve el foco a quien abrió un modal, si sigue en la página
     const volverA = el => { if (el && el.isConnected && typeof el.focus === 'function') el.focus(); };
 
-    Alpine.data('configTv', (config, multimedia) => {
-        // Fuera del estado reactivo: la animación de la vista previa y a quién devolver el foco
+    Alpine.data('configTv', (config, multimedia, volumenInicial) => {
+        // Fuera del estado reactivo: la animación de la vista previa, a quién devolver el foco y el guardado del volumen
         let animPrevia = null, temporizadorPrevia = null, origenSubida = null, origenEliminar = null;
+        let temporizadorVolumen = null, pedidoVolumen = 0;
 
         return {
         cinta: { ...config },
         guardada: { ...config },
         guardandoCinta: false, estadoCinta: null, errores: {}, vueltaPrevia: 0,
+        volumen: volumenInicial, volumenGuardado: volumenInicial,
         lista: multimedia,
         subida: subidaVacia(),
         porEliminar: null, eliminando: false,
@@ -405,6 +434,30 @@ document.addEventListener('alpine:init', () => {
                 })
                 .catch(() => { this.estadoCinta = { texto: 'No hay conexión con el servidor. Inténtelo de nuevo.', error: true }; })
                 .finally(() => { this.guardandoCinta = false; });
+        },
+
+        // ---- sonido: se guarda solo un momento después de soltar el control (las flechas del teclado se agrupan)
+        textoVolumen() { return this.volumen === 0 ? 'Sin sonido' : this.volumen + ' %'; },
+        guardarVolumen() {
+            clearTimeout(temporizadorVolumen);
+            temporizadorVolumen = setTimeout(() => {
+                const valor = this.volumen;
+                if (valor === this.volumenGuardado) return;
+                const pedido = ++pedidoVolumen;
+                fetch(URL_VOLUMEN, { method: 'POST', headers: { ...CABECERAS(), 'Content-Type': 'application/json' }, body: JSON.stringify({ volumen: valor }) })
+                    .then(async r => ({ ok: r.ok, estado: r.status, datos: await r.json().catch(() => ({})) }))
+                    .then(({ ok, estado, datos }) => {
+                        if (!ok || datos.success === false) throw new Error(mensajeDe(estado, datos, 'No se pudo guardar el volumen.'));
+                        if (pedido !== pedidoVolumen) return;
+                        this.volumenGuardado = valor;
+                        sileo.success({ title: valor === 0 ? 'TV sin sonido' : 'Volumen del TV en ' + valor + ' %', description: 'El TV lo aplica en menos de un minuto.' });
+                    })
+                    .catch(e => {
+                        if (pedido !== pedidoVolumen) return;
+                        this.volumen = this.volumenGuardado;
+                        sileo.error({ title: 'No se guardó el volumen', description: e instanceof TypeError ? 'No hay conexión con el servidor.' : e.message });
+                    });
+            }, 350);
         },
 
         // ---- lista: encender/apagar, ordenar y eliminar sin recargar
@@ -545,6 +598,7 @@ document.addEventListener('alpine:init', () => {
 .tv-ico { width: 1rem; height: 1rem; flex: none; }
 .tv-rejilla { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 1.5rem; align-items: start; }
 @media (max-width: 1099px) { .tv-rejilla { grid-template-columns: minmax(0, 1fr); } }
+.tv-columna { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
 
 .bloque-tv { display: flex; flex-direction: column; gap: 1.125rem; min-width: 0; padding: 1.25rem 1.25rem 1.125rem; }
 /* La única pieza elevada de la vista (.pieza-elevada del layout); aquí solo su ritmo interno */

@@ -8,6 +8,7 @@ use App\Models\Turno;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -82,6 +83,30 @@ class TvConfigController extends Controller
             }
             throw $e;
         }
+    }
+
+    /**
+     * Volumen general del TV (0-100 %): el pito y la voz de los llamados. Config TV lo guarda solo al mover el control;
+     * el TV lo toma en su siguiente consulta de /api/tv-config.
+     */
+    public function updateVolumen(Request $request)
+    {
+        $validated = $request->validate(
+            ['volumen' => 'required|integer|min:0|max:100'],
+            ['volumen.*' => 'El volumen va de 0 a 100.']
+        );
+
+        if (! Schema::hasColumn('tv_configs', 'volumen')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falta actualizar la base de datos: en el servidor corra «php artisan migrate».',
+            ], 503);
+        }
+
+        TvConfig::getCurrentConfig()->update(['volumen' => (int) $validated['volumen']]);
+        Cache::forget('tv_config');
+
+        return response()->json(['success' => true, 'volumen' => (int) $validated['volumen']]);
     }
 
     /**
@@ -443,7 +468,8 @@ class TvConfigController extends Controller
             return [
                 'ticker_message' => $tvConfig->ticker_message,
                 'ticker_speed' => $tvConfig->ticker_speed,
-                'ticker_enabled' => $tvConfig->ticker_enabled
+                'ticker_enabled' => $tvConfig->ticker_enabled,
+                'volumen' => $tvConfig->volumenTv(),
             ];
         });
 

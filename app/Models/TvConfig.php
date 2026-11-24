@@ -9,13 +9,23 @@ class TvConfig extends Model
     protected $fillable = [
         'ticker_message',
         'ticker_speed',
-        'ticker_enabled'
+        'ticker_enabled',
+        'volumen',
     ];
 
     protected $casts = [
         'ticker_enabled' => 'boolean',
         'ticker_speed' => 'integer',
+        'volumen' => 'integer',
     ];
+
+    /**
+     * Volumen general del TV en % (0-100). 100 si la columna aún no existe (falta correr la migración).
+     */
+    public function volumenTv(): int
+    {
+        return max(0, min(100, (int) ($this->volumen ?? 100)));
+    }
 
     /**
      * Obtener la configuración actual del TV
